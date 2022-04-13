@@ -32,8 +32,6 @@ X2DemoMachine::X2DemoMachine(int argc, char *argv[]) {
     // Create ros object
     x2DemoMachineRos_ = new X2DemoMachineROS(robot_, x2DemoState_, nodeHandle);
 
-    ctrl::init(robot_, X2_NUM_JOINTS, 1);
-
 }
 
 /**

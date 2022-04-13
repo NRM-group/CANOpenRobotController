@@ -1,114 +1,127 @@
 #include "controller.hpp"
 
-void
-ctrl::init(X2Robot* robot, int joint_count, double dt)
+Controller::Controller(void) {
+    ;
+}
+
+Controller::Controller(int joint_count, double dt) : dt(dt)
 {
     if (joint_count == 4) {
-        ctrl::joint_count = joint_count;
+        this->joint_count = joint_count;
     } else {
         spdlog::error("Expected joint count 4, but got %d", joint_count);
         spdlog::error("Controller not initialised");
         return;
     }
-    ctrl::robot = robot;
-    ctrl::dt = dt;
-    ctrl::Kp = 0;
-    ctrl::Kd = 0;
-    ctrl::Ki = 0;
-    ctrl::error_prev = Eigen::VectorXd(ctrl::joint_count);
-    ctrl::error_sum = Eigen::VectorXd(ctrl::joint_count);
+    Kp = 0;
+    Kd = 0;
+    Ki = 0;
+    error_prev = Eigen::VectorXd(joint_count);
+    error_sum = Eigen::VectorXd(joint_count);
     spdlog::info("Controller initialised");
 }
 
 void
-ctrl::set_pid_gains(double kp, double kd, double ki)
+Controller::init(int joint_count, double dt)
 {
-    ctrl::set_proportional(kp);
-    ctrl::set_derivative(kd);
-    ctrl::set_integral(ki);
+    if (joint_count == 4) {
+        this->joint_count = joint_count;
+    } else {
+        spdlog::error("Expected joint count 4, but got %d", joint_count);
+        spdlog::error("Controller not initialised");
+        return;
+    }
+    this->dt = dt;
 }
 
 void
-ctrl::set_pd_gains(double kp, double kd)
+Controller::set_pid_gains(double kp, double kd, double ki)
 {
-    ctrl::set_proportional(kp);
-    ctrl::set_derivative(kd);
+    set_proportional(kp);
+    set_derivative(kd);
+    set_integral(ki);
 }
 
 void
-ctrl::set_proportional(double kp)
+Controller::set_pd_gains(double kp, double kd)
 {
-    ctrl::Kp = kp;
-    spdlog::info("Updated proportional gain: %f", ctrl::Kp);
+    set_proportional(kp);
+    set_derivative(kd);
 }
 
 void
-ctrl::set_derivative(double kd)
+Controller::set_proportional(double kp)
 {
-    ctrl::Kd = kd;
-    spdlog::info("Updated derivative gain: %f", ctrl::Kd);
+    Kp = kp;
+    spdlog::info("Updated proportional gain: %f", Kp);
 }
 
 void
-ctrl::set_integral(double ki)
+Controller::set_derivative(double kd)
 {
-    ctrl::Ki = ki;
-    spdlog::info("Updated integral gain: %f", ctrl::Ki);
+    Kd = kd;
+    spdlog::info("Updated derivative gain: %f", Kd);
+}
+
+void
+Controller::set_integral(double ki)
+{
+    Ki = ki;
+    spdlog::info("Updated integral gain: %f", Ki);
 }
 
 std::array<double, 3>
-ctrl::get_pid_gains(void)
+Controller::get_pid_gains(void)
 {
     return std::array<double, 3>{
-        ctrl::Kp, ctrl::Kd, ctrl::Ki
+        Kp, Kd, Ki
     };
 }
 
 std::array<double, 2>
-ctrl::get_pd_gains(void)
+Controller::get_pd_gains(void)
 {
     return std::array<double, 2>{
-        ctrl::Kp, ctrl::Kd
+        Kp, Kd
     };
 }
 
 double
-ctrl::get_proportional(void)
+Controller::get_proportional(void)
 {
-    return ctrl::Kp;
+    return Kp;
 }
 
 double
-ctrl::get_derivative(void)
+Controller::get_derivative(void)
 {
-    return ctrl::Kd;
+    return Kd;
 }
 
 double
-ctrl::get_integral(void)
+Controller::get_integral(void)
 {
-    return ctrl::Ki;
+    return Ki;
 }
 
 Eigen::VectorXd
-ctrl::control_loop(Eigen::VectorXd desired)
+Controller::control_loop(Eigen::VectorXd position, Eigen::VectorXd desired)
 {
-    Eigen::VectorXd output(ctrl::joint_count);
-    for (int i = 0; i < ctrl::joint_count; i++) {
-        double pos = ctrl::robot->getPosition()(i);
+    Eigen::VectorXd output(joint_count);
+    for (int i = 0; i < joint_count; i++) {
+        double pos = position(i);
         // Proportional
         double error = desired(i) - pos;
-        output(i) += ctrl::Kp * error;
+        output(i) += Kp * error;
         // Derivative
-        double errorSlope = (error - ctrl::error_prev(i)) / ctrl::dt;
-        output(i) += ctrl::Kd * errorSlope;
+        double errorSlope = (error - error_prev(i)) / dt;
+        output(i) += Kd * errorSlope;
         // Integral
 #ifndef _OPTIMISE_PD
-        ctrl::error_sum(i) += error * ctrl::dt;
-        output(i) += ctrl::Ki * ctrl::error_sum(i);
+        error_sum(i) += error * dt;
+        output(i) += Ki * error_sum(i);
 #endif
-        ctrl::error_prev(i) = error;
+        error_prev(i) = error;
     }
     return output;
 }
-

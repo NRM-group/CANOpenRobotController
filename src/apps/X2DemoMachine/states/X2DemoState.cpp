@@ -10,7 +10,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const char *name) :
     period_ = 5.0;
     offset_ = 0.0;
 
-    ctrl::init(robot_, X2_NUM_JOINTS, 1);
+    ctrl.init(X2_NUM_JOINTS, 1.0);
 
 }
 
@@ -42,12 +42,14 @@ void X2DemoState::during(void) {
 #endif
 
     if(controller_mode_ == 1){ // zero torque mode
+        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
+
         desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
 
-        Eigen::VectorXd desired(4);
+        Eigen::VectorXd desired;
         desired << 1, 1, 1, 1;
-        ctrl::set_pd_gains(kp, kd);
-        desiredJointTorques_ = ctrl::control_loop(desired);
+        ctrl.set_pd_gains(kp, kd);
+        desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desired);
         robot_->setTorque(desiredJointTorques_);
 
     } else if(controller_mode_ == 2){ // zero velocity mode

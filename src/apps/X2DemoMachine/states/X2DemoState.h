@@ -51,6 +51,7 @@ public:
     Eigen::VectorXd enableJoints;
 
     double kp, kd;
+    Controller ctrl;
 
 
 private:
