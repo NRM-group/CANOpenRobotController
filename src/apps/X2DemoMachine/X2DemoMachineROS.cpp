@@ -20,6 +20,7 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     startHomingService_ = nodeHandle_->advertiseService("start_homing", &X2DemoMachineROS::startHomingCallback, this);
     imuCalibrationService_ = nodeHandle_->advertiseService("calibrate_imu", &X2DemoMachineROS::calibrateIMUCallback, this);
     interactionForceCommand_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    gainUpdateSubscriber_ = nodeHandle_->subscribe("gains", 1, &X2DemoMachineROS::updateGainCallback, this);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -138,4 +139,9 @@ bool X2DemoMachineROS::calibrateIMUCallback(std_srvs::Trigger::Request &req, std
 
 //    robot_->calibrateContactIMUAngles(2.0);
     return true;
+}
+
+void X2DemoMachineROS::updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains) {
+    x2DemoState_->kp = gains->data[0];
+    x2DemoState_->kd = gains->data[1];
 }

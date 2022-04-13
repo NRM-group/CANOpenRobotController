@@ -1,4 +1,4 @@
-#include "controller.h"
+#include "controller.hpp"
 
 void
 ctrl::init(X2Robot* robot, int joint_count, double dt)

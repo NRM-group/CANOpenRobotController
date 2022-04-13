@@ -13,6 +13,7 @@
 
 #include "State.h"
 #include "X2Robot.h"
+#include "controller.hpp"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -48,6 +49,8 @@ public:
     int controller_mode_;
 
     Eigen::VectorXd enableJoints;
+
+    double kp, kd;
 
 
 private:

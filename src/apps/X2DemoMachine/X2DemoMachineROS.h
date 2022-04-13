@@ -47,6 +47,8 @@ private:
     ros::Publisher interactionForcePublisher_;
     ros::Publisher groundReactionForcePublisher_[X2_NUM_GRF_SENSORS];
 
+    ros::Subscriber gainUpdateSubscriber_;
+
     ros::ServiceServer calibrateForceSensorsService_;
     ros::ServiceServer startHomingService_;
     ros::ServiceServer emergencyStopService_;
@@ -72,6 +74,8 @@ private:
 
     bool calibrateIMUCallback(std_srvs::Trigger::Request& req,
                               std_srvs::Trigger::Response& res);
+    
+    void updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains);
 
     ros::NodeHandle* nodeHandle_;
 };
