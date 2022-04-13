@@ -1,8 +1,6 @@
 #include "controller.hpp"
 
-Controller::Controller(void) {
-    ;
-}
+Controller::Controller() { }
 
 Controller::Controller(int joint_count, double dt) : dt(dt)
 {
@@ -32,6 +30,12 @@ Controller::init(int joint_count, double dt)
         return;
     }
     this->dt = dt;
+    Kp = 0;
+    Kd = 0;
+    Ki = 0;
+    error_prev = Eigen::VectorXd(joint_count);
+    error_sum = Eigen::VectorXd(joint_count);
+    spdlog::info("Controller initialised");
 }
 
 void
@@ -109,19 +113,19 @@ Controller::control_loop(Eigen::VectorXd position, Eigen::VectorXd desired)
 {
     Eigen::VectorXd output(joint_count);
     for (int i = 0; i < joint_count; i++) {
-        double pos = position(i);
+        double pos = position[i];
         // Proportional
-        double error = desired(i) - pos;
-        output(i) += Kp * error;
+        double error = desired[i] - pos;
+        output[i] += Kp * error;
         // Derivative
-        double errorSlope = (error - error_prev(i)) / dt;
-        output(i) += Kd * errorSlope;
+        double errorSlope = (error - error_prev[i]) / dt;
+        output[i] += Kd * errorSlope;
         // Integral
 #ifndef _OPTIMISE_PD
-        error_sum(i) += error * dt;
-        output(i) += Ki * error_sum(i);
+        error_sum[i] += error * dt;
+        output[i] += Ki * error_sum(i);
 #endif
-        error_prev(i) = error;
+        error_prev[i] = error;
     }
     return output;
 }

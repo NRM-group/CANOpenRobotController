@@ -13,7 +13,11 @@
 class Controller
 {
 public:
+    /**
+     * \brief Default constructor.
+     */
     Controller(void);
+
     /**
      * \brief Initialise PID controller with zero gains.
      * \param joint_count Number of joints (expects 4).
