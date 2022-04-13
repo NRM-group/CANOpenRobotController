@@ -42,33 +42,13 @@ void X2DemoState::during(void) {
 #endif
 
     if(controller_mode_ == 1){ // zero torque mode
-        std::cout << "Hi" << std::endl;
         if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
 
-        std::cout << "Did you get here" << std::endl;
         desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-
-        std::cout << "Zerossss" << std::endl;
-        std::cout << "I just set yo mama" << std::endl;
         Eigen::VectorXd desired(4);
-        std::cout << "I just set yo mama" << std::endl;
-        std::cout << "I just set yo mama" << std::endl;
         ctrl.set_pd_gains(kp, kd);
-        std::cout << "I just set yo mama" << std::endl;
-
-        //desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desired);
-        desiredJointTorques_ = ctrl.control_loop(robot_->getTorque(), desired);
-        std::cout << "control yourself:" << desiredJointTorques_ << std::endl;
+        desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desired);
         robot_->setTorque(desiredJointTorques_);
-
-    //if(controller_mode_ == 1){ // zero torque mode
-
-    //    if(robot_->getControlMode()!=CM_TORQUE_CONTROL){
-    //        robot_->initTorqueControl();
-    //    }
-
-    //    desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    //    robot_->setTorque(desiredJointTorques_);
 
     } else if(controller_mode_ == 2){ // zero velocity mode
         if(robot_->getControlMode()!=CM_VELOCITY_CONTROL) robot_->initVelocityControl();

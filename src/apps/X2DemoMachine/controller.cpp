@@ -2,23 +2,6 @@
 
 Controller::Controller() { }
 
-Controller::Controller(int joint_count, double dt) : dt(dt)
-{
-    if (joint_count == 4) {
-        this->joint_count = joint_count;
-    } else {
-        spdlog::error("Expected joint count 4, but got %d", joint_count);
-        spdlog::error("Controller not initialised");
-        return;
-    }
-    Kp = 0;
-    Kd = 0;
-    Ki = 0;
-    error_prev = Eigen::VectorXd(joint_count);
-    error_sum = Eigen::VectorXd(joint_count);
-    spdlog::info("Controller initialised");
-}
-
 void
 Controller::init(int joint_count, double dt)
 {

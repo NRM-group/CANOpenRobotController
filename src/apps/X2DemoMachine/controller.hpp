@@ -23,8 +23,6 @@ public:
      * \param joint_count Number of joints (expects 4).
      * \param dt The time interval between each loop.
      */
-    Controller(int joint_count, double dt);
-
     void init(int joint_count, double dt);
 
     /**
