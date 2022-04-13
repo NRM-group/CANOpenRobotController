@@ -2,23 +2,24 @@
 
 Controller::Controller() { }
 
-void
+int
 Controller::init(int joint_count, double dt)
 {
     if (joint_count == 4) {
         this->joint_count = joint_count;
     } else {
-        spdlog::error("Expected joint count 4, but got %d", joint_count);
+        spdlog::error("Expected joint count 4, but got {}", joint_count);
         spdlog::error("Controller not initialised");
-        return;
+        return 1;
     }
     this->dt = dt;
-    Kp = 0;
-    Kd = 0;
-    Ki = 0;
-    error_prev = Eigen::VectorXd(joint_count);
-    error_sum = Eigen::VectorXd(joint_count);
+    this->Kp = 0;
+    this->Kd = 0;
+    this->Ki = 0;
+    this->error_prev = Eigen::VectorXd::Zero(joint_count);
+    this->error_sum = Eigen::VectorXd::Zero(joint_count);
     spdlog::info("Controller initialised");
+    return 0;
 }
 
 void
@@ -36,28 +37,25 @@ Controller::set_pd_gains(double kp, double kd)
     set_derivative(kd);
 }
 
-void
+inline void
 Controller::set_proportional(double kp)
 {
     Kp = kp;
-    spdlog::info("Updated proportional gain: %f", Kp);
 }
 
-void
+inline void
 Controller::set_derivative(double kd)
 {
     Kd = kd;
-    spdlog::info("Updated derivative gain: %f", Kd);
 }
 
-void
+inline void
 Controller::set_integral(double ki)
 {
     Ki = ki;
-    spdlog::info("Updated integral gain: %f", Ki);
 }
 
-std::array<double, 3>
+inline std::array<double, 3>
 Controller::get_pid_gains(void)
 {
     return std::array<double, 3>{
@@ -65,7 +63,7 @@ Controller::get_pid_gains(void)
     };
 }
 
-std::array<double, 2>
+inline std::array<double, 2>
 Controller::get_pd_gains(void)
 {
     return std::array<double, 2>{
@@ -73,19 +71,19 @@ Controller::get_pd_gains(void)
     };
 }
 
-double
+inline double
 Controller::get_proportional(void)
 {
     return Kp;
 }
 
-double
+inline double
 Controller::get_derivative(void)
 {
     return Kd;
 }
 
-double
+inline double
 Controller::get_integral(void)
 {
     return Ki;

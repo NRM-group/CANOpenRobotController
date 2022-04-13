@@ -22,8 +22,9 @@ public:
      * \brief Initialise PID controller with zero gains.
      * \param joint_count Number of joints (expects 4).
      * \param dt The time interval between each loop.
+     * \return 0 on success and 1 if failed to initialise.
      */
-    void init(int joint_count, double dt);
+    int init(int joint_count, double dt);
 
     /**
      * \brief Sets the gains proportional, derivative, and integral.
@@ -79,9 +80,11 @@ public:
      * \brief Calculates the control loop of the PID (PD) controller.
      * \param position The current encoded position.
      * \param desired The desired positions of each joint.
-     * \return The torque required in each joint.
+     * \return The torque output of the controller.
      */
-    Eigen::VectorXd control_loop(Eigen::VectorXd position, Eigen::VectorXd desired);
+    Eigen::VectorXd control_loop(
+        Eigen::VectorXd position, Eigen::VectorXd desired
+    );
 
 private:
     /* Robot */
