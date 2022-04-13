@@ -41,7 +41,7 @@ void X2DemoState::during(void) {
     }
 #endif
 
-    if(controller_mode_ == 1){ // zero torque mode
+    if(controller_mode_ == 1){ // custom torque controller 
         if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
 
         desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -49,47 +49,8 @@ void X2DemoState::during(void) {
         ctrl.set_pd_gains(kp, kd);
         desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desired);
         robot_->setTorque(desiredJointTorques_);
-
-    } else if(controller_mode_ == 2){ // zero velocity mode
-        if(robot_->getControlMode()!=CM_VELOCITY_CONTROL) robot_->initVelocityControl();
-
-        desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        robot_->setVelocity(desiredJointVelocities_);
-
-    } else if(controller_mode_ == 3){ // " a very simple (and not ideal) transparent controller"
-        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
-
-        std::cout<<"force: "<<robot_->getSmoothedInteractionForce()[2]<<std::endl;
-        std::cout<<"multiplied: "<<kTransperancy_.asDiagonal()*robot_->getSmoothedInteractionForce()<<std::endl;
-        desiredJointTorques_ = robot_->getPseudoInverseOfSelectionMatrixTranspose()*
-                (robot_->getFeedForwardTorque() + kTransperancy_.asDiagonal()*robot_->getSmoothedInteractionForce());
-
-
-        for(int id = 0; id <X2_NUM_JOINTS; id++) desiredJointTorques_[id] *= enableJoints[id];
-
-        robot_->setTorque(desiredJointTorques_);
-
-    } else if(controller_mode_ == 4){ // sin vel
-        if(robot_->getControlMode()!=CM_VELOCITY_CONTROL) robot_->initVelocityControl();
-
-        double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
-        for(int joint = 0; joint < X2_NUM_JOINTS; joint++)
-        {
-        desiredJointVelocities_[joint] = enableJoints[joint]*amplitude_*sin(2.0*M_PI/period_*time);
-        }
-
-        robot_->setVelocity(desiredJointVelocities_);
-
-    } else if(controller_mode_ == 5){ // sin torque
-        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
-
-        double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
-        for(int joint = 0; joint < X2_NUM_JOINTS; joint++)
-        {
-            desiredJointTorques_[joint] = enableJoints[joint]*amplitude_*sin(2.0*M_PI/period_*time);
-        }
-        robot_->setTorque(desiredJointTorques_);
-
+    } else {
+        spdlog::info("Specified Control mode is not implemented");
     }
 }
 
@@ -131,6 +92,6 @@ Eigen::VectorXd &X2DemoState::getDesiredJointTorques() {
     return desiredJointTorques_;
 }
 
-Eigen::VectorXd & X2DemoState::getDesiredJointVelocities() {
+Eigen::VectorXd &X2DemoState::getDesiredJointVelocities() {
     return desiredJointVelocities_;
 }
