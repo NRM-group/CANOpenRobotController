@@ -11,7 +11,6 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const char *name) :
     offset_ = 0.0;
 
     ctrl.init(X2_NUM_JOINTS, 1.0);
-
 }
 
 void X2DemoState::entry(void) {
@@ -42,15 +41,41 @@ void X2DemoState::during(void) {
 #endif
 
     if(controller_mode_ == 1){ // custom torque controller 
-        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
+        // if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
 
-        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        Eigen::VectorXd desired(4);
-        ctrl.set_pd_gains(kp, kd);
-        desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desired);
-        robot_->setTorque(desiredJointTorques_);
-    } else {
-        spdlog::info("Specified Control mode is not implemented");
+        // desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        // Eigen::VectorXd desired(4);
+        // ctrl.set_pd_gains(kp, kd);
+        // desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desired);
+        // robot_->setTorque(desiredJointTorques_);
+
+        if (robot_->getControlMode()!=CM_POSITION_CONTROL) {
+            robot_->initPositionControl();
+            robot_->setPosControlContinuousProfile(true);
+            spdlog::info("Initalised Position Control Mode");
+        }
+
+        Eigen::VectorXd desiredJointPositions_(X2_NUM_JOINTS);
+        // switch between 0 and non-zero joint positions
+        switch(state_) {
+            case STEP_UP:
+                desiredJointPositions_ << 0, -deg2rad(20), 0, 0;
+                if (!(t_count_ % freq_)) {
+                    state_ = STEP_DOWN;
+                    t_count_ = 0;
+                }
+                break;
+            case STEP_DOWN:
+                desiredJointPositions_ << 0, 0, 0, 0;
+                if (!(t_count_ % freq_)) {
+                    state_ = STEP_UP;
+                    t_count_ = 0;
+                }
+                break;
+        }
+
+        t_count_++;
+        robot_->setPosition(desiredJointPositions_);
     }
 }
 

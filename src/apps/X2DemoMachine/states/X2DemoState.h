@@ -29,6 +29,9 @@
 
 #include <CORC/dynamic_paramsConfig.h>
 
+#define STEP_UP         1
+#define STEP_DOWN       0
+
 /**
  * \brief Demo State for the X2DemoMachine
  *
@@ -58,7 +61,10 @@ private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
 
-    double t_step_ = 0.003; // 0.003 todo: get from main
+    double t_step_ = 0.001; // 0.003 todo: get from main
+    int freq_ = 1 / t_step_;
+    int t_count_ = 0;
+    int state_ = STEP_DOWN;
 
     std::chrono::steady_clock::time_point time0;
     Eigen::VectorXd desiredJointTorques_;

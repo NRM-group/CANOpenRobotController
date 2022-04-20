@@ -20,7 +20,7 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     startHomingService_ = nodeHandle_->advertiseService("start_homing", &X2DemoMachineROS::startHomingCallback, this);
     imuCalibrationService_ = nodeHandle_->advertiseService("calibrate_imu", &X2DemoMachineROS::calibrateIMUCallback, this);
     interactionForceCommand_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    gainUpdateSubscriber_ = nodeHandle_->subscribe("gains", 1, &X2DemoMachineROS::updateGainCallback, this);
+    gainUpdateSubscriber_ = nodeHandle_->subscribe("cmd/gains", 1, &X2DemoMachineROS::updateGainCallback, this);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {

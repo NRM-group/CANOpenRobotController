@@ -21,8 +21,16 @@ void ControlState::entry(void)
 
 void ControlState::during(void)
 {
-    Eigen::VectorXd desired(0, 0, 0, 0);
+    Eigen::VectorXd desired(4);
+    desired << 0, 0, 0, 0;
     Eigen::VectorXd torques = ctrl::control_loop(desired);
+
+    std::cout << "Torque: " 
+            << m_robot->getTorque()[0] << " "
+            << m_robot->getTorque()[1] << " "
+            << m_robot->getTorque()[2] << " "
+            << m_robot->getTorque()[3] << " "
+            << std::endl; 
 }
 
 void ControlState::exit(void)

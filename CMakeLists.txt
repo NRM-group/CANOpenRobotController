@@ -17,6 +17,7 @@ project(CORC C CXX)
 #set (STATE_MACHINE_NAME "M2DemoMachine")
 #set (STATE_MACHINE_NAME "M3DemoMachine")
 set (STATE_MACHINE_NAME "X2DemoMachine")
+#set (STATE_MACHINE_NAME  "MyExo")
 #set (STATE_MACHINE_NAME "LoggingDevice")
 
 # Comment to use actual hardware, uncomment for a nor robot (virtual) app

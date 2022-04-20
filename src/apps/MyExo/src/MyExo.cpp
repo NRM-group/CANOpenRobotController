@@ -115,7 +115,7 @@ bool MyExo::MoveStand::check(void)
 bool MyExo::ExoCal::check(void)
 {
     if (OWNER->m_robot->keyboard->getA() == true) {
-        #ifndef NORBOT
+        #ifndef NOROBOT
             spdlog::info("Begin Robot Calibration");
             spdlog::info("Homing");
 
