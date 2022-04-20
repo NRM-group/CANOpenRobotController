@@ -54,6 +54,7 @@ public:
     Eigen::VectorXd enableJoints;
 
     double kp, kd;
+    double debug_torque;
     Controller ctrl;
 
 

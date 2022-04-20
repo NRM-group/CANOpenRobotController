@@ -49,9 +49,8 @@ void X2DemoState::during(void) {
         // desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desired);
         // robot_->setTorque(desiredJointTorques_);
 
-        if (robot_->getControlMode()!=CM_POSITION_CONTROL) {
-            robot_->initPositionControl();
-            robot_->setPosControlContinuousProfile(true);
+        if (robot_->getControlMode()!=CM_TORQUE_CONTROL) {
+            robot_->initTorqueControl();
             spdlog::info("Initalised Position Control Mode");
         }
 
@@ -60,24 +59,36 @@ void X2DemoState::during(void) {
         switch(state_) {
             case STEP_UP:
                 desiredJointPositions_ << 0, -deg2rad(20), 0, 0;
-                if (!(t_count_ % freq_)) {
+                if (!(t_count_ % (5 * freq_))) {
                     state_ = STEP_DOWN;
                     t_count_ = 0;
                 }
                 break;
             case STEP_DOWN:
                 desiredJointPositions_ << 0, 0, 0, 0;
-                if (!(t_count_ % freq_)) {
+                if (!(t_count_ % (5 * freq_))) {
                     state_ = STEP_UP;
                     t_count_ = 0;
                 }
                 break;
         }
 
-        t_count_++;
         ctrl.set_pd_gains(kp, kd);
-        desiredJointPositions_ = ctrl.control_loop(robot_->getPosition(), desiredJointPositions_);
-        robot_->setPosition(desiredJointPositions_);
+        desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desiredJointPositions_);
+        // added debug torque
+        desiredJointTorques_[1] += debug_torque;
+
+        robot_->setTorque(desiredJointTorques_);
+        t_count_++;
+    } else (controller_mode == 2) { // sin torque
+        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
+
+        double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
+        for(int joint = 0; joint < X2_NUM_JOINTS; joint++)
+        {
+            desiredJointTorques_[joint] = enableJoints[joint]*amplitude_*sin(2.0*M_PI/period_*time);
+        }
+        robot_->setTorque(desiredJointTorques_);
     }
 }
 
