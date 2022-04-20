@@ -41,18 +41,21 @@ inline void
 Controller::set_proportional(double kp)
 {
     Kp = kp;
+	spdlog::info("Kp {}", Kp);
 }
 
 inline void
 Controller::set_derivative(double kd)
 {
     Kd = kd;
+	spdlog::info("Kd {}", Kd);
 }
 
 inline void
 Controller::set_integral(double ki)
 {
     Ki = ki;
+	spdlog::info("Ki {}", Ki);
 }
 
 inline std::array<double, 3>
