@@ -80,7 +80,7 @@ void X2DemoState::during(void) {
 
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
-    } else (controller_mode == 2) { // sin torque
+    } else (controller_mode_ == 2) { // sin torque
         if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
 
         double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
