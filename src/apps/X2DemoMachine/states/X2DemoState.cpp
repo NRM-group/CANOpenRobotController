@@ -75,6 +75,8 @@ void X2DemoState::during(void) {
         }
 
         t_count_++;
+        ctrl.set_pd_gains(kp, kd);
+        desiredJointPositions_ = ctrl.control_loop(robot_->getPosition(), desiredJointPositions_);
         robot_->setPosition(desiredJointPositions_);
     }
 }
