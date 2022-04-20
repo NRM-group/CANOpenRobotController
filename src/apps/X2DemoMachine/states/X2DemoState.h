@@ -62,7 +62,7 @@ private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
 
-    double t_step_ = 0.001; // 0.003 todo: get from main
+    double t_step_ = 0.003; // 0.003 todo: get from main
     int freq_ = 1 / t_step_;
     int t_count_ = 0;
     int state_ = STEP_DOWN;
