@@ -42,7 +42,7 @@ void X2DemoState::during(void) {
 //    }
 //#endif
     
-    ctrl.set_pd_gains(kp, kd);
+    // ctrl.set_pd_gains(kp, kd);
 
     if(controller_mode_ == 0){                                          // step torque controller 
 
