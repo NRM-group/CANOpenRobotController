@@ -44,7 +44,7 @@ public:
     void entry(void);
     void during(void);
     void exit(void);
-    X2DemoState(StateMachine *m, X2Robot *exo, const char *name = NULL);
+    X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name = NULL);
 
     Eigen::VectorXd& getDesiredJointTorques();
     Eigen::VectorXd& getDesiredJointVelocities();
@@ -55,13 +55,11 @@ public:
     double kp, kd;
     double debug_torque;
 
-
 private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
 
-    double t_step_ = 0.003; // 0.003 todo: get from main
-    int freq_ = 1 / t_step_;
+    const int freq_;
     int t_count_ = 0;
     int state_ = STEP_DOWN;
 

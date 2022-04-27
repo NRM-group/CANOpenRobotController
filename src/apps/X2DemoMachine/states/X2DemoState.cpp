@@ -1,7 +1,7 @@
 #include "X2DemoState.h"
 
-X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const char *name) :
-        State(m, name), robot_(exo) {
+X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name) :
+        State(m, name), robot_(exo), freq_(1 / (updateT / 1000)) {
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     enableJoints = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -9,10 +9,11 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const char *name) :
     amplitude_ = 0.0;
     period_ = 5.0;
     offset_ = 0.0;
-    debug_torque = 0.0;
+
     kd = 0;
     kp = 0;
     pd(kp, kd);
+    debug_torque = 0.0;
 }
 
 void X2DemoState::entry(void) {

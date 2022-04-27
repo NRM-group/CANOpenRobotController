@@ -35,7 +35,7 @@
 class X2DemoMachine : public StateMachine {
 
 public:
-    X2DemoMachine(int argc, char *argv[]);
+    X2DemoMachine(int argc, char *argv[], const float updateT);
 
     X2DemoMachineROS *x2DemoMachineRos_; /*<!Pointer to the ROS Class*/
     X2Robot *robot_; /*<!Pointer to the Robot*/ // NOTE: For some reason; if this is defined later, it doesn't publish
