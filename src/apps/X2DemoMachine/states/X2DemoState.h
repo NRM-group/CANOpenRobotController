@@ -49,9 +49,9 @@ public:
     Eigen::VectorXd& getDesiredJointTorques();
     Eigen::VectorXd& getDesiredJointVelocities();
 
-
     Eigen::VectorXd enableJoints;
 
+    int controller_mode_;
     double kp, kd;
     double debug_torque;
 
@@ -66,7 +66,6 @@ private:
     int state_ = STEP_DOWN;
 
     PDController<double> pd;
-    int controller_mode_;
 
     std::chrono::steady_clock::time_point time0;
     Eigen::VectorXd desiredJointTorques_;
