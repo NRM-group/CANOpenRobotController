@@ -57,7 +57,7 @@ void init_logging(const char * filename)
     std::shared_ptr<spdlog::logger> main_logger = std::make_shared<spdlog::logger>("CORC", begin(sinks), end(sinks));
     spdlog::initialize_logger(main_logger);
     spdlog::set_default_logger(main_logger);
-    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%F (%u)] %-v");
+    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%F (%10u)] %^%-v%$");
 
     spdlog::info("===============================================");
     spdlog::info("============ Start logging session ============");
