@@ -12,7 +12,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const char *name) :
     debug_torque = 0.0;
     kd = 0;
     kp = 0;
-    ctrl.init(X2_NUM_JOINTS, 1.0);
+    pd(kp, kd);
 }
 
 void X2DemoState::entry(void) {
@@ -41,9 +41,11 @@ void X2DemoState::during(void) {
 //        return;
 //    }
 //#endif
-    
-    // ctrl.set_pd_gains(kp, kd);
 
+    // update controller gains
+    pd.Kp = kp;
+    pd.Kd = kd;
+    
     if(controller_mode_ == 0){                                          // step torque controller 
 
         if (robot_->getControlMode()!=CM_TORQUE_CONTROL) {
@@ -77,13 +79,10 @@ void X2DemoState::during(void) {
                 break;
         }
 
-        // desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desiredJointPositions_);
-        // added debug torque
-        // FIXME: clean about the below code...was used for fixing errors with noisy torque values
-        desiredJointTorques_[0] = 0.0;
+        desiredJointTorques_ = pd.loop(desiredJointPositions_, robot_->getPosition());
+
+        // added debug torque to left knee
         desiredJointTorques_[1] += debug_torque;
-        desiredJointTorques_[2] = 0.0; 
-        desiredJointTorques_[3] += debug_torque; 
 
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
@@ -105,6 +104,10 @@ void X2DemoState::during(void) {
         for(int joint = 0; joint < X2_NUM_JOINTS; joint++) {
             desiredJointTorques_[joint] = enableJoints[joint] * amplitude_ * sin(2.0 * M_PI / period_ * time);
         }
+
+        // add debug torque to left knee
+        desiredJointTorques_[1] += debug_torque;
+
         robot_->setTorque(desiredJointTorques_);
     } else if (controller_mode_ == 2) {                                 // no step
 
@@ -115,8 +118,9 @@ void X2DemoState::during(void) {
         }
 
 		Eigen::VectorXd desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        // desiredJointTorques_ = ctrl.control_loop(robot_->getPosition(), desiredJointPositions_);
+        desiredJointTorques_ = pd.control_loop(desiredJointPositions_, robot_->getPosition());
 
+        // add debug torque to left knee
         desiredJointTorques_[1] += debug_torque;
 
         robot_->setTorque(desiredJointTorques_);

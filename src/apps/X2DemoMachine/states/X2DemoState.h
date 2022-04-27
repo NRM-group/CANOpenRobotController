@@ -13,7 +13,7 @@
 
 #include "State.h"
 #include "X2Robot.h"
-#include "controller.hpp"
+#include "pd_controller.hpp"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -49,13 +49,11 @@ public:
     Eigen::VectorXd& getDesiredJointTorques();
     Eigen::VectorXd& getDesiredJointVelocities();
 
-    int controller_mode_;
 
     Eigen::VectorXd enableJoints;
 
     double kp, kd;
     double debug_torque;
-    Controller ctrl;
 
 
 private:
@@ -66,6 +64,9 @@ private:
     int freq_ = 1 / t_step_;
     int t_count_ = 0;
     int state_ = STEP_DOWN;
+
+    PDController<double> pd;
+    int controller_mode_;
 
     std::chrono::steady_clock::time_point time0;
     Eigen::VectorXd desiredJointTorques_;
