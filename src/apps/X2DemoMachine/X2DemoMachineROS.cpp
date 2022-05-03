@@ -142,7 +142,15 @@ bool X2DemoMachineROS::calibrateIMUCallback(std_srvs::Trigger::Request &req, std
 }
 
 void X2DemoMachineROS::updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains) {
-    x2DemoState_->kp = gains->data[0];
-    x2DemoState_->kd = gains->data[1];
-    x2DemoState_->debug_torque = gains->data[2]; // used for debugging and compensation TODO: move somewhere else
+    x2DemoState_->jointControllers[0](gains->data[0], gains->data[1]);
+    x2DemoState_->debugTorques[0] = gains->data[2]; // used for debugging and compensation TODO: move somewhere else
+
+    x2DemoState_->jointControllers[1](gains->data[3], gains->data[4]);
+    x2DemoState_->debugTorques[1] = gains->data[5]; // used for debugging and compensation TODO: move somewhere else
+
+    x2DemoState_->jointControllers[2](gains->data[6], gains->data[7]);
+    x2DemoState_->debugTorques[2] = gains->data[8]; // used for debugging and compensation TODO: move somewhere else
+
+    x2DemoState_->jointControllers[3](gains->data[9], gains->data[10]);
+    x2DemoState_->debugTorques[3] = gains->data[11]; // used for debugging and compensation TODO: move somewhere else
 }

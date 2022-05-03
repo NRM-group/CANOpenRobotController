@@ -30,6 +30,7 @@
  * limitations under the License.
  */
 #include "application.h"
+#include <iostream>
 /* Threads and thread safety variables***********************************************************/
 /**
  * Mutex is locked, when CAN is not valid (configuration state).
@@ -389,7 +390,7 @@ static void inc_period(struct period_info *pinfo) {
 }
 static void periodic_task_init(struct period_info *pinfo) {
     /* for simplicity, hardcoding a 1ms period */
-    pinfo->period_ns = controlLoopPeriodInms * 1000000;
+    pinfo->period_ns = static_cast<long>(controlLoopPeriodInms * 1000000);
 
     clock_gettime(CLOCK_MONOTONIC, &(pinfo->next_period));
 }

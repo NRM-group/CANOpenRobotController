@@ -10,10 +10,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     period_ = 5.0;
     offset_ = 0.0;
 
-    kd = 0;
-    kp = 0;
-    pd(kp, kd);
-    debug_torque = 0.0;
+    debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
 }
 
 void X2DemoState::entry(void) {
@@ -42,14 +39,10 @@ void X2DemoState::during(void) {
 //        return;
 //    }
 //#endif
-
-    // update controller gains
-    pd.Kp = kp;
-    pd.Kd = kd;
     
     if(controller_mode_ == 0){                                          // step torque controller 
 
-        if (robot_->getControlMode()!=CM_TORQUE_CONTROL) {
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
 
             robot_->initTorqueControl();
             spdlog::info("Initalised Torque Control Mode");
@@ -62,7 +55,9 @@ void X2DemoState::during(void) {
 
             case STEP_UP:
 
+                    desiredJointPositions_[0] = -deg2rad(20);
                     desiredJointPositions_[1] = -deg2rad(20);
+                    desiredJointPositions_[2] = -deg2rad(20);
                     desiredJointPositions_[3] = -deg2rad(20);
                 if (!(t_count_ % (5 * freq_))) {
 
@@ -80,10 +75,11 @@ void X2DemoState::during(void) {
                 break;
         }
 
-        desiredJointTorques_ = pd.loop(desiredJointPositions_, robot_->getPosition());
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+        desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
 
-        // added debug torque to left knee
-        desiredJointTorques_[1] += debug_torque;
+        // added debug torques all joints 
+        desiredJointTorques_ += debugTorques;
 
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
@@ -106,8 +102,8 @@ void X2DemoState::during(void) {
             desiredJointTorques_[joint] = enableJoints[joint] * amplitude_ * sin(2.0 * M_PI / period_ * time);
         }
 
-        // add debug torque to left knee
-        desiredJointTorques_[1] += debug_torque;
+        // add debug torques to all joints
+        desiredJointTorques_ += debugTorques;
 
         robot_->setTorque(desiredJointTorques_);
     } else if (controller_mode_ == 2) {                                 // no step
@@ -119,10 +115,12 @@ void X2DemoState::during(void) {
         }
 
 		Eigen::VectorXd desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        desiredJointTorques_ = pd.control_loop(desiredJointPositions_, robot_->getPosition());
 
-        // add debug torque to left knee
-        desiredJointTorques_[1] += debug_torque;
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+        desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+
+        // add debug torque to all joints
+        desiredJointTorques_ += debugTorques;
 
         robot_->setTorque(desiredJointTorques_);
     }
