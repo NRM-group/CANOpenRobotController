@@ -48,7 +48,7 @@ void X2DemoState::during(void) {
             spdlog::info("Initalised Torque Control Mode");
         }
 
-		Eigen::VectorXd desiredJointPositions_(X2_NUM_JOINTS);
+	    double desiredJointPositions_[X2_NUM_JOINTS] = {0.0, 0.0, 0.0, 0.0};
 
         // switch between 0 and non-zero joint positions
         switch(state_) {
@@ -75,7 +75,7 @@ void X2DemoState::during(void) {
                 break;
         }
 
-        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+        auto torques = jointControllers.loop(desiredJointPositions_, robot_->getPosition().data());
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
 
         // added debug torques all joints 
@@ -114,9 +114,9 @@ void X2DemoState::during(void) {
             spdlog::info("Initalised Torque Control Mode");
         }
 
-		Eigen::VectorXd desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+	    double desiredJointPositions_[X2_NUM_JOINTS] = {0.0, 0.0, 0.0, 0.0};
 
-        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+        auto torques = jointControllers.loop(desiredJointPositions_, robot_->getPosition().data());
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
 
         // add debug torque to all joints
