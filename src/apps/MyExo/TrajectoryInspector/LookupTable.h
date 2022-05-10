@@ -19,12 +19,17 @@ private:
     //Figure out how to store the traj values
     //std::vector indexes;
     int jointNo;
+    int pointNo; //Defines the rows assigned to the csvData
     Eigen::MatrixXd csvData; //Matrix that stores the data struture of the csv
     enum trajMode { Linear = 1, SCurve  = 2};
+    int mode = LINEAR; //Interpolation mode
 public:
     LookupTable(int jointNum);
     void readCSV(const std::string &filename ); //String inspector constructor reads CSV of points
     void interpolateTrajectories(int mode);
+    //Interpolate between the points.
+    void interpolatePoints(std::vector<double> values, std::vector<int>rows,int col,int mode); 
+    int nanBelow(int row, int col);
     //Eigen::VectorXd  getJointAngles(float32 index); 
     //get the joint angles, if it does not exist in the values, interpolate between
     
