@@ -32,7 +32,7 @@
 #define STEP_UP         1
 #define STEP_DOWN       0
 
-#define LIMIT_TORQUE    20 // [Nm]
+#define LIMIT_TORQUE    60 // [Nm]
 
 /**
  * \brief Demo State for the X2DemoMachine

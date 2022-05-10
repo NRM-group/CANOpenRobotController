@@ -81,7 +81,7 @@ endif()
 
 ## Get all source and header files (only the target app folder is included)
 file(GLOB_RECURSE SOURCES "src/core/*.cpp" "src/core/*.c" "src/hardware/*.cpp" "src/hardware/*.c" "src/apps/${STATE_MACHINE_NAME}/*.c" "src/apps/${STATE_MACHINE_NAME}/*.cpp" "lib/FLNL/src/*.cpp")
-file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h*" "lib/PID_Controller/src/*.hpp")
+file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h*" "lib/controllerlib/src/*.hpp")
 
 ## Set every folder containing .h file as include directory
 set (INCLUDE_DIRS "")
