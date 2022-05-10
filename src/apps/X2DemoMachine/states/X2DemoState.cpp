@@ -78,6 +78,14 @@ void X2DemoState::during(void) {
         }
 
         auto torques = jointControllers.loopc(desiredJointPositions_, robot_->getPosition().data());
+
+        for (std::size_t i = 0; i < torques.size; i++) {
+            if (torques[i] > LIMIT_TORQUE) {
+                spdlog::info("ERROR: Torque limit reached for joint {1}", i);
+                torques[i] = LIMIT_TORQUE;
+            }
+        }
+
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
 
         spdlog::info("OUTPUT: {}", desiredJointTorques_[1]);
