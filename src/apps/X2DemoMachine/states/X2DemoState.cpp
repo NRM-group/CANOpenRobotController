@@ -9,8 +9,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     amplitude_ = 0.0;
     period_ = 5.0;
     offset_ = 0.0;
-
-    debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
 }
 
 void X2DemoState::entry(void) {
@@ -48,8 +47,7 @@ void X2DemoState::during(void) {
             spdlog::info("Initalised Torque Control Mode");
         }
 
-	    double desiredJointPositions_[X2_NUM_JOINTS] = {0.0, 0.0, 0.0, 0.0};
-
+	    double desiredJointPositions_[X2_NUM_JOINTS];
         // switch between 0 and non-zero joint positions
         switch(state_) {
 
@@ -67,6 +65,10 @@ void X2DemoState::during(void) {
                 break;
             case STEP_DOWN:
 
+                    desiredJointPositions_[0] = -deg2rad(10);
+                    desiredJointPositions_[1] = -deg2rad(10);
+                    desiredJointPositions_[2] = -deg2rad(10);
+                    desiredJointPositions_[3] = -deg2rad(10);
                 if (!(t_count_ % (5 * freq_))) {
 
                     state_ = STEP_UP;
@@ -75,20 +77,23 @@ void X2DemoState::during(void) {
                 break;
         }
 
-        auto torques = jointControllers.loop(desiredJointPositions_, robot_->getPosition().data());
+        auto torques = jointControllers.loopc(desiredJointPositions_, robot_->getPosition().data());
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+
+        spdlog::info("OUTPUT: {}", desiredJointTorques_[1]);
+        spdlog::info("DT    : {}", jointControllers.dtc());
 
         // added debug torques all joints 
         desiredJointTorques_ += debugTorques;
 
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
-        spdlog::info("Torque {0} {1} {2} {3}",
-            desiredJointTorques_[0],
-            desiredJointTorques_[1],
-            desiredJointTorques_[2],
-            desiredJointTorques_[3]
-        );
+        //spdlog::info("Torque {0} {1} {2} {3}",
+        //    desiredJointTorques_[0],
+        //    desiredJointTorques_[1],
+        //    desiredJointTorques_[2],
+        //    desiredJointTorques_[3]
+        //);
     } else if (controller_mode_ == 1) {                                 // sin torque
     
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
