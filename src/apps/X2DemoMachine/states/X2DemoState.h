@@ -60,14 +60,18 @@ public:
 private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
+    void vel_limiter(double limit);
 
     const int freq_;
     int t_count_ = 0;
     int state_ = STEP_DOWN;
 
     std::chrono::steady_clock::time_point time0;
-    Eigen::VectorXd desiredJointTorques_;
+    Eigen::VectorXd desiredJointPositions_;
     Eigen::VectorXd desiredJointVelocities_;
+    Eigen::VectorXd desiredJointTorques_;
+
+    Eigen::VectorXd prevDesiredJointPositions_;
 
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;

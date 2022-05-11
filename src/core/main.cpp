@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
 
         CO_configure();
         /* Execute optional additional application code */
-        app_communicationReset(argc, argv, controlLoopPeriodInms);
+        app_communicationReset(argc, argv, controlLoopPeriodInms / 1000);
 
 
         /* initialize CANopen with CAN interface and nodeID */

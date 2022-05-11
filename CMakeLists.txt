@@ -49,8 +49,8 @@ add_definitions(-DFP_STARTTPDO=0x3E1)
 
 #######################
 
-## Compile as C++11
-set(CMAKE_CXX_STANDARD 11)
+## Compile as C++17
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(USE_ROS)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-int-in-bool-context" )

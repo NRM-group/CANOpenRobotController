@@ -33,9 +33,11 @@ JointDrivePairs kneeJDP{
 static volatile sig_atomic_t exitLoop = 0;
 
 #ifdef SIM
-X2Robot::X2Robot(ros::NodeHandle &nodeHandle, std::string robot_name, std::string yaml_config_file):Robot(robot_name, yaml_config_file)
+X2Robot::X2Robot(ros::NodeHandle &nodeHandle, std::string robot_name, const float updateT, std::string yaml_config_file): 
+    dt_(updateT), Robot(robot_name, yaml_config_file)
 #else
-X2Robot::X2Robot(std::string robot_name, std::string yaml_config_file):Robot(robot_name, yaml_config_file)
+X2Robot::X2Robot(std::string robot_name, const float updateT, std::string yaml_config_file): 
+    dt_(updateT), Robot(robot_name, yaml_config_file)
 #endif
     {
 

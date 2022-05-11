@@ -21,6 +21,7 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     imuCalibrationService_ = nodeHandle_->advertiseService("calibrate_imu", &X2DemoMachineROS::calibrateIMUCallback, this);
     interactionForceCommand_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     gainUpdateSubscriber_ = nodeHandle_->subscribe("cmd/gains", 1, &X2DemoMachineROS::updateGainCallback, this);
+    jointStatePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("x2/rpt/joint_torques", 10);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -37,6 +38,7 @@ void X2DemoMachineROS::update() {
     publishJointStates();
     publishInteractionForces();
     publishGroundReactionForces();
+    publishRequestedJointTorques();
 #endif
 }
 
@@ -96,6 +98,17 @@ void X2DemoMachineROS::publishGroundReactionForces() {
         groundReactionForceMsgArray_[i].wrench.force.z = groundReactionForces[i];
         groundReactionForcePublisher_[i].publish(groundReactionForceMsgArray_[i]);
     }
+}
+
+void X2DemoMachineROS::publishRequestedJointTorques() {
+
+    Eigen::VectorXd desiredJointTorques = x2DemoState_->getDesiredJointTorques();
+    requestedJointTorquesMsg_.data[0] = desiredJointTorques[0];
+    requestedJointTorquesMsg_.data[1] = desiredJointTorques[1];
+    requestedJointTorquesMsg_.data[2] = desiredJointTorques[2];
+    requestedJointTorquesMsg_.data[3] = desiredJointTorques[3];
+
+    requestedTorquePublisher_.publish(requestedJointTorquesMsg_);
 }
 
 void X2DemoMachineROS::setNodeHandle(ros::NodeHandle &nodeHandle) {

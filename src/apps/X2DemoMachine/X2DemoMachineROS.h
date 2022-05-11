@@ -36,6 +36,7 @@ public:
     void publishJointStates(void);
     void publishInteractionForces(void);
     void publishGroundReactionForces(void);
+    void publishRequestedJointTorques(void);
     void initialize();
     void setNodeHandle(ros::NodeHandle& nodeHandle);
     ros::NodeHandle& getNodeHandle();
@@ -46,6 +47,7 @@ private:
     ros::Publisher jointStatePublisher_;
     ros::Publisher interactionForcePublisher_;
     ros::Publisher groundReactionForcePublisher_[X2_NUM_GRF_SENSORS];
+    ros::Publisher requestedTorquePublisher_;
 
     ros::Subscriber gainUpdateSubscriber_;
 
@@ -55,6 +57,7 @@ private:
     ros::ServiceServer imuCalibrationService_;
 
     sensor_msgs::JointState jointStateMsg_;
+    std_msgs::Float64MultiArray requestedJointTorquesMsg_;
     CORC::X2Array interactionForceMsg_;
     geometry_msgs::WrenchStamped groundReactionForceMsgArray_[X2_NUM_GRF_SENSORS];
 

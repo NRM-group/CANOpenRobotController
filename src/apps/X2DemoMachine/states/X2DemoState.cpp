@@ -1,7 +1,9 @@
 #include "X2DemoState.h"
 
 X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name) :
-        State(m, name), robot_(exo), freq_(1 / (updateT / 1000)) {
+        State(m, name), robot_(exo), freq_(1 / updateT) {
+    desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    prevDesiredJointPositions_ = robot_->getPosition();
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     enableJoints = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -9,7 +11,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     amplitude_ = 0.0;
     period_ = 5.0;
     offset_ = 0.0;
-debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
 }
 
 void X2DemoState::entry(void) {
@@ -38,7 +40,7 @@ void X2DemoState::during(void) {
 //        return;
 //    }
 //#endif
-    
+
     if(controller_mode_ == 0){                                          // step torque controller 
 
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
@@ -47,8 +49,7 @@ void X2DemoState::during(void) {
             spdlog::info("Initalised Torque Control Mode");
         }
 
-	    double desiredJointPositions_[X2_NUM_JOINTS];
-        // switch between 0 and non-zero joint positions
+        // switch between two set joint positions
         switch(state_) {
 
             case STEP_UP:
@@ -77,7 +78,10 @@ void X2DemoState::during(void) {
                 break;
         }
 
-        auto torques = jointControllers.loopc(desiredJointPositions_, robot_->getPosition().data());
+        // make sure desiredJointPositions_ is velocity limited
+        X2DemoState::vel_limiter(deg2rad(20)); // 20 deg/second velocity limit
+
+        auto torques = jointControllers.loopc(desiredJointPositions_.data(), robot_->getPosition().data());
 
         for (std::size_t i = 0; i < torques.size(); i++) {
             if (torques[i] < -LIMIT_TORQUE) {
@@ -95,17 +99,10 @@ void X2DemoState::during(void) {
         spdlog::info("OUTPUT: {}", desiredJointTorques_[1]);
         spdlog::info("DT    : {}", jointControllers.dtc());
 
-        // added debug torques all joints 
+        // add debug torques to all joints 
         desiredJointTorques_ += debugTorques;
-
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
-        //spdlog::info("Torque {0} {1} {2} {3}",
-        //    desiredJointTorques_[0],
-        //    desiredJointTorques_[1],
-        //    desiredJointTorques_[2],
-        //    desiredJointTorques_[3]
-        //);
     } else if (controller_mode_ == 1) {                                 // sin torque
     
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
@@ -131,12 +128,12 @@ void X2DemoState::during(void) {
             spdlog::info("Initalised Torque Control Mode");
         }
 
-	    double desiredJointPositions_[X2_NUM_JOINTS] = {0.0, 0.0, 0.0, 0.0};
+        desiredJointPositions_ << 0.0, 0.0, 0.0, 0.0;
 
-        auto torques = jointControllers.loop(desiredJointPositions_, robot_->getPosition().data());
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
 
-        // add debug torque to all joints
+        // add debug torques to all joints
         desiredJointTorques_ += debugTorques;
 
         robot_->setTorque(desiredJointTorques_);
@@ -175,6 +172,21 @@ void X2DemoState::dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t
     if(controller_mode_ == 4 || controller_mode_ == 5) time0 = std::chrono::steady_clock::now();
 
     return;
+}
+
+void X2DemoState::vel_limiter(double limit) {
+
+    auto dJointPositions = desiredJointPositions_ - prevDesiredJointPositions_;
+    double maxJointPositionDelta = limit * freq_;
+
+    for (int i = 0; i < dJointPositions.size(); i++) {
+
+        if (dJointPositions[i] * freq_ > limit) {
+            desiredJointPositions_[i] = prevDesiredJointPositions_[i] + maxJointPositionDelta;
+        }
+    } 
+
+    prevDesiredJointPositions_ = desiredJointPositions_;
 }
 
 Eigen::VectorXd &X2DemoState::getDesiredJointTorques() {
