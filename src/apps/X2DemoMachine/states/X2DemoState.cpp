@@ -3,7 +3,6 @@
 X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name) :
         State(m, name), robot_(exo), freq_(1 / updateT) {
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    prevDesiredJointPositions_ = robot_->getPosition();
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     enableJoints = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -176,17 +175,15 @@ void X2DemoState::dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t
 
 void X2DemoState::vel_limiter(double limit) {
 
-    auto dJointPositions = desiredJointPositions_ - prevDesiredJointPositions_;
+    auto dJointPositions = desiredJointPositions_ - robot_->getPosition();
     double maxJointPositionDelta = limit * freq_;
 
     for (int i = 0; i < dJointPositions.size(); i++) {
 
         if (dJointPositions[i] * freq_ > limit) {
-            desiredJointPositions_[i] = prevDesiredJointPositions_[i] + maxJointPositionDelta;
+            desiredJointPositions_[i] = robot_->getPosition()[i] + maxJointPositionDelta;
         }
     } 
-
-    prevDesiredJointPositions_ = desiredJointPositions_;
 }
 
 Eigen::VectorXd &X2DemoState::getDesiredJointTorques() {

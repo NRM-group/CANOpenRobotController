@@ -71,8 +71,6 @@ private:
     Eigen::VectorXd desiredJointVelocities_;
     Eigen::VectorXd desiredJointTorques_;
 
-    Eigen::VectorXd prevDesiredJointPositions_;
-
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;
 
