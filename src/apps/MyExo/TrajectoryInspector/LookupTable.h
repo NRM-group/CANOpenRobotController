@@ -26,9 +26,10 @@ private:
 public:
     LookupTable(int jointNum);
     void readCSV(const std::string &filename ); //String inspector constructor reads CSV of points
-    void interpolateTrajectories(int mode);
+    void interpolateTrajectories(void);
     //Interpolate between the points.
-    void interpolatePoints(std::vector<double> values, std::vector<int>rows,int col,int mode); 
+    void interpolatePoints(std::vector<double> values, std::vector<int>rows,int col); 
+    double getPosition(int jointNo, double index); //Returns the position of the gait given joint No and gait location
     int nanBelow(int row, int col);
     //Eigen::VectorXd  getJointAngles(float32 index); 
     //get the joint angles, if it does not exist in the values, interpolate between

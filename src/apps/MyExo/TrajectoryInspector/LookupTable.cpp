@@ -25,16 +25,15 @@ void LookupTable::readCSV(const std::string &filename)
     rapidcsv::Document doc(filename, rapidcsv::LabelParams(0,0),rapidcsv::SeparatorParams(),rapidcsv::ConverterParams(true));
     std::vector<std::string> rowNames = doc.GetRowNames();
     //Identify the last row
-    std::cout << "The last Row is " << rowNames.back() << std::endl;
+
     //Sort these items into vectors
-    int pathLength =  std::stoi(rowNames.back());
-    printf("Pathelength: %d\n", pathLength);
-    printf("Joint No %d\n", jointNo);
+    int pathLength =  std::stoi(rowNames.back()) + 1;
     //Assign the row num
-    pointNo = pathLength;
-    csvData = Eigen::MatrixXd (pathLength, jointNo);
+
+    pointNo = pathLength; //Number of discrete points per joint 
+    csvData = Eigen::MatrixXd (pathLength + 1, jointNo);
     //Construct the rows
-    for(int i = 1; i <= pathLength; i++)
+    for(int i = 0; i < pathLength; i++)
     {
         //Construct the row
         
@@ -43,7 +42,7 @@ void LookupTable::readCSV(const std::string &filename)
         {
             for (int j = 0; j< jointNo; j++)
             {
-                csvData(i-1,j) = nan("");
+                csvData(i,j) = nan("");
             }
             continue;
         }
@@ -58,24 +57,19 @@ void LookupTable::readCSV(const std::string &filename)
                 std::string jointName = std::strcat((char*)baseStr, numChar);
 
                 double joint = doc.GetCell<double>(jointName.c_str(),std::to_string(i).c_str());
-                csvData(i-1,j-1) = joint;
+                csvData(i,j-1) = joint;
             }
         }
     }
-    printf("Original Matrix:\n");
-    printMatrix(csvData,  pointNo, jointNo);
-    LookupTable::interpolateTrajectories(Linear);
-    printf("Next Matrix:\n");
-    printMatrix(csvData, pointNo, jointNo);
+    LookupTable::interpolateTrajectories();
     return;
 }
 
 
 //Interpolate the unkown trajectories, there will be a few use cases
-void LookupTable::interpolateTrajectories(int mode) {
+void LookupTable::interpolateTrajectories(void) {
     //For each "Nan" item,  identify the interpolation depending on the mode
     //Going by column is better
-    std::cout <<csvData(20,3) << std::endl;
     
     for(int j = 0; j < jointNo; j++) {
         //The first value must  be defined, if it is not, flag an error
@@ -83,10 +77,9 @@ void LookupTable::interpolateTrajectories(int mode) {
             throw std::invalid_argument("trajectory start point must be defined");
         }
             
-        for (int i = 0; i <(pointNo - 1); i ++) {
+        for (int i = 0; i <pointNo; i ++) {
             //Investigate each row (Point) for each joint
             if(nanBelow(i, j)) {
-                printf("No definition found for <%d> <%d>\n\r", i, j);
                 //Identify the end points associated with the series of NANs
                 double startPoint = csvData(i,j);
                 int endRow = i+1;
@@ -97,8 +90,8 @@ void LookupTable::interpolateTrajectories(int mode) {
                 double endPoint = csvData(endRow, j);
                 std::vector<double> values {startPoint, endPoint};
                 std::vector<int> rows{i, endRow};
-                LookupTable::interpolatePoints(values, rows, j, LINEAR);
-                i = endRow - 1;
+                LookupTable::interpolatePoints(values, rows, j);
+                i = endRow - 1; //As i is added to after the loop
             }
         }
     }
@@ -113,19 +106,14 @@ int LookupTable::nanBelow(int row, int col) {
         return 1;
     }
     return 0;
-}
+}   
 
 //Interpolates between the two points and fills in the csvData
-void LookupTable::interpolatePoints(std::vector<double> values, std::vector<int>rows, int col,int mode) {
+void LookupTable::interpolatePoints(std::vector<double> values, std::vector<int>rows, int col) {
     double startVal = values[0];
     double endVal = values[1];
     int startRow = rows[0];
     int endRow = rows[1];
-    printf("VAL: %f --> %f\n", startVal, endVal);
-    printf("ROW: %d --> %d\n", startRow, endRow);
-
-
-
     if(mode == LINEAR) {
         double m = (endVal - startVal) / (endRow - startRow);
         //Identify the points 
@@ -147,6 +135,47 @@ void printMatrix(Eigen::MatrixXd matrix, int rows, int cols) {
     }
 }
 
+double LookupTable::getPosition(int jointNo, double index) {
+    //CSV data, joint No is the columns, index is the rows
+    //Determine if the index exists, otherwise, will need to interpolate between points
+    //The cycle is cyclical, the
+    int col = jointNo - 1;
+    if(index < 0) 
+    {
+        throw std::invalid_argument("index must be positive!");   
+    }
+
+    if(floor(index) == index)
+    {
+        //The index is a whole number, and greater than 0, interpolate
+        int row;
+        if(index > pointNo)
+        {
+            row = std::fmod(index, pointNo);
+        } else 
+        {
+            row = floor(index);
+        }
+        //The data must be interpolated linearally
+        return csvData(row, col);
+    } else {
+        int upIndex;
+        int lowIndex;
+        lowIndex = floor(index);
+        upIndex = ceil(index);
+        if(upIndex >= pointNo) 
+        {
+            //Identify the uupper
+            upIndex = std::fmod(upIndex, pointNo);
+        }
+        double upVal = csvData(upIndex, col);        
+        double lowVal = csvData(lowIndex, col);
+        double m = (upVal - lowVal); //Change in one index
+        double result = lowVal + m * (index - floor(index)); 
+        return result;
+    }
+}
+
 bool isFloat(const std::string &num)
 {
     //checks if the string is a valid float
@@ -154,7 +183,6 @@ bool isFloat(const std::string &num)
     bool negativeFound = false;
     for (std::string::size_type i = 0; i < num.size(); i++)
     {
-        std::cout << num[i] << std::endl;
 
         if(!isdigit(num[i]))
         {
