@@ -277,9 +277,9 @@ public:
       */
 
 #ifdef SIM
-    X2Robot(ros::NodeHandle &nodeHandle, std::string robotName = XSTR(X2_NAME_DEFAULT), const float updateT, std::string yaml_config_file="x2_params.yaml");
+    X2Robot(ros::NodeHandle &nodeHandle, const float updateT, std::string robotName = XSTR(X2_NAME_DEFAULT), std::string yaml_config_file="x2_params.yaml");
 #else
-    X2Robot(std::string robotName = XSTR(X2_NAME_DEFAULT), const float updateT, std::string yaml_config_file="x2_params.yaml");
+    X2Robot(const float updateT, std::string robotName = XSTR(X2_NAME_DEFAULT), std::string yaml_config_file="x2_params.yaml");
 #endif
     ~X2Robot();
     Keyboard* keyboard;

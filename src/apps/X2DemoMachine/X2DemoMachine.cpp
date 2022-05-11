@@ -12,9 +12,9 @@ X2DemoMachine::X2DemoMachine(int argc, char *argv[], const float updateT) {
     robotName_.erase(0,1); // erase the first character which is '/'
 
 #ifdef SIM
-    robot_ = new X2Robot(nodeHandle, robotName_, updateT);
+    robot_ = new X2Robot(nodeHandle, updateT, robotName_);
 #else
-    robot_ = new X2Robot(robotName_, updateT);
+    robot_ = new X2Robot(updateT, robotName_);
 #endif
 
     // Create PRE-DESIGNED State Machine events and state objects.
