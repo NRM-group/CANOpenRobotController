@@ -38,6 +38,7 @@ void X2DemoMachineROS::initialize() {
 
 void X2DemoMachineROS::update() {
 #ifndef SIM  // if simulation, these will be published by Gazebo
+    spdlog::log("updating ros machine");
     publishJointStates();
     publishInteractionForces();
     publishGroundReactionForces();
