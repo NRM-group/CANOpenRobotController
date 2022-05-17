@@ -6,6 +6,8 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
         nodeHandle_(&nodeHandle)
 {
 
+    requestedJointTorquesMsg_.data.resize(12);
+
 #ifndef SIM  // if simulation, these will be published by Gazebo
     jointStatePublisher_ = nodeHandle_->advertise<sensor_msgs::JointState>("joint_states", 10);
     interactionForcePublisher_ = nodeHandle_->advertise<CORC::X2Array>("interaction_forces", 10);
@@ -132,7 +134,7 @@ void X2DemoMachineROS::publishRequestedJointTorques() {
 
 void X2DemoMachineROS::publishJointReferencePositions() {
 
-    Eigen::VectorXd desiredJointPositions = x2DemoState_->getDesiredJointPositions();
+    Eigen::VectorXd desiredJointPositions = x2DemoState_->getDesiredJointPostions();
 
     desiredJointReferencePositionsMsg_.data = desiredJointPositions[0];
 
