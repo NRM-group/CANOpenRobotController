@@ -32,7 +32,7 @@
 #define STEP_UP         1
 #define STEP_DOWN       0
 
-#define LIMIT_TORQUE    60 // [Nm]
+#define LIMIT_TORQUE    80 // [Nm]
 
 /**
  * \brief Demo State for the X2DemoMachine
@@ -49,6 +49,10 @@ public:
     X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name = NULL);
 
     Eigen::VectorXd& getDesiredJointTorques();
+    Eigen::VectorXd& getDesiredJointPositions();
+    Eigen::VectorXd& getDesiredJointTorquesPSplit();
+    Eigen::VectorXd& getDesiredJointTorquesISplit();
+    Eigen::VectorXd& getDesiredJointTorquesDSplit();
     Eigen::VectorXd& getDesiredJointVelocities();
 
     Eigen::VectorXd enableJoints;
@@ -70,6 +74,9 @@ private:
     Eigen::VectorXd desiredJointPositions_;
     Eigen::VectorXd desiredJointVelocities_;
     Eigen::VectorXd desiredJointTorques_;
+    Eigen::VectorXd desiredJointTorquesP_;
+    Eigen::VectorXd desiredJointTorquesI_;
+    Eigen::VectorXd desiredJointTorquesD_;
 
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;

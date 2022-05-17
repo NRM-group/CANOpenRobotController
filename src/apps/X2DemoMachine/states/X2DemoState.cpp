@@ -5,12 +5,16 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    desiredJointTorquesP_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    desiredJointTorquesI_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    desiredJointTorquesD_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     enableJoints = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     kTransperancy_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
     amplitude_ = 0.0;
     period_ = 5.0;
     offset_ = 0.0;
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
 }
 
 void X2DemoState::entry(void) {
@@ -80,23 +84,16 @@ void X2DemoState::during(void) {
         // make sure desiredJointPositions_ is velocity limited
         X2DemoState::vel_limiter(deg2rad(20)); // 20 deg/second velocity limit
 
-        auto torques = jointControllers.loopc(desiredJointPositions_.data(), robot_->getPosition().data());
-
-        for (std::size_t i = 0; i < torques.size(); i++) {
-            if (torques[i] < -LIMIT_TORQUE) {
-                spdlog::error("ERROR: Torque limit reached for joint {}", i);
-                torques[i] = -LIMIT_TORQUE;
-            }
-			else if (torques[i] > LIMIT_TORQUE) {
-                spdlog::error("ERROR: Torque limit reached for joint {}", i);
-                torques[i] = LIMIT_TORQUE;
-            }
-        }
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
 
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+        desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
+        desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
 
         spdlog::info("OUTPUT: {}", desiredJointTorques_[1]);
-        spdlog::info("DT    : {}", jointControllers.dtc());
+        spdlog::info("PP: {}", jointControllers[1].p());
+        spdlog::info("PD: {}", jointControllers[1].d());
+        spdlog::info("DT    : {}", jointControllers.dt());
 
         // add debug torques to all joints 
         desiredJointTorques_ += debugTorques;
@@ -115,6 +112,9 @@ void X2DemoState::during(void) {
             desiredJointTorques_[joint] = enableJoints[joint] * amplitude_ * sin(2.0 * M_PI / period_ * time);
         }
 
+        desiredJointTorquesP_ << 0, 0, 0, 0;
+        desiredJointTorquesD_ << 0, 0, 0, 0;
+
         // add debug torques to all joints
         desiredJointTorques_ += debugTorques;
 
@@ -131,6 +131,9 @@ void X2DemoState::during(void) {
 
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+
+        desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
+        desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
 
         // add debug torques to all joints
         desiredJointTorques_ += debugTorques;
@@ -192,4 +195,20 @@ Eigen::VectorXd &X2DemoState::getDesiredJointTorques() {
 
 Eigen::VectorXd &X2DemoState::getDesiredJointVelocities() {
     return desiredJointVelocities_;
+}
+
+Eigen::VectorXd &X2DemoState::getDesiredJointTorquesPSplit() {
+    return desiredJointTorquesP_;
+}
+
+Eigen::VectorXd &X2DemoState::getDesiredJointTorquesISplit() {
+    return desiredJointTorquesI_;
+}
+
+Eigen::VectorXd &X2DemoState::getDesiredJointTorquesDSplit() {
+    return desiredJointTorquesD_;
+}
+
+Eigen::VectorXd &X2DemoState::getDesiredJointPositions() {
+    return desiredJointPositions_;
 }

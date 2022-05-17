@@ -20,8 +20,11 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     startHomingService_ = nodeHandle_->advertiseService("start_homing", &X2DemoMachineROS::startHomingCallback, this);
     imuCalibrationService_ = nodeHandle_->advertiseService("calibrate_imu", &X2DemoMachineROS::calibrateIMUCallback, this);
     interactionForceCommand_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    gainUpdateSubscriber_ = nodeHandle_->subscribe("cmd/gains", 1, &X2DemoMachineROS::updateGainCallback, this);
-    jointStatePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("x2/rpt/joint_torques", 10);
+    gainUpdateSubscriber_ = nodeHandle_->subscribe("gui/gains", 1, &X2DemoMachineROS::updateGainCallback, this);
+    gainLimitUpdateSubscriber_ = nodeHandle_->subscribe("gui/alphas", 1, &X2DemoMachineROS::updateGainLimitCallback, this); 
+    maxTorqueSubscriber_ = nodeHandle_->subscribe("gui/max_torque", 1, &X2DemoMachineROS::updateMaxTorqueLimitCallback, this);
+    requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("/rpt/joint_torques", 10);
+    referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("/rpt/joint_limits", 10);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -39,6 +42,7 @@ void X2DemoMachineROS::update() {
     publishInteractionForces();
     publishGroundReactionForces();
     publishRequestedJointTorques();
+    publishJointReferencePositions();
 #endif
 }
 
@@ -103,12 +107,35 @@ void X2DemoMachineROS::publishGroundReactionForces() {
 void X2DemoMachineROS::publishRequestedJointTorques() {
 
     Eigen::VectorXd desiredJointTorques = x2DemoState_->getDesiredJointTorques();
+    Eigen::VectorXd pJointTorques = x2DemoState_->getDesiredJointTorquesPSplit();
+    Eigen::VectorXd dJointTorques = x2DemoState_->getDesiredJointTorquesDSplit();
+
     requestedJointTorquesMsg_.data[0] = desiredJointTorques[0];
-    requestedJointTorquesMsg_.data[1] = desiredJointTorques[1];
-    requestedJointTorquesMsg_.data[2] = desiredJointTorques[2];
-    requestedJointTorquesMsg_.data[3] = desiredJointTorques[3];
+    requestedJointTorquesMsg_.data[1] = pJointTorques[0];
+    requestedJointTorquesMsg_.data[2] = dJointTorques[0];
+
+    requestedJointTorquesMsg_.data[3] = desiredJointTorques[1];
+    requestedJointTorquesMsg_.data[4] = pJointTorques[1];
+    requestedJointTorquesMsg_.data[5] = dJointTorques[1];
+
+    requestedJointTorquesMsg_.data[6] = desiredJointTorques[2];
+    requestedJointTorquesMsg_.data[7] = pJointTorques[2];
+    requestedJointTorquesMsg_.data[8] = dJointTorques[2];
+
+    requestedJointTorquesMsg_.data[9] = desiredJointTorques[3];
+    requestedJointTorquesMsg_.data[10] = pJointTorques[3];
+    requestedJointTorquesMsg_.data[11] = dJointTorques[3];
 
     requestedTorquePublisher_.publish(requestedJointTorquesMsg_);
+}
+
+void X2DemoMachineROS::publishJointReferencePositions() {
+
+    Eigen::VectorXd desiredJointPositions = x2DemoState_->getDesiredJointPositions();
+
+    desiredJointReferencePositionsMsg_.data = desiredJointPositions[0];
+
+    referenceJointPositionsPublisher_.publish(desiredJointReferencePositionsMsg_);
 }
 
 void X2DemoMachineROS::setNodeHandle(ros::NodeHandle &nodeHandle) {
@@ -166,4 +193,24 @@ void X2DemoMachineROS::updateGainCallback(const std_msgs::Float64MultiArray::Con
 
     x2DemoState_->jointControllers[3](gains->data[9], gains->data[10]);
     x2DemoState_->debugTorques[3] = gains->data[11]; // used for debugging and compensation TODO: move somewhere else
+}
+
+void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas) {
+    double alpha1 = alphas->data[0];
+    double alpha2 = alphas->data[1];
+    x2DemoState_->jointControllers[1].bind(
+        [alpha1, alpha2](auto& Kp, auto& Ki, auto& Kd) {
+            auto limit = std::sqrt(Kp);
+
+            if (Kd < alpha1 * limit) {
+                Kd = alpha1 * limit;
+            } else if (Kd > alpha2 * limit) {
+                Kd = alpha2 * limit;
+            }
+        }
+    );
+}
+
+void X2DemoMachineROS::updateMaxTorqueLimitCallback(const std_msgs::Float64::ConstPtr& torqueLimit) {
+    x2DemoState_->jointControllers.set_limit(-torqueLimit->data, torqueLimit->data);
 }

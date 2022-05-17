@@ -15,6 +15,7 @@
 #include <sensor_msgs/JointState.h>
 #include <geometry_msgs/WrenchStamped.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Int32MultiArray.h>
 #include <std_msgs/Int16.h>
@@ -37,6 +38,7 @@ public:
     void publishInteractionForces(void);
     void publishGroundReactionForces(void);
     void publishRequestedJointTorques(void);
+    void publishJointReferencePositions(void);
     void initialize();
     void setNodeHandle(ros::NodeHandle& nodeHandle);
     ros::NodeHandle& getNodeHandle();
@@ -48,8 +50,11 @@ private:
     ros::Publisher interactionForcePublisher_;
     ros::Publisher groundReactionForcePublisher_[X2_NUM_GRF_SENSORS];
     ros::Publisher requestedTorquePublisher_;
+    ros::Publisher referenceJointPositionsPublisher_;
 
     ros::Subscriber gainUpdateSubscriber_;
+    ros::Subscriber gainLimitUpdateSubscriber_;
+    ros::Subscriber maxTorqueSubscriber_;
 
     ros::ServiceServer calibrateForceSensorsService_;
     ros::ServiceServer startHomingService_;
@@ -58,6 +63,7 @@ private:
 
     sensor_msgs::JointState jointStateMsg_;
     std_msgs::Float64MultiArray requestedJointTorquesMsg_;
+    std_msgs::Float64 desiredJointReferencePositionsMsg_;
     CORC::X2Array interactionForceMsg_;
     geometry_msgs::WrenchStamped groundReactionForceMsgArray_[X2_NUM_GRF_SENSORS];
 
@@ -79,6 +85,10 @@ private:
                               std_srvs::Trigger::Response& res);
     
     void updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains);
+
+    void updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas);
+
+    void updateMaxTorqueLimitCallback(const std_msgs::Float64::ConstPtr& torqueLimit);
 
     ros::NodeHandle* nodeHandle_;
 };
