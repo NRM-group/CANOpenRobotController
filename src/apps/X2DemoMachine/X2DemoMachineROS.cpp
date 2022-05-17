@@ -198,6 +198,7 @@ void X2DemoMachineROS::updateGainCallback(const std_msgs::Float64MultiArray::Con
 void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas) {
     double alpha1 = alphas->data[0];
     double alpha2 = alphas->data[1];
+    x2DemoState_->jointControllers[1].pop();
     x2DemoState_->jointControllers[1].bind(
         [alpha1, alpha2](auto& Kp, auto& Ki, auto& Kd) {
             auto limit = std::sqrt(Kp);
