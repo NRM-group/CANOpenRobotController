@@ -40,7 +40,6 @@ void X2DemoMachineROS::initialize() {
 
 void X2DemoMachineROS::update() {
 #ifndef SIM  // if simulation, these will be published by Gazebo
-    spdlog::log("updating ros machine");
     publishJointStates();
     publishInteractionForces();
     publishGroundReactionForces();
@@ -136,7 +135,7 @@ void X2DemoMachineROS::publishJointReferencePositions() {
 
     Eigen::VectorXd desiredJointPositions = x2DemoState_->getDesiredJointPositions();
 
-    desiredJointReferencePositionsMsg_.data = desiredJointPositions[0];
+    desiredJointReferencePositionsMsg_.data = desiredJointPositions[1];
 
     referenceJointPositionsPublisher_.publish(desiredJointReferencePositionsMsg_);
 }
