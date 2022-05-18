@@ -63,7 +63,7 @@ private:
 
     sensor_msgs::JointState jointStateMsg_;
     std_msgs::Float64MultiArray requestedJointTorquesMsg_;
-    std_msgs::Float64 desiredJointReferencePositionsMsg_;
+    std_msgs::Float64MultiArray desiredJointReferencePositionsMsg_;
     CORC::X2Array interactionForceMsg_;
     geometry_msgs::WrenchStamped groundReactionForceMsgArray_[X2_NUM_GRF_SENSORS];
 

@@ -7,6 +7,7 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
 {
 
     requestedJointTorquesMsg_.data.resize(12);
+    desiredJointReferencePositionsMsg_.data.resize(4);
 
 #ifndef SIM  // if simulation, these will be published by Gazebo
     jointStatePublisher_ = nodeHandle_->advertise<sensor_msgs::JointState>("joint_states", 10);
@@ -26,7 +27,7 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     gainLimitUpdateSubscriber_ = nodeHandle_->subscribe("gui/alphas", 1, &X2DemoMachineROS::updateGainLimitCallback, this); 
     maxTorqueSubscriber_ = nodeHandle_->subscribe("gui/max_torque", 1, &X2DemoMachineROS::updateMaxTorqueLimitCallback, this);
     requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("/rpt/joint_torques", 10);
-    referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("/rpt/joint_limits", 10);
+    referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("/rpt/joint_limits", 10);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -135,7 +136,10 @@ void X2DemoMachineROS::publishJointReferencePositions() {
 
     Eigen::VectorXd desiredJointPositions = x2DemoState_->getDesiredJointPositions();
 
-    desiredJointReferencePositionsMsg_.data = desiredJointPositions[1];
+    desiredJointReferencePositionsMsg_.data[0] = desiredJointPositions[0];
+    desiredJointReferencePositionsMsg_.data[1] = desiredJointPositions[1];
+    desiredJointReferencePositionsMsg_.data[2] = desiredJointPositions[2];
+    desiredJointReferencePositionsMsg_.data[3] = desiredJointPositions[3];
 
     referenceJointPositionsPublisher_.publish(desiredJointReferencePositionsMsg_);
 }
