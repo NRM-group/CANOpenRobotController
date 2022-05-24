@@ -17,6 +17,8 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
     jointControllers[0].bind([](auto& Kp, auto& Ki, auto& Kd){});
     jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[2].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[3].bind([](auto& Kp, auto& Ki, auto& Kd){});
 }
 
 void X2DemoState::entry(void) {

@@ -209,6 +209,8 @@ void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray
 
     x2DemoState_->jointControllers[0].pop();
     x2DemoState_->jointControllers[1].pop();
+    x2DemoState_->jointControllers[2].pop();
+    x2DemoState_->jointControllers[3].pop();
 
     x2DemoState_->jointControllers[0].bind(
         [hip_alpha1, hip_alpha2](auto& Kp, auto& Ki, auto& Kd) {
@@ -223,6 +225,30 @@ void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray
     );
 
     x2DemoState_->jointControllers[1].bind(
+        [knee_alpha1, knee_alpha2](auto& Kp, auto& Ki, auto& Kd) {
+            auto limit = std::sqrt(Kp);
+
+            if (Kd < knee_alpha1 * limit) {
+                Kd = knee_alpha1 * limit;
+            } else if (Kd > knee_alpha2 * limit) {
+                Kd = knee_alpha2 * limit;
+            }
+        }
+    );
+
+    x2DemoState_->jointControllers[2].bind(
+        [hip_alpha1, hip_alpha2](auto& Kp, auto& Ki, auto& Kd) {
+            auto limit = std::sqrt(Kp);
+
+            if (Kd < hip_alpha1 * limit) {
+                Kd = hip_alpha1 * limit;
+            } else if (Kd > hip_alpha2 * limit) {
+                Kd = hip_alpha2 * limit;
+            }
+        }
+    );
+
+    x2DemoState_->jointControllers[3].bind(
         [knee_alpha1, knee_alpha2](auto& Kp, auto& Ki, auto& Kd) {
             auto limit = std::sqrt(Kp);
 
