@@ -190,6 +190,53 @@ void X2DemoState::during(void) {
         desiredJointTorques_ += debugTorques;
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
+    } else if (controller_mode_ == 4) {                                  // right hip with right knee locked control mode
+
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
+
+        // switch between two set joint positions
+        switch(state_) {
+
+            case STEP_UP:
+
+                    desiredJointPositions_[0] = -deg2rad(20);
+                    desiredJointPositions_[1] = -deg2rad(20);
+                    desiredJointPositions_[2] = -deg2rad(20);
+                    desiredJointPositions_[3] = -deg2rad(0);
+                if (!(t_count_ % (5 * freq_))) {
+
+                    state_ = STEP_DOWN;
+                    t_count_ = 0;
+                }
+                break;
+            case STEP_DOWN:
+
+                    desiredJointPositions_[0] = -deg2rad(10);
+                    desiredJointPositions_[1] = -deg2rad(10);
+                    desiredJointPositions_[2] = -deg2rad(10);
+                    desiredJointPositions_[3] = -deg2rad(0);
+                if (!(t_count_ % (5 * freq_))) {
+
+                    state_ = STEP_UP;
+                    t_count_ = 0;
+                }
+                break;
+        }
+
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+
+        desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+        desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
+        desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
+
+        // add debug torques to all joints 
+        desiredJointTorques_ += debugTorques;
+        robot_->setTorque(desiredJointTorques_);
+        t_count_++;
     }
 }
 
