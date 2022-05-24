@@ -15,6 +15,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     offset_ = 0.0;
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
+    jointControllers[0].bind([](auto& Kp, auto& Ki, auto& Kd){});
     jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
 }
 
