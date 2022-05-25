@@ -86,9 +86,9 @@ void X2DemoState::during(void) {
         }
 
         // make sure desiredJointPositions_ is velocity limited
-        // spdlog::info("Before: {}", desiredJointPositions_[1]);
-        // X2DemoState::vel_limiter(deg2rad(20)); // 20 deg/second velocity limit
-        // spdlog::info("After: {}", desiredJointPositions_[1]);
+        //spdlog::info("Before: {}", desiredJointPositions_[1]);
+        vel_limiter(deg2rad(10)); // 20 deg/second velocity limit
+        //spdlog::info("After: {}", desiredJointPositions_[1]);
 
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
 
@@ -280,19 +280,15 @@ void X2DemoState::dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t
 void X2DemoState::vel_limiter(double limit) {
 
     auto dJointPositions = desiredJointPositions_ - robot_->getPosition();
-    double maxJointPositionDelta = limit / freq_;
-
-    spdlog::info("{}", desiredJointPositions_[1]);
+    double maxJointPositionDelta = abs(limit / freq_);
 
     for (int i = 0; i < dJointPositions.size(); i++) {
 
-        if (abs(dJointPositions[i] * freq_) > limit) {
+        if (abs(dJointPositions[i]) > maxJointPositionDelta) {
 
             if (dJointPositions[i] > 0) {
-                spdlog::info("Positive midway: {}", desiredJointPositions_[i]);
                 desiredJointPositions_[i] = robot_->getPosition()[i] + maxJointPositionDelta;
             } else {
-                spdlog::info("Negative midway: {}", desiredJointPositions_[i]);
                 desiredJointPositions_[i] = robot_->getPosition()[i] - maxJointPositionDelta;
             }
         }

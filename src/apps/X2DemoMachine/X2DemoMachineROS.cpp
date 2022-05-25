@@ -134,7 +134,7 @@ void X2DemoMachineROS::publishRequestedJointTorques() {
 
 void X2DemoMachineROS::publishJointReferencePositions() {
 
-    Eigen::VectorXd desiredJointPositions = x2DemoState_->getDesiredJointPositions();
+    Eigen::VectorXd& desiredJointPositions = x2DemoState_->getDesiredJointPositions();
 
     desiredJointReferencePositionsMsg_.data[0] = desiredJointPositions[0];
     desiredJointReferencePositionsMsg_.data[1] = desiredJointPositions[1];
