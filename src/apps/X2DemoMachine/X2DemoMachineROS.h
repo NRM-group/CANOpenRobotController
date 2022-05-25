@@ -55,6 +55,8 @@ private:
     ros::Subscriber gainUpdateSubscriber_;
     ros::Subscriber gainLimitUpdateSubscriber_;
     ros::Subscriber maxTorqueSubscriber_;
+    ros::Subscriber frictionCompensationSubscriber_;  
+    ros::Subscriber jointCommandSubscriber_;
 
     ros::ServiceServer calibrateForceSensorsService_;
     ros::ServiceServer startHomingService_;
@@ -85,10 +87,9 @@ private:
                               std_srvs::Trigger::Response& res);
     
     void updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains);
-
     void updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas);
-
-    void updateMaxTorqueLimitCallback(const std_msgs::Float64::ConstPtr& torqueLimit);
+    void updateFrictionCompensationCallback(const std_msgs::Float64MultiArray::ConstPtr& frictionTorques);
+    void updateExternalTorquesCallback(const std_msgs::Float64MultiArray::ConstPtr& externalTorques);
 
     ros::NodeHandle* nodeHandle_;
 };

@@ -60,18 +60,22 @@ public:
     int controller_mode_;
     GroupController<PDController<double>, X2_NUM_JOINTS> jointControllers;
     Eigen::VectorXd debugTorques;
+    Eigen::VectorXd frictionCompensationTorques;
 
 private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
     void vel_limiter(double limit);
+    void addDebugTorques(int joint);
+    void addFrictionCompensationTorques(int joint);
 
     const int freq_;
     int t_count_ = 0;
     int state_ = STEP_DOWN;
 
     std::chrono::steady_clock::time_point time0;
-    Eigen::VectorXd desiredJointPositions_;
+    Eigen::VectorXd desiredJointPositions_;         // the desired joint positions
+    Eigen::VectorXd prevDesiredJointPositions_;     // the previous desired joint position set by rate limiter
     Eigen::VectorXd desiredJointVelocities_;
     Eigen::VectorXd desiredJointTorques_;
     Eigen::VectorXd desiredJointTorquesP_;

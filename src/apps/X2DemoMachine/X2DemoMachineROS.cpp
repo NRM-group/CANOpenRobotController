@@ -24,10 +24,11 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     imuCalibrationService_ = nodeHandle_->advertiseService("calibrate_imu", &X2DemoMachineROS::calibrateIMUCallback, this);
     interactionForceCommand_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     gainUpdateSubscriber_ = nodeHandle_->subscribe("joint_gains", 1, &X2DemoMachineROS::updateGainCallback, this);
-    gainLimitUpdateSubscriber_ = nodeHandle_->subscribe("alphas", 1, &X2DemoMachineROS::updateGainLimitCallback, this); 
-    maxTorqueSubscriber_ = nodeHandle_->subscribe("max_torque", 1, &X2DemoMachineROS::updateMaxTorqueLimitCallback, this);
+    gainLimitUpdateSubscriber_ = nodeHandle_->subscribe("joint_gain_coeff", 1, &X2DemoMachineROS::updateGainLimitCallback, this); 
     requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_reference", 10);
+    frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compenstation", 1, &X2DemoMachineROS::updateFrictionCompensationCallback, this);
+    jointCommandSubscriber_ = nodeHandle_->subscribe("joint_command", 1, &X2DemoMachineROS::updateExternalTorquesCallback, this);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -189,16 +190,9 @@ bool X2DemoMachineROS::calibrateIMUCallback(std_srvs::Trigger::Request &req, std
 
 void X2DemoMachineROS::updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains) {
     x2DemoState_->jointControllers[0](gains->data[0], gains->data[1]);
-    x2DemoState_->debugTorques[0] = gains->data[2]; // used for debugging and compensation TODO: move somewhere else
-
-    x2DemoState_->jointControllers[1](gains->data[3], gains->data[4]);
-    x2DemoState_->debugTorques[1] = gains->data[5]; // used for debugging and compensation TODO: move somewhere else
-
-    x2DemoState_->jointControllers[2](gains->data[6], gains->data[7]);
-    x2DemoState_->debugTorques[2] = gains->data[8]; // used for debugging and compensation TODO: move somewhere else
-
-    x2DemoState_->jointControllers[3](gains->data[9], gains->data[10]);
-    x2DemoState_->debugTorques[3] = gains->data[11]; // used for debugging and compensation TODO: move somewhere else
+    x2DemoState_->jointControllers[1](gains->data[2], gains->data[3]);
+    x2DemoState_->jointControllers[2](gains->data[4], gains->data[5]);
+    x2DemoState_->jointControllers[3](gains->data[6], gains->data[7]);
 }
 
 void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas) {
@@ -261,6 +255,24 @@ void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray
     );
 }
 
-void X2DemoMachineROS::updateMaxTorqueLimitCallback(const std_msgs::Float64::ConstPtr& torqueLimit) {
-    x2DemoState_->jointControllers.set_limit(-torqueLimit->data, torqueLimit->data);
+void X2DemoMachineROS::updateExternalTorquesCallback(const std_msgs::Float64MultiArray::ConstPtr& externalTorques) {
+
+    auto joint0_debug_torque = externalTorques->data[0];
+    auto joint1_debug_torque = externalTorques->data[1];
+    auto joint2_debug_torque = externalTorques->data[2];
+    auto joint3_debug_torque = externalTorques->data[3];
+    auto torqueLimit = externalTorques->data[4];
+
+    x2DemoState_->debugTorques[0] = joint0_debug_torque;
+    x2DemoState_->debugTorques[1] = joint1_debug_torque;
+    x2DemoState_->debugTorques[2] = joint2_debug_torque;
+    x2DemoState_->debugTorques[3] = joint3_debug_torque;
+    x2DemoState_->jointControllers.set_limit(-torqueLimit, torqueLimit);
+}
+
+void X2DemoMachineROS::updateFrictionCompensationCallback(const std_msgs::Float64MultiArray::ConstPtr& frictionTorques) {
+    x2DemoState_->frictionCompensationTorques[0] = frictionTorques->data[0];
+    x2DemoState_->frictionCompensationTorques[1] = frictionTorques->data[1];
+    x2DemoState_->frictionCompensationTorques[2] = frictionTorques->data[2];
+    x2DemoState_->frictionCompensationTorques[3] = frictionTorques->data[3];
 }

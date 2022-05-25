@@ -3,6 +3,7 @@
 X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name) :
         State(m, name), robot_(exo), freq_(1 / updateT) {
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorquesP_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -14,6 +15,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     period_ = 5.0;
     offset_ = 0.0;
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    frictionCompensationTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
     jointControllers[0].bind([](auto& Kp, auto& Ki, auto& Kd){});
     jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
@@ -48,7 +50,7 @@ void X2DemoState::during(void) {
 //    }
 //#endif
 
-    if(controller_mode_ == 0){                                          // left knee step torque controller 
+    if(controller_mode_ == 0){                                          // all joints step torque controller 
 
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
 
@@ -86,7 +88,7 @@ void X2DemoState::during(void) {
         }
 
         // make sure desiredJointPositions_ is velocity limited
-        vel_limiter(deg2rad(10)); // 20 deg/second velocity limit
+        vel_limiter(deg2rad(10)); // 10 deg/second velocity limit
 
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
 
@@ -95,11 +97,16 @@ void X2DemoState::during(void) {
         desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
 
         // add debug torques to all joints based on the torque direction being applied
-        if (desiredJointTorques_ > 0) {
-            desiredJointTorques_ += debugTorques;
-        } else {
-            desiredJointTorques_ -= debugTorques;
-        }
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
 
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
@@ -119,8 +126,17 @@ void X2DemoState::during(void) {
         desiredJointTorquesP_ << 0, 0, 0, 0;
         desiredJointTorquesD_ << 0, 0, 0, 0;
 
-        // add debug torques to all joints
-        desiredJointTorques_ += debugTorques;
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
 
         robot_->setTorque(desiredJointTorques_);
     } else if (controller_mode_ == 2) {                                 // no step
@@ -139,8 +155,17 @@ void X2DemoState::during(void) {
         desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
         desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
 
-        // add debug torques to all joints
-        desiredJointTorques_ += debugTorques;
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
 
         robot_->setTorque(desiredJointTorques_);
     } else if (controller_mode_ == 3) {                                // left hip with locked left knee control mode
@@ -186,8 +211,18 @@ void X2DemoState::during(void) {
         desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
         desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
 
-        // add debug torques to all joints 
-        desiredJointTorques_ += debugTorques;
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
+
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
     } else if (controller_mode_ == 4) {                                  // right hip with right knee locked control mode
@@ -233,8 +268,18 @@ void X2DemoState::during(void) {
         desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
         desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
 
-        // add debug torques to all joints 
-        desiredJointTorques_ += debugTorques;
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
+
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
     }
@@ -276,20 +321,42 @@ void X2DemoState::dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t
 
 void X2DemoState::vel_limiter(double limit) {
 
-    auto dJointPositions = desiredJointPositions_ - robot_->getPosition();
+    auto dJointPositions = desiredJointPositions_ - prevDesiredJointPositions_;
     double maxJointPositionDelta = abs(limit / freq_);
 
+    double newDesiredJointPosition  = 0;
     for (int i = 0; i < dJointPositions.size(); i++) {
 
         if (abs(dJointPositions[i]) > maxJointPositionDelta) {
 
             if (dJointPositions[i] > 0) {
-                desiredJointPositions_[i] = robot_->getPosition()[i] + maxJointPositionDelta;
+                newDesiredJointPosition = prevDesiredJointPositions_[i] + maxJointPositionDelta; 
             } else {
-                desiredJointPositions_[i] = robot_->getPosition()[i] - maxJointPositionDelta;
+                newDesiredJointPosition = prevDesiredJointPositions_[i] - maxJointPositionDelta;
             }
         }
+
+        desiredJointPositions_[i] = newDesiredJointPosition;
+        prevDesiredJointPositions_[i] = newDesiredJointPosition;
     } 
+}
+
+void X2DemoState::addDebugTorques(int joint) {
+
+    // account for torque sign
+    if (desiredJointTorques_[joint] > 0) {
+        desiredJointTorques_[joint] += debugTorques[joint];
+    } else {
+        desiredJointTorques_[joint] -= debugTorques[joint];
+    }
+}
+
+void X2DemoState::addFrictionCompensationTorques(int joint) {
+
+    // account for torque sign
+    if (desiredJointTorques_[joint] > 0) {
+        desiredJointTorques_[joint] += frictionCompensationTorques[joint];
+    }
 }
 
 Eigen::VectorXd &X2DemoState::getDesiredJointTorques() {
