@@ -58,6 +58,7 @@ public:
     Eigen::VectorXd enableJoints;
 
     int controller_mode_;
+    double maxTorqueLimit;
     GroupController<PDController<double>, X2_NUM_JOINTS> jointControllers;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;

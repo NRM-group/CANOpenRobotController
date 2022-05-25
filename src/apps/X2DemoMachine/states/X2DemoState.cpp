@@ -50,6 +50,8 @@ void X2DemoState::during(void) {
 //    }
 //#endif
 
+    x2DemoState_->jointControllers.set_limit(-maxTorqueLimit, maxTorqueLimit);
+
     if(controller_mode_ == 0){                                          // all joints step torque controller 
 
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
@@ -324,7 +326,7 @@ void X2DemoState::vel_limiter(double limit) {
     auto dJointPositions = desiredJointPositions_ - prevDesiredJointPositions_;
     double maxJointPositionDelta = abs(limit / freq_);
 
-    double newDesiredJointPosition  = 0;
+    double newDesiredJointPosition = 0;
     for (int i = 0; i < dJointPositions.size(); i++) {
 
         if (abs(dJointPositions[i]) > maxJointPositionDelta) {
@@ -334,28 +336,49 @@ void X2DemoState::vel_limiter(double limit) {
             } else {
                 newDesiredJointPosition = prevDesiredJointPositions_[i] - maxJointPositionDelta;
             }
+
+            desiredJointPositions_[i] = newDesiredJointPosition;
+            prevDesiredJointPositions_[i] = newDesiredJointPosition;
         }
 
-        desiredJointPositions_[i] = newDesiredJointPosition;
-        prevDesiredJointPositions_[i] = newDesiredJointPosition;
     } 
 }
 
 void X2DemoState::addDebugTorques(int joint) {
 
     // account for torque sign
+    auto externalTorque = 0;
     if (desiredJointTorques_[joint] > 0) {
-        desiredJointTorques_[joint] += debugTorques[joint];
+        externalTorque = debugTorques[joint];
     } else {
-        desiredJointTorques_[joint] -= debugTorques[joint];
+        externalTorque = -debugTorques[joint];
+    }
+
+    if (abs(desiredJointTorques_[joint] + externalTorque) < maxTorqueLimit) {
+        desiredJointTorques_[joint] += externalTorque;
+    } else if (desiredJointTorques_ + externalTorque > 0) {
+        desiredJointTorques_[joint] = maxTorqueLimit;
+    } else {
+        desiredJointTorques_[joint] = -maxTorqueLimit;
     }
 }
 
 void X2DemoState::addFrictionCompensationTorques(int joint) {
 
     // account for torque sign
+    auto externalTorque = 0; 
     if (desiredJointTorques_[joint] > 0) {
-        desiredJointTorques_[joint] += frictionCompensationTorques[joint];
+        externalTorque = frictionCompensationTorques[joint];
+    } else {
+        externalTorque = -frictionCompensationTorques[joint];
+    }
+
+    if (abs(desiredJointTorques_[joint] + externalTorque) < maxTorqueLimit) {
+        desiredJointTorques_[joint] += externalTorque;
+    } else if (desiredJointTorques_ + externalTorque > 0) {
+        desiredJointTorques_[joint] = maxTorqueLimit;
+    } else {
+        desiredJointTorques_[joint] = -maxTorqueLimit;
     }
 }
 

@@ -267,7 +267,7 @@ void X2DemoMachineROS::updateExternalTorquesCallback(const std_msgs::Float64Mult
     x2DemoState_->debugTorques[1] = joint1_debug_torque;
     x2DemoState_->debugTorques[2] = joint2_debug_torque;
     x2DemoState_->debugTorques[3] = joint3_debug_torque;
-    x2DemoState_->jointControllers.set_limit(-torqueLimit, torqueLimit);
+    x2DemoState_->maxTorqueLimit = torqueLimit;
 }
 
 void X2DemoMachineROS::updateFrictionCompensationCallback(const std_msgs::Float64MultiArray::ConstPtr& frictionTorques) {
