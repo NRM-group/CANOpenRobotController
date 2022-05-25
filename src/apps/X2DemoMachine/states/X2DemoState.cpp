@@ -356,7 +356,7 @@ void X2DemoState::addDebugTorques(int joint) {
 
     if (abs(desiredJointTorques_[joint] + externalTorque) < maxTorqueLimit) {
         desiredJointTorques_[joint] += externalTorque;
-    } else if (desiredJointTorques_ + externalTorque > 0) {
+    } else if (desiredJointTorques_[joint] + externalTorque > 0) {
         desiredJointTorques_[joint] = maxTorqueLimit;
     } else {
         desiredJointTorques_[joint] = -maxTorqueLimit;
@@ -375,7 +375,7 @@ void X2DemoState::addFrictionCompensationTorques(int joint) {
 
     if (abs(desiredJointTorques_[joint] + externalTorque) < maxTorqueLimit) {
         desiredJointTorques_[joint] += externalTorque;
-    } else if (desiredJointTorques_ + externalTorque > 0) {
+    } else if (desiredJointTorques_[joint] + externalTorque > 0) {
         desiredJointTorques_[joint] = maxTorqueLimit;
     } else {
         desiredJointTorques_[joint] = -maxTorqueLimit;
