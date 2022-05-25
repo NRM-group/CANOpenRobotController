@@ -90,7 +90,7 @@ void X2DemoState::during(void) {
         }
 
         // make sure desiredJointPositions_ is velocity limited
-        vel_limiter(deg2rad(10)); // 10 deg/second velocity limit
+        vel_limiter(deg2rad(rateLimit));
 
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
 
@@ -151,11 +151,14 @@ void X2DemoState::during(void) {
 
         desiredJointPositions_ << 0.0, 0.0, 0.0, 0.0;
 
+        vel_limiter(deg2rad(rateLimit));
+
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
 
         desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
         desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
+
 
         // add debug torques to all joints based on the torque direction being applied
         addDebugTorques(0);
@@ -206,6 +209,8 @@ void X2DemoState::during(void) {
                 }
                 break;
         }
+
+        vel_limiter(deg2rad(rateLimit));
 
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
 
@@ -263,6 +268,8 @@ void X2DemoState::during(void) {
                 }
                 break;
         }
+
+        vel_limiter(deg2rad(rateLimit));
 
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
 
