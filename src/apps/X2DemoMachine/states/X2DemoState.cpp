@@ -86,9 +86,7 @@ void X2DemoState::during(void) {
         }
 
         // make sure desiredJointPositions_ is velocity limited
-        //spdlog::info("Before: {}", desiredJointPositions_[1]);
         vel_limiter(deg2rad(10)); // 20 deg/second velocity limit
-        //spdlog::info("After: {}", desiredJointPositions_[1]);
 
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
 
@@ -96,16 +94,15 @@ void X2DemoState::during(void) {
         desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
         desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
 
-        // add debug torques to all joints 
-        desiredJointTorques_ += debugTorques;
+        // add debug torques to all joints based on the torque direction being applied
+        if (desiredJointTorques_ > 0) {
+            desiredJointTorques_ += debugTorques;
+        } else {
+            desiredJointTorques_ -= debugTorques;
+        }
+
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
-
-        // spdlog::info("OUTPUT: {}", desiredJointTorques_[1]);
-        // spdlog::info("PP: {}", jointControllers[1].p());
-        // spdlog::info("PD: {}", jointControllers[1].d());
-        // spdlog::info("DT    : {}", jointControllers.dt());
-
     } else if (controller_mode_ == 1) {                                 // sin torque
     
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
