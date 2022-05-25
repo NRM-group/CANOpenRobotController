@@ -65,11 +65,11 @@ void X2DemoState::during(void) {
 
             case STEP_UP:
 
-                    desiredJointPositions_[0] = -deg2rad(20);
-                    desiredJointPositions_[1] = -deg2rad(20);
-                    desiredJointPositions_[2] = -deg2rad(20);
-                    desiredJointPositions_[3] = -deg2rad(20);
-                if (!(t_count_ % (5 * freq_))) {
+                    desiredJointPositions_[0] = -deg2rad(refPos1);
+                    desiredJointPositions_[1] = -deg2rad(refPos1);
+                    desiredJointPositions_[2] = -deg2rad(refPos1);
+                    desiredJointPositions_[3] = -deg2rad(refPos1);
+                if (!(t_count_ % (refPosPeriod * freq_))) {
 
                     state_ = STEP_DOWN;
                     t_count_ = 0;
@@ -77,11 +77,11 @@ void X2DemoState::during(void) {
                 break;
             case STEP_DOWN:
 
-                    desiredJointPositions_[0] = -deg2rad(10);
-                    desiredJointPositions_[1] = -deg2rad(10);
-                    desiredJointPositions_[2] = -deg2rad(10);
-                    desiredJointPositions_[3] = -deg2rad(10);
-                if (!(t_count_ % (5 * freq_))) {
+                    desiredJointPositions_[0] = -deg2rad(refPos2);
+                    desiredJointPositions_[1] = -deg2rad(refPos2);
+                    desiredJointPositions_[2] = -deg2rad(refPos2);
+                    desiredJointPositions_[3] = -deg2rad(refPos2);
+                if (!(t_count_ % (refPosPeriod * freq_))) {
 
                     state_ = STEP_UP;
                     t_count_ = 0;
@@ -368,21 +368,32 @@ void X2DemoState::addDebugTorques(int joint) {
 void X2DemoState::addFrictionCompensationTorques(int joint) {
 
     // account for torque sign
-    auto externalTorque = 0; 
-    if (desiredJointTorques_[joint] > 0) {
-        externalTorque = frictionCompensationTorques[joint];
-    } else if (desiredJointTorques_[joint] < 0) {
-        externalTorque = -frictionCompensationTorques[joint];
-    } else {
-        externalTorque = 0;
+    auto externalTorquePos = frictionCompensationTorques[2 * joint]; 
+    auto externalTorqueNeg = frictionCompensationTorques[2 * joint + 1];
+
+    if (desiredJointTorques_ == 0) {
+        externalTorquePos = 0;
+        externalTorqueNeg = 0;
     }
 
-    if (abs(desiredJointTorques_[joint] + externalTorque) < maxTorqueLimit) {
-        desiredJointTorques_[joint] += externalTorque;
-    } else if (desiredJointTorques_[joint] + externalTorque > 0) {
-        desiredJointTorques_[joint] = maxTorqueLimit;
-    } else {
-        desiredJointTorques_[joint] = -maxTorqueLimit;
+    if (desiredJointTorques_[joint] > 0) {
+
+        if (abs(desiredJointTorques_[joint] + externalTorquePos) < maxTorqueLimit) {
+            desiredJointTorques_[joint] += externalTorquePos;
+        } else if (desiredJointTorques_[joint] + externalTorquePos > 0) {
+            desiredJointTorques_[joint] = maxTorqueLimit;
+        } else {
+            desiredJointTorques_[joint] = -maxTorqueLimit;
+        }
+    } else if (desiredJointTorques_[joint] < 0) {
+
+        if (abs(desiredJointTorques_[joint] + externalTorqueNeg) < maxTorqueLimit) {
+            desiredJointTorques_[joint] += externalTorqueNeg;
+        } else if (desiredJointTorques_[joint] + externalTorqueNeg > 0) {
+            desiredJointTorques_[joint] = maxTorqueLimit;
+        } else {
+            desiredJointTorques_[joint] = -maxTorqueLimit;
+        }
     }
 }
 

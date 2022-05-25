@@ -60,6 +60,9 @@ public:
     int controller_mode_;
     double maxTorqueLimit;
     double rateLimit;
+    double refPos1;
+    double refPos2;
+    double refPosPeriod;
     GroupController<PDController<double>, X2_NUM_JOINTS> jointControllers;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;

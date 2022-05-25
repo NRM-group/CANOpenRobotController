@@ -28,7 +28,7 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_reference", 10);
     frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compensation", 1, &X2DemoMachineROS::updateFrictionCompensationCallback, this);
-    jointCommandSubscriber_ = nodeHandle_->subscribe("joint_command", 1, &X2DemoMachineROS::updateExternalTorquesCallback, this);
+    jointCommandSubscriber_ = nodeHandle_->subscribe("joint_parameters", 1, &X2DemoMachineROS::updateExternalTorquesCallback, this);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -262,13 +262,19 @@ void X2DemoMachineROS::updateExternalTorquesCallback(const std_msgs::Float64Mult
     auto joint2_debug_torque = externalTorques->data[2];
     auto joint3_debug_torque = externalTorques->data[3];
     auto torqueLimit = externalTorques->data[4];
-    auto rateLimit = externalTorques->data[5];
+    auto refPos1 = externalTorques->data[5];
+    auto refPos2 = externalTorques->data[6];
+    auto refPosPeriod = floor(externalTorques[7]);
+    auto rateLimit = externalTorques->data[8];
 
     x2DemoState_->debugTorques[0] = joint0_debug_torque;
     x2DemoState_->debugTorques[1] = joint1_debug_torque;
     x2DemoState_->debugTorques[2] = joint2_debug_torque;
     x2DemoState_->debugTorques[3] = joint3_debug_torque;
     x2DemoState_->maxTorqueLimit = torqueLimit;
+    x2DemoState_->refPos1 = refPos1;
+    x2DemoState_->refPos2 = refPos2;
+    x2DemoState_->refPosPeriod = refPosPeriod;
     x2DemoState_->rateLimit = rateLimit;
 }
 
@@ -277,4 +283,8 @@ void X2DemoMachineROS::updateFrictionCompensationCallback(const std_msgs::Float6
     x2DemoState_->frictionCompensationTorques[1] = frictionTorques->data[1];
     x2DemoState_->frictionCompensationTorques[2] = frictionTorques->data[2];
     x2DemoState_->frictionCompensationTorques[3] = frictionTorques->data[3];
+    x2DemoState_->frictionCompensationTorques[4] = frictionTorques->data[4];
+    x2DemoState_->frictionCompensationTorques[5] = frictionTorques->data[5];
+    x2DemoState_->frictionCompensationTorques[6] = frictionTorques->data[6];
+    x2DemoState_->frictionCompensationTorques[7] = frictionTorques->data[7];
 }
