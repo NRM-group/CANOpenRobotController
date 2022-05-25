@@ -50,7 +50,7 @@ void X2DemoState::during(void) {
 //    }
 //#endif
 
-    x2DemoState_->jointControllers.set_limit(-maxTorqueLimit, maxTorqueLimit);
+    jointControllers.set_limit(-maxTorqueLimit, maxTorqueLimit);
 
     if(controller_mode_ == 0){                                          // all joints step torque controller 
 
