@@ -27,7 +27,7 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     gainLimitUpdateSubscriber_ = nodeHandle_->subscribe("joint_gain_coeff", 1, &X2DemoMachineROS::updateGainLimitCallback, this); 
     requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_reference", 10);
-    frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compenstation", 1, &X2DemoMachineROS::updateFrictionCompensationCallback, this);
+    frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compensation", 1, &X2DemoMachineROS::updateFrictionCompensationCallback, this);
     jointCommandSubscriber_ = nodeHandle_->subscribe("joint_command", 1, &X2DemoMachineROS::updateExternalTorquesCallback, this);
 }
 

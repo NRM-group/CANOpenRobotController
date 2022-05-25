@@ -347,12 +347,7 @@ void X2DemoState::vel_limiter(double limit) {
 void X2DemoState::addDebugTorques(int joint) {
 
     // account for torque sign
-    auto externalTorque = 0;
-    if (desiredJointTorques_[joint] > 0) {
-        externalTorque = debugTorques[joint];
-    } else {
-        externalTorque = -debugTorques[joint];
-    }
+    auto externalTorque = debugTorques[joint];
 
     if (abs(desiredJointTorques_[joint] + externalTorque) < maxTorqueLimit) {
         desiredJointTorques_[joint] += externalTorque;
@@ -369,8 +364,10 @@ void X2DemoState::addFrictionCompensationTorques(int joint) {
     auto externalTorque = 0; 
     if (desiredJointTorques_[joint] > 0) {
         externalTorque = frictionCompensationTorques[joint];
-    } else {
+    } else if (desiredJointTorques_[joint] < 0) {
         externalTorque = -frictionCompensationTorques[joint];
+    } else {
+        externalTorque = 0;
     }
 
     if (abs(desiredJointTorques_[joint] + externalTorque) < maxTorqueLimit) {
