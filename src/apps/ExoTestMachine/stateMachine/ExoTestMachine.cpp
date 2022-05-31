@@ -13,6 +13,7 @@ ExoTestMachine::ExoTestMachine() {
     startButtonsPressed = new StartButtonsPressed(this);
     startExo = new StartExo(this);
     startExoCal = new StartExoCal(this);
+    startGaitTest = new StartGaitTest(this);
 
     startSit = new StartSit(this);
     startStand = new StartStand(this);
@@ -21,6 +22,7 @@ ExoTestMachine::ExoTestMachine() {
     sitting = new Sitting(this, robot, trajectoryGenerator);
     standingUp = new StandingUp(this, robot, trajectoryGenerator);
     sittingDwn = new SittingDwn(this, robot, trajectoryGenerator);
+    gaitTest = new GaitTestState(this, robot, trajectoryGenerator);
 
     /**
      * \brief add a tranisition object to the arch list of the first state in the NewTransition MACRO.
@@ -34,13 +36,15 @@ ExoTestMachine::ExoTestMachine() {
     NewTransition(standingUp, endTraj, standing);
     NewTransition(standing, startSit, sittingDwn);
     NewTransition(sittingDwn, endTraj, sitting);
+    NewTransition(standing, startGaitTest, gaitTest);
+    NewTransition(gaitTest, startStand, standingUp);
     //Initialize the state machine with first state of the designed state machine, using baseclass function.
     StateMachine::initialize(initState);
 }
 /**
  * \brief start function for running any designed statemachine specific functions
  * for example initialising robot objects.
- *
+ *P
  */
 void ExoTestMachine::init() {
     spdlog::debug("ExoTestMachine::init()");
@@ -116,6 +120,13 @@ bool ExoTestMachine::StartStand::check(void) {
 
 bool ExoTestMachine::StartSit::check(void) {
     if (OWNER->robot->keyboard->getW()) {
+        return true;
+    }
+    return false;
+}
+
+bool ExoTestMachine::StartGaitTest::check(void) {
+    if (OWNER->robot->keyboard->getQ()) {
         return true;
     }
     return false;

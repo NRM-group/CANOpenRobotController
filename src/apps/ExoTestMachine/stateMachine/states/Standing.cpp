@@ -8,6 +8,9 @@ void Standing::entry(void) {
     std::cout
         << "======================" << std::endl
         << " HIT W -> Sit DOWN" << std::endl
+        << "======================" << std::endl
+        << "======================" << std::endl
+        << " HIT Q -> Gait Test State" << std::endl
         << "======================" << std::endl;
 }
 

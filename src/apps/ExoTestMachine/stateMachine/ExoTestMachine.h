@@ -46,7 +46,7 @@
 #include "SittingDwn.h"
 #include "Standing.h"
 #include "StandingUp.h"
-
+#include "GaitTestState.h"
 /**
  * @brief Example implementation of a StateMachine for the ExoRobot class. States should implemented ExoTestState
  *
@@ -85,7 +85,7 @@ class ExoTestMachine : public StateMachine {
     StandingUp *standingUp;
     Sitting *sitting;
     Standing *standing;
-
+    GaitTestState *gaitTest;
    protected:
     X2Robot *robot;        /*<!Pointer to the Robot*/
     LogHelper dataLogger;  // Logger
@@ -104,6 +104,7 @@ class ExoTestMachine : public StateMachine {
     EventObject(StartExoCal) * startExoCal;
     EventObject(StartSit) * startSit;
     EventObject(StartStand) * startStand;
+    EventObject(StartGaitTest) * startGaitTest;
 };
 
 #endif /*EXO_SM_H*/
