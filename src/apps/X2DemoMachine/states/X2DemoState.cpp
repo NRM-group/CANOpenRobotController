@@ -16,6 +16,9 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     amplitude_ = 0.0;
     period_ = 5.0;
     offset_ = 0.0;
+    refPos1 = 0;
+    refPos2 = 0;
+    refPosPeriod = 5;
 
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     frictionCompensationTorques = Eigen::VectorXd::Zero(8);
