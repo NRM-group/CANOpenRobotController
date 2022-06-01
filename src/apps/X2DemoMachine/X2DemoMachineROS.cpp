@@ -264,7 +264,7 @@ void X2DemoMachineROS::updateExternalTorquesCallback(const std_msgs::Float64Mult
     auto torqueLimit = externalTorques->data[4];
     auto refPos1 = externalTorques->data[5];
     auto refPos2 = externalTorques->data[6];
-    auto refPosPeriod = floor(externalTorques[7]);
+    auto refPosPeriod = floor(externalTorques->data[7]);
     auto rateLimit = externalTorques->data[8];
 
     x2DemoState_->debugTorques[0] = joint0_debug_torque;

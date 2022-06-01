@@ -15,7 +15,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     period_ = 5.0;
     offset_ = 0.0;
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    frictionCompensationTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    frictionCompensationTorques = Eigen::VectorXd::Zero(8);
     jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
     jointControllers[0].bind([](auto& Kp, auto& Ki, auto& Kd){});
     jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
@@ -65,10 +65,10 @@ void X2DemoState::during(void) {
 
             case STEP_UP:
 
-                    desiredJointPositions_[0] = -deg2rad(refPos1);
-                    desiredJointPositions_[1] = -deg2rad(refPos1);
-                    desiredJointPositions_[2] = -deg2rad(refPos1);
-                    desiredJointPositions_[3] = -deg2rad(refPos1);
+                    desiredJointPositions_[0] = deg2rad(refPos1);
+                    desiredJointPositions_[1] = deg2rad(refPos1);
+                    desiredJointPositions_[2] = deg2rad(refPos1);
+                    desiredJointPositions_[3] = deg2rad(refPos1);
                 if (!(t_count_ % (refPosPeriod * freq_))) {
 
                     state_ = STEP_DOWN;
@@ -77,10 +77,10 @@ void X2DemoState::during(void) {
                 break;
             case STEP_DOWN:
 
-                    desiredJointPositions_[0] = -deg2rad(refPos2);
-                    desiredJointPositions_[1] = -deg2rad(refPos2);
-                    desiredJointPositions_[2] = -deg2rad(refPos2);
-                    desiredJointPositions_[3] = -deg2rad(refPos2);
+                    desiredJointPositions_[0] = deg2rad(refPos2);
+                    desiredJointPositions_[1] = deg2rad(refPos2);
+                    desiredJointPositions_[2] = deg2rad(refPos2);
+                    desiredJointPositions_[3] = deg2rad(refPos2);
                 if (!(t_count_ % (refPosPeriod * freq_))) {
 
                     state_ = STEP_UP;
@@ -371,7 +371,7 @@ void X2DemoState::addFrictionCompensationTorques(int joint) {
     auto externalTorquePos = frictionCompensationTorques[2 * joint]; 
     auto externalTorqueNeg = frictionCompensationTorques[2 * joint + 1];
 
-    if (desiredJointTorques_ == 0) {
+    if (desiredJointTorques_[joint] == 0) {
         externalTorquePos = 0;
         externalTorqueNeg = 0;
     }
