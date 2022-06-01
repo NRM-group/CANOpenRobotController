@@ -2,6 +2,7 @@
 
 X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name) :
         State(m, name), robot_(exo), freq_(1 / updateT) {
+
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -10,12 +11,15 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     desiredJointTorquesI_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorquesD_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     enableJoints = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+
     kTransperancy_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
     amplitude_ = 0.0;
     period_ = 5.0;
     offset_ = 0.0;
+
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     frictionCompensationTorques = Eigen::VectorXd::Zero(8);
+
     jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
     jointControllers[0].bind([](auto& Kp, auto& Ki, auto& Kd){});
     jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
@@ -104,7 +108,7 @@ void X2DemoState::during(void) {
         addDebugTorques(2);
         addDebugTorques(3);
 
-        // add friction compenstation torques to all joints based on the torque direction being applied
+        // add friction compensation torques to all joints based on the torque direction being applied
         addFrictionCompensationTorques(0);
         addFrictionCompensationTorques(1);
         addFrictionCompensationTorques(2);
