@@ -14,6 +14,7 @@
 #include "State.h"
 #include "X2Robot.h"
 #include "controller.hpp"
+#include "LookupTable.h"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -33,6 +34,8 @@
 #define STEP_DOWN       0
 
 #define LIMIT_TORQUE    80 // [Nm]
+
+#define PERIOD          0.1 // [s]
 
 /**
  * \brief Demo State for the X2DemoMachine
@@ -89,6 +92,10 @@ private:
 
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;
+
+    LookupTable posReader;
+    timespec prevTime;
+    int gaitIndex;
 
 };
 
