@@ -32,7 +32,9 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     posReader = LookupTable(X2_NUM_JOINTS);
     posReader.readCSV("/home/kermit/catkin_ws/src/CORC/src/apps/X2DemoMachine/gaits/sin.csv");
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
+    currTrajProgress = 0;
     gaitIndex = 0;
+    trajTime = 2;
 }
 
 void X2DemoState::entry(void) {
@@ -314,43 +316,50 @@ void X2DemoState::during(void) {
         timespec currTime;
         clock_gettime(CLOCK_MONOTONIC, &currTime);
         double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
+        prevTime = currTime;
+        currTrajProgress += timeElapsed; 
+        double progress = currTrajProgress / trajTime;
+        int trajIndexes = 24;
         
-        if (timeElapsed >= PERIOD) {
+        Eigen::VectorXd start(4);
+        Eigen::VectorXd end(4);
+        trajTime = period_;
 
-            // TODO: check this for the file being read
-            if (gaitIndex == 100) {
-                gaitIndex = 0;
-            }
-
-            desiredJointPositions_ << posReader.getPosition(0, gaitIndex), 
-                                      posReader.getPosition(1, gaitIndex), 
-                                      posReader.getPosition(2, gaitIndex), 
-                                      posReader.getPosition(3, gaitIndex);
-
-            // TODO: play with these values
-            // TODO: fix the vel_limiter code as it is no longer running at 333 Hz, but rather at 10 Hz
-            // vel_limiter(deg2rad(rateLimit));
-
-            auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
-            
-            desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
-
-            spdlog::info("{} {}", posReader.getPosition(0, gaitIndex), torques[0]);
-
-            addDebugTorques(0);
-            addDebugTorques(1);
-            addDebugTorques(2);
-            addDebugTorques(3);
-
-            addFrictionCompensationTorques(0);
-            addFrictionCompensationTorques(1);
-            addFrictionCompensationTorques(2);
-            addFrictionCompensationTorques(3);
-            
-            robot_->setTorque(desiredJointTorques_);
-            prevTime = currTime;
-            gaitIndex++;
+        if(progress >= 1) {
+            //When you have finished this linear point, move on to the next stage
+            currTrajProgress = 0;
+            gaitIndex += trajIndexes;
+            return;
         }
+
+        for(int j = 0; j < X2_NUM_JOINTS; j++) {
+            
+            start(j) = posReader.getPosition(j, gaitIndex);
+            end(j) = posReader.getPosition(j, gaitIndex + trajIndexes);
+            desiredJointPositions_(j) = (start(j) + progress * (end(j) - start(j)));
+        }
+
+        // TODO: play with these values
+        // TODO: fix the vel_limiter code as it is no longer running at 333 Hz, but rather at 10 Hz
+        // vel_limiter(deg2rad(rateLimit));
+
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+        
+        desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+
+        spdlog::info("{} {}", desiredJointPositions_[0], torques[0]);
+
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
+        
+        robot_->setTorque(desiredJointTorques_);
     }
 }
 

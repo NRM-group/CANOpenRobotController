@@ -96,6 +96,8 @@ private:
     LookupTable posReader;
     timespec prevTime;
     int gaitIndex;
+    double trajTime;
+    double currTrajProgress;
 
 };
 
