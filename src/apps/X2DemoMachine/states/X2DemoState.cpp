@@ -30,7 +30,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     jointControllers[3].bind([](auto& Kp, auto& Ki, auto& Kd){});
 
     posReader = LookupTable(X2_NUM_JOINTS);
-    posReader.readCSV("/home/kermit/catkin_ws/src/CORC/src/apps/X2DemoMachine/gaits/sin.csv");
+    posReader.readCSV("/home/kermit/catkin_ws/src/CORC/src/apps/X2DemoMachine/gaits/GaitTrajectory_220602_1605.csv");
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     gaitIndex = 0;
@@ -315,15 +315,16 @@ void X2DemoState::during(void) {
 
         timespec currTime;
         clock_gettime(CLOCK_MONOTONIC, &currTime);
+
         double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
         prevTime = currTime;
         currTrajProgress += timeElapsed; 
         double progress = currTrajProgress / trajTime;
-        int trajIndexes = 24;
-        
+        trajTime = period_;
+
+        int trajIndexes = 1;
         Eigen::VectorXd start(4);
         Eigen::VectorXd end(4);
-        trajTime = period_;
 
         if(progress >= 1) {
             //When you have finished this linear point, move on to the next stage
@@ -337,9 +338,24 @@ void X2DemoState::during(void) {
             start(j) = posReader.getPosition(j, gaitIndex);
             end(j) = posReader.getPosition(j, gaitIndex + trajIndexes);
             desiredJointPositions_(j) = (start(j) + progress * (end(j) - start(j)));
+
+            if (j == JOINT_1 || j == JOINT_3) {
+                // check hip bounds
+                if (desiredJointPositions_(j) > deg2rad(120)) {
+                    desiredJointPositions_(j) = deg2rad(120);
+                } else if (desiredJointPositions_(j) < -deg2rad(40)) {
+                    desiredJointPositions_(j) = -deg2rad(40);
+                }
+            } else if (j == JOINT_2 || j == JOINT_4) {
+                // check knee bounds
+                if (desiredJointPositions_(j) < -deg2rad(120)) {
+                    desiredJointPositions_(j) = -deg2rad(120);
+                } else if (desiredJointPositions_(j) > 0) {
+                    desiredJointPositions_(j) = 0;
+                }
+            }
         }
 
-        // TODO: play with these values
         // TODO: fix the vel_limiter code as it is no longer running at 333 Hz, but rather at 10 Hz
         // vel_limiter(deg2rad(rateLimit));
 
@@ -347,7 +363,7 @@ void X2DemoState::during(void) {
         
         desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
 
-        spdlog::info("{} {}", desiredJointPositions_[0], torques[0]);
+        spdlog::info("{} {} {} {}", desiredJointPositions_[0], torques[0], desiredJointPositions_[1], torques[1]);
 
         addDebugTorques(0);
         addDebugTorques(1);

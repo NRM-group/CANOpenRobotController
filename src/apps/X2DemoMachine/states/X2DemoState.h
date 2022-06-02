@@ -37,6 +37,11 @@
 
 #define PERIOD          0.1 // [s]
 
+#define JOINT_1         0
+#define JOINT_2         1
+#define JOINT_3         2
+#define JOINT_4         3
+
 /**
  * \brief Demo State for the X2DemoMachine
  *
