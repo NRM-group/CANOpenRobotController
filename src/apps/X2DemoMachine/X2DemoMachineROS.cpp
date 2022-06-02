@@ -6,6 +6,9 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
         nodeHandle_(&nodeHandle)
 {
 
+    requestedJointTorquesMsg_.data.resize(12);
+    desiredJointReferencePositionsMsg_.data.resize(4);
+
 #ifndef SIM  // if simulation, these will be published by Gazebo
     jointStatePublisher_ = nodeHandle_->advertise<sensor_msgs::JointState>("joint_states", 10);
     interactionForcePublisher_ = nodeHandle_->advertise<CORC::X2Array>("interaction_forces", 10);
@@ -20,6 +23,12 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     startHomingService_ = nodeHandle_->advertiseService("start_homing", &X2DemoMachineROS::startHomingCallback, this);
     imuCalibrationService_ = nodeHandle_->advertiseService("calibrate_imu", &X2DemoMachineROS::calibrateIMUCallback, this);
     interactionForceCommand_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    gainUpdateSubscriber_ = nodeHandle_->subscribe("joint_gains", 1, &X2DemoMachineROS::updateGainCallback, this);
+    gainLimitUpdateSubscriber_ = nodeHandle_->subscribe("joint_gain_coeff", 1, &X2DemoMachineROS::updateGainLimitCallback, this); 
+    requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_output", 10);
+    referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_reference", 10);
+    frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compensation", 1, &X2DemoMachineROS::updateFrictionCompensationCallback, this);
+    jointCommandSubscriber_ = nodeHandle_->subscribe("joint_parameters", 1, &X2DemoMachineROS::updateExternalTorquesCallback, this);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -36,6 +45,8 @@ void X2DemoMachineROS::update() {
     publishJointStates();
     publishInteractionForces();
     publishGroundReactionForces();
+    publishRequestedJointTorques();
+    publishJointReferencePositions();
 #endif
 }
 
@@ -97,6 +108,43 @@ void X2DemoMachineROS::publishGroundReactionForces() {
     }
 }
 
+void X2DemoMachineROS::publishRequestedJointTorques() {
+
+    Eigen::VectorXd desiredJointTorques = x2DemoState_->getDesiredJointTorques();
+    Eigen::VectorXd pJointTorques = x2DemoState_->getDesiredJointTorquesPSplit();
+    Eigen::VectorXd dJointTorques = x2DemoState_->getDesiredJointTorquesDSplit();
+
+    requestedJointTorquesMsg_.data[0] = desiredJointTorques[0];
+    requestedJointTorquesMsg_.data[1] = pJointTorques[0];
+    requestedJointTorquesMsg_.data[2] = dJointTorques[0];
+
+    requestedJointTorquesMsg_.data[3] = desiredJointTorques[1];
+    requestedJointTorquesMsg_.data[4] = pJointTorques[1];
+    requestedJointTorquesMsg_.data[5] = dJointTorques[1];
+
+    requestedJointTorquesMsg_.data[6] = desiredJointTorques[2];
+    requestedJointTorquesMsg_.data[7] = pJointTorques[2];
+    requestedJointTorquesMsg_.data[8] = dJointTorques[2];
+
+    requestedJointTorquesMsg_.data[9] = desiredJointTorques[3];
+    requestedJointTorquesMsg_.data[10] = pJointTorques[3];
+    requestedJointTorquesMsg_.data[11] = dJointTorques[3];
+
+    requestedTorquePublisher_.publish(requestedJointTorquesMsg_);
+}
+
+void X2DemoMachineROS::publishJointReferencePositions() {
+
+    Eigen::VectorXd& desiredJointPositions = x2DemoState_->getDesiredJointPositions();
+
+    desiredJointReferencePositionsMsg_.data[0] = desiredJointPositions[0];
+    desiredJointReferencePositionsMsg_.data[1] = desiredJointPositions[1];
+    desiredJointReferencePositionsMsg_.data[2] = desiredJointPositions[2];
+    desiredJointReferencePositionsMsg_.data[3] = desiredJointPositions[3];
+
+    referenceJointPositionsPublisher_.publish(desiredJointReferencePositionsMsg_);
+}
+
 void X2DemoMachineROS::setNodeHandle(ros::NodeHandle &nodeHandle) {
     nodeHandle_ = &nodeHandle;
 }
@@ -138,4 +186,105 @@ bool X2DemoMachineROS::calibrateIMUCallback(std_srvs::Trigger::Request &req, std
 
 //    robot_->calibrateContactIMUAngles(2.0);
     return true;
+}
+
+void X2DemoMachineROS::updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains) {
+    x2DemoState_->jointControllers[0](gains->data[0], gains->data[1]);
+    x2DemoState_->jointControllers[1](gains->data[2], gains->data[3]);
+    x2DemoState_->jointControllers[2](gains->data[4], gains->data[5]);
+    x2DemoState_->jointControllers[3](gains->data[6], gains->data[7]);
+}
+
+void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas) {
+    double hip_alpha1 = alphas->data[0];
+    double hip_alpha2 = alphas->data[1];
+    double knee_alpha1 = alphas->data[2];
+    double knee_alpha2 = alphas->data[3];
+
+    x2DemoState_->jointControllers[0].pop();
+    x2DemoState_->jointControllers[1].pop();
+    x2DemoState_->jointControllers[2].pop();
+    x2DemoState_->jointControllers[3].pop();
+
+    x2DemoState_->jointControllers[0].bind(
+        [hip_alpha1, hip_alpha2](auto& Kp, auto& Ki, auto& Kd) {
+            auto limit = std::sqrt(Kp);
+
+            if (Kd < hip_alpha1 * limit) {
+                Kd = hip_alpha1 * limit;
+            } else if (Kd > hip_alpha2 * limit) {
+                Kd = hip_alpha2 * limit;
+            }
+        }
+    );
+
+    x2DemoState_->jointControllers[1].bind(
+        [knee_alpha1, knee_alpha2](auto& Kp, auto& Ki, auto& Kd) {
+            auto limit = std::sqrt(Kp);
+
+            if (Kd < knee_alpha1 * limit) {
+                Kd = knee_alpha1 * limit;
+            } else if (Kd > knee_alpha2 * limit) {
+                Kd = knee_alpha2 * limit;
+            }
+        }
+    );
+
+    x2DemoState_->jointControllers[2].bind(
+        [hip_alpha1, hip_alpha2](auto& Kp, auto& Ki, auto& Kd) {
+            auto limit = std::sqrt(Kp);
+
+            if (Kd < hip_alpha1 * limit) {
+                Kd = hip_alpha1 * limit;
+            } else if (Kd > hip_alpha2 * limit) {
+                Kd = hip_alpha2 * limit;
+            }
+        }
+    );
+
+    x2DemoState_->jointControllers[3].bind(
+        [knee_alpha1, knee_alpha2](auto& Kp, auto& Ki, auto& Kd) {
+            auto limit = std::sqrt(Kp);
+
+            if (Kd < knee_alpha1 * limit) {
+                Kd = knee_alpha1 * limit;
+            } else if (Kd > knee_alpha2 * limit) {
+                Kd = knee_alpha2 * limit;
+            }
+        }
+    );
+}
+
+void X2DemoMachineROS::updateExternalTorquesCallback(const std_msgs::Float64MultiArray::ConstPtr& externalTorques) {
+
+    auto joint0_debug_torque = externalTorques->data[0];
+    auto joint1_debug_torque = externalTorques->data[1];
+    auto joint2_debug_torque = externalTorques->data[2];
+    auto joint3_debug_torque = externalTorques->data[3];
+    auto torqueLimit = externalTorques->data[4];
+    auto refPos1 = externalTorques->data[5];
+    auto refPos2 = externalTorques->data[6];
+    auto refPosPeriod = floor(externalTorques->data[7]);
+    auto rateLimit = externalTorques->data[8];
+
+    x2DemoState_->debugTorques[0] = joint0_debug_torque;
+    x2DemoState_->debugTorques[1] = joint1_debug_torque;
+    x2DemoState_->debugTorques[2] = joint2_debug_torque;
+    x2DemoState_->debugTorques[3] = joint3_debug_torque;
+    x2DemoState_->maxTorqueLimit = torqueLimit;
+    x2DemoState_->refPos1 = refPos1;
+    x2DemoState_->refPos2 = refPos2;
+    x2DemoState_->refPosPeriod = refPosPeriod;
+    x2DemoState_->rateLimit = rateLimit;
+}
+
+void X2DemoMachineROS::updateFrictionCompensationCallback(const std_msgs::Float64MultiArray::ConstPtr& frictionTorques) {
+    x2DemoState_->frictionCompensationTorques[0] = frictionTorques->data[0];
+    x2DemoState_->frictionCompensationTorques[1] = frictionTorques->data[1];
+    x2DemoState_->frictionCompensationTorques[2] = frictionTorques->data[2];
+    x2DemoState_->frictionCompensationTorques[3] = frictionTorques->data[3];
+    x2DemoState_->frictionCompensationTorques[4] = frictionTorques->data[4];
+    x2DemoState_->frictionCompensationTorques[5] = frictionTorques->data[5];
+    x2DemoState_->frictionCompensationTorques[6] = frictionTorques->data[6];
+    x2DemoState_->frictionCompensationTorques[7] = frictionTorques->data[7];
 }

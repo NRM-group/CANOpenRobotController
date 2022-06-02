@@ -2,7 +2,7 @@
 
 #define OWNER ((X2DemoMachine *)owner)
 
-X2DemoMachine::X2DemoMachine(int argc, char *argv[]) {
+X2DemoMachine::X2DemoMachine(int argc, char *argv[], const float updateT) {
 
     ros::init(argc, argv, "x2", ros::init_options::NoSigintHandler);
     ros::NodeHandle nodeHandle("~");
@@ -12,9 +12,9 @@ X2DemoMachine::X2DemoMachine(int argc, char *argv[]) {
     robotName_.erase(0,1); // erase the first character which is '/'
 
 #ifdef SIM
-    robot_ = new X2Robot(nodeHandle, robotName_);
+    robot_ = new X2Robot(nodeHandle, updateT, robotName_);
 #else
-    robot_ = new X2Robot(robotName_);
+    robot_ = new X2Robot(updateT, robotName_);
 #endif
 
     // Create PRE-DESIGNED State Machine events and state objects.
@@ -27,11 +27,10 @@ X2DemoMachine::X2DemoMachine(int argc, char *argv[]) {
      */
 
     // Create state objet
-    x2DemoState_ = new X2DemoState(this, robot_);
+    x2DemoState_ = new X2DemoState(this, robot_, updateT);
 
     // Create ros object
     x2DemoMachineRos_ = new X2DemoMachineROS(robot_, x2DemoState_, nodeHandle);
-
 }
 
 /**

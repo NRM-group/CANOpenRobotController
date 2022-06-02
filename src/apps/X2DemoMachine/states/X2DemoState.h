@@ -13,6 +13,7 @@
 
 #include "State.h"
 #include "X2Robot.h"
+#include "controller.hpp"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -28,6 +29,11 @@
 
 #include <CORC/dynamic_paramsConfig.h>
 
+#define STEP_UP         1
+#define STEP_DOWN       0
+
+#define LIMIT_TORQUE    80 // [Nm]
+
 /**
  * \brief Demo State for the X2DemoMachine
  *
@@ -40,25 +46,46 @@ public:
     void entry(void);
     void during(void);
     void exit(void);
-    X2DemoState(StateMachine *m, X2Robot *exo, const char *name = NULL);
+    X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name = NULL);
 
     Eigen::VectorXd& getDesiredJointTorques();
+    Eigen::VectorXd& getDesiredJointPositions();
+    Eigen::VectorXd& getDesiredJointTorquesPSplit();
+    Eigen::VectorXd& getDesiredJointTorquesISplit();
+    Eigen::VectorXd& getDesiredJointTorquesDSplit();
     Eigen::VectorXd& getDesiredJointVelocities();
-
-    int controller_mode_;
 
     Eigen::VectorXd enableJoints;
 
+    int controller_mode_;
+    double maxTorqueLimit;
+    double rateLimit;
+    double refPos1;
+    double refPos2;
+    int refPosPeriod;
+    GroupController<PDController<double>, X2_NUM_JOINTS> jointControllers;
+    Eigen::VectorXd debugTorques;
+    Eigen::VectorXd frictionCompensationTorques;
 
 private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
+    void vel_limiter(double limit);
+    void addDebugTorques(int joint);
+    void addFrictionCompensationTorques(int joint);
 
-    double t_step_ = 0.003; // 0.003 todo: get from main
+    const int freq_;
+    int t_count_ = 0;
+    int state_ = STEP_DOWN;
 
     std::chrono::steady_clock::time_point time0;
-    Eigen::VectorXd desiredJointTorques_;
+    Eigen::VectorXd desiredJointPositions_;         // the desired joint positions
+    Eigen::VectorXd prevDesiredJointPositions_;     // the previous desired joint position set by rate limiter
     Eigen::VectorXd desiredJointVelocities_;
+    Eigen::VectorXd desiredJointTorques_;
+    Eigen::VectorXd desiredJointTorquesP_;
+    Eigen::VectorXd desiredJointTorquesI_;
+    Eigen::VectorXd desiredJointTorquesD_;
 
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;

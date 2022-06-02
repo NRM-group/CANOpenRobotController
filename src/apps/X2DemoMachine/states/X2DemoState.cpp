@@ -1,15 +1,33 @@
 #include "X2DemoState.h"
 
-X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const char *name) :
-        State(m, name), robot_(exo) {
+X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name) :
+        State(m, name), robot_(exo), freq_(1 / updateT) {
+
+    desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    desiredJointTorquesP_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    desiredJointTorquesI_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    desiredJointTorquesD_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     enableJoints = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+
     kTransperancy_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
     amplitude_ = 0.0;
     period_ = 5.0;
     offset_ = 0.0;
+    refPos1 = 0;
+    refPos2 = 0;
+    refPosPeriod = 5;
 
+    debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    frictionCompensationTorques = Eigen::VectorXd::Zero(8);
+
+    jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
+    jointControllers[0].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[2].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[3].bind([](auto& Kp, auto& Ki, auto& Kd){});
 }
 
 void X2DemoState::entry(void) {
@@ -28,66 +46,258 @@ void X2DemoState::entry(void) {
 
 void X2DemoState::during(void) {
 
-#ifndef SIM
-    // GREEN BUTTON IS THE DEAD MAN SWITCH --> if it is not pressed, all motor torques are set to 0. Except controller 2 which sets 0 velocity
-    if(robot_->getButtonValue(ButtonColor::GREEN) == 0 && controller_mode_ !=2){
-        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
-        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        robot_->setTorque(desiredJointTorques_);
+//#ifndef SIM
+//    // GREEN BUTTON IS THE DEAD MAN SWITCH --> if it is not pressed, all motor torques are set to 0. Except controller 2 which sets 0 velocity
+//    if(robot_->getButtonValue(ButtonColor::GREEN) == 0 && controller_mode_ !=2){
+//        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
+//        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+//        robot_->setTorque(desiredJointTorques_);
+//
+//        return;
+//    }
+//#endif
 
-        return;
-    }
-#endif
+    jointControllers.set_limit(-maxTorqueLimit, maxTorqueLimit);
 
-    if(controller_mode_ == 1){ // zero torque mode
+    if(controller_mode_ == 0){                                          // all joints step torque controller 
 
-        if(robot_->getControlMode()!=CM_TORQUE_CONTROL){
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+
             robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
         }
 
-        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        robot_->setTorque(desiredJointTorques_);
+        // switch between two set joint positions
+        switch(state_) {
 
-    } else if(controller_mode_ == 2){ // zero velocity mode
-        if(robot_->getControlMode()!=CM_VELOCITY_CONTROL) robot_->initVelocityControl();
+            case STEP_UP:
 
-        desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        robot_->setVelocity(desiredJointVelocities_);
+                    desiredJointPositions_[0] = deg2rad(refPos1);
+                    desiredJointPositions_[1] = deg2rad(refPos1);
+                    desiredJointPositions_[2] = deg2rad(refPos1);
+                    desiredJointPositions_[3] = deg2rad(refPos1);
+                if (!(t_count_ % (refPosPeriod * freq_))) {
 
-    } else if(controller_mode_ == 3){ // " a very simple (and not ideal) transparent controller"
-        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
+                    state_ = STEP_DOWN;
+                    t_count_ = 0;
+                }
+                break;
+            case STEP_DOWN:
 
-        std::cout<<"force: "<<robot_->getSmoothedInteractionForce()[2]<<std::endl;
-        std::cout<<"multiplied: "<<kTransperancy_.asDiagonal()*robot_->getSmoothedInteractionForce()<<std::endl;
-        desiredJointTorques_ = robot_->getPseudoInverseOfSelectionMatrixTranspose()*
-                (robot_->getFeedForwardTorque() + kTransperancy_.asDiagonal()*robot_->getSmoothedInteractionForce());
+                    desiredJointPositions_[0] = deg2rad(refPos2);
+                    desiredJointPositions_[1] = deg2rad(refPos2);
+                    desiredJointPositions_[2] = deg2rad(refPos2);
+                    desiredJointPositions_[3] = deg2rad(refPos2);
+                if (!(t_count_ % (refPosPeriod * freq_))) {
 
-
-        for(int id = 0; id <X2_NUM_JOINTS; id++) desiredJointTorques_[id] *= enableJoints[id];
-
-        robot_->setTorque(desiredJointTorques_);
-
-    } else if(controller_mode_ == 4){ // sin vel
-        if(robot_->getControlMode()!=CM_VELOCITY_CONTROL) robot_->initVelocityControl();
-
-        double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
-        for(int joint = 0; joint < X2_NUM_JOINTS; joint++)
-        {
-        desiredJointVelocities_[joint] = enableJoints[joint]*amplitude_*sin(2.0*M_PI/period_*time);
+                    state_ = STEP_UP;
+                    t_count_ = 0;
+                }
+                break;
         }
 
-        robot_->setVelocity(desiredJointVelocities_);
+        // make sure desiredJointPositions_ is velocity limited
+        vel_limiter(deg2rad(rateLimit));
 
-    } else if(controller_mode_ == 5){ // sin torque
-        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
 
-        double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
-        for(int joint = 0; joint < X2_NUM_JOINTS; joint++)
-        {
-            desiredJointTorques_[joint] = enableJoints[joint]*amplitude_*sin(2.0*M_PI/period_*time);
-        }
+        desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+        desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
+        desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
+
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compensation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
+
         robot_->setTorque(desiredJointTorques_);
+        t_count_++;
+    } else if (controller_mode_ == 1) {                                 // sin torque
+    
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
 
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
+
+        double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count() / 1000.0;
+        for(int joint = 0; joint < X2_NUM_JOINTS; joint++) {
+            desiredJointTorques_[joint] = enableJoints[joint] * amplitude_ * sin(2.0 * M_PI / period_ * time);
+        }
+
+        desiredJointTorquesP_ << 0, 0, 0, 0;
+        desiredJointTorquesD_ << 0, 0, 0, 0;
+
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
+
+        robot_->setTorque(desiredJointTorques_);
+    } else if (controller_mode_ == 2) {                                 // no step
+
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
+
+        desiredJointPositions_ << 0.0, 0.0, 0.0, 0.0;
+
+        vel_limiter(deg2rad(rateLimit));
+
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+        desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+
+        desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
+        desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
+
+
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
+
+        robot_->setTorque(desiredJointTorques_);
+    } else if (controller_mode_ == 3) {                                // left hip with locked left knee control mode
+
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
+
+        // switch between two set joint positions
+        switch(state_) {
+
+            case STEP_UP:
+
+                    desiredJointPositions_[0] = -deg2rad(20);
+                    desiredJointPositions_[1] = -deg2rad(0);
+                    desiredJointPositions_[2] = -deg2rad(20);
+                    desiredJointPositions_[3] = -deg2rad(20);
+                if (!(t_count_ % (5 * freq_))) {
+
+                    state_ = STEP_DOWN;
+                    t_count_ = 0;
+                }
+                break;
+            case STEP_DOWN:
+
+                    desiredJointPositions_[0] = -deg2rad(10);
+                    desiredJointPositions_[1] = -deg2rad(0);
+                    desiredJointPositions_[2] = -deg2rad(10);
+                    desiredJointPositions_[3] = -deg2rad(10);
+                if (!(t_count_ % (5 * freq_))) {
+
+                    state_ = STEP_UP;
+                    t_count_ = 0;
+                }
+                break;
+        }
+
+        vel_limiter(deg2rad(rateLimit));
+
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+
+        desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+        desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
+        desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
+
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
+
+        robot_->setTorque(desiredJointTorques_);
+        t_count_++;
+    } else if (controller_mode_ == 4) {                                  // right hip with right knee locked control mode
+
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
+
+        // switch between two set joint positions
+        switch(state_) {
+
+            case STEP_UP:
+
+                    desiredJointPositions_[0] = -deg2rad(20);
+                    desiredJointPositions_[1] = -deg2rad(20);
+                    desiredJointPositions_[2] = -deg2rad(20);
+                    desiredJointPositions_[3] = -deg2rad(0);
+                if (!(t_count_ % (5 * freq_))) {
+
+                    state_ = STEP_DOWN;
+                    t_count_ = 0;
+                }
+                break;
+            case STEP_DOWN:
+
+                    desiredJointPositions_[0] = -deg2rad(10);
+                    desiredJointPositions_[1] = -deg2rad(10);
+                    desiredJointPositions_[2] = -deg2rad(10);
+                    desiredJointPositions_[3] = -deg2rad(0);
+                if (!(t_count_ % (5 * freq_))) {
+
+                    state_ = STEP_UP;
+                    t_count_ = 0;
+                }
+                break;
+        }
+
+        vel_limiter(deg2rad(rateLimit));
+
+        auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+
+        desiredJointTorques_ << torques[0], torques[1], torques[2], torques[3];
+        desiredJointTorquesP_ << jointControllers[0].p(), jointControllers[1].p(), jointControllers[2].p(), jointControllers[3].p();
+        desiredJointTorquesD_ << jointControllers[0].d(), jointControllers[1].d(), jointControllers[2].d(), jointControllers[3].d();
+
+        // add debug torques to all joints based on the torque direction being applied
+        addDebugTorques(0);
+        addDebugTorques(1);
+        addDebugTorques(2);
+        addDebugTorques(3);
+
+        // add friction compenstation torques to all joints based on the torque direction being applied
+        addFrictionCompensationTorques(0);
+        addFrictionCompensationTorques(1);
+        addFrictionCompensationTorques(2);
+        addFrictionCompensationTorques(3);
+
+        robot_->setTorque(desiredJointTorques_);
+        t_count_++;
     }
 }
 
@@ -125,10 +335,95 @@ void X2DemoState::dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t
     return;
 }
 
+void X2DemoState::vel_limiter(double limit) {
+
+    auto dJointPositions = desiredJointPositions_ - prevDesiredJointPositions_;
+    double maxJointPositionDelta = abs(limit / freq_);
+
+    double newDesiredJointPosition = 0;
+    for (int i = 0; i < dJointPositions.size(); i++) {
+
+        if (abs(dJointPositions[i]) > maxJointPositionDelta) {
+
+            if (dJointPositions[i] > 0) {
+                newDesiredJointPosition = prevDesiredJointPositions_[i] + maxJointPositionDelta; 
+            } else {
+                newDesiredJointPosition = prevDesiredJointPositions_[i] - maxJointPositionDelta;
+            }
+
+            desiredJointPositions_[i] = newDesiredJointPosition;
+            prevDesiredJointPositions_[i] = newDesiredJointPosition;
+        }
+
+    } 
+}
+
+void X2DemoState::addDebugTorques(int joint) {
+
+    // account for torque sign
+    auto externalTorque = debugTorques[joint];
+
+    if (abs(desiredJointTorques_[joint] + externalTorque) < maxTorqueLimit) {
+        desiredJointTorques_[joint] += externalTorque;
+    } else if (desiredJointTorques_[joint] + externalTorque > 0) {
+        desiredJointTorques_[joint] = maxTorqueLimit;
+    } else {
+        desiredJointTorques_[joint] = -maxTorqueLimit;
+    }
+}
+
+void X2DemoState::addFrictionCompensationTorques(int joint) {
+
+    // account for torque sign
+    auto externalTorquePos = frictionCompensationTorques[2 * joint]; 
+    auto externalTorqueNeg = frictionCompensationTorques[2 * joint + 1];
+
+    if (desiredJointTorques_[joint] == 0) {
+        externalTorquePos = 0;
+        externalTorqueNeg = 0;
+    }
+
+    if (desiredJointTorques_[joint] > 0) {
+
+        if (abs(desiredJointTorques_[joint] + externalTorquePos) < maxTorqueLimit) {
+            desiredJointTorques_[joint] += externalTorquePos;
+        } else if (desiredJointTorques_[joint] + externalTorquePos > 0) {
+            desiredJointTorques_[joint] = maxTorqueLimit;
+        } else {
+            desiredJointTorques_[joint] = -maxTorqueLimit;
+        }
+    } else if (desiredJointTorques_[joint] < 0) {
+
+        if (abs(desiredJointTorques_[joint] + externalTorqueNeg) < maxTorqueLimit) {
+            desiredJointTorques_[joint] += externalTorqueNeg;
+        } else if (desiredJointTorques_[joint] + externalTorqueNeg > 0) {
+            desiredJointTorques_[joint] = maxTorqueLimit;
+        } else {
+            desiredJointTorques_[joint] = -maxTorqueLimit;
+        }
+    }
+}
+
 Eigen::VectorXd &X2DemoState::getDesiredJointTorques() {
     return desiredJointTorques_;
 }
 
-Eigen::VectorXd & X2DemoState::getDesiredJointVelocities() {
+Eigen::VectorXd &X2DemoState::getDesiredJointVelocities() {
     return desiredJointVelocities_;
+}
+
+Eigen::VectorXd &X2DemoState::getDesiredJointTorquesPSplit() {
+    return desiredJointTorquesP_;
+}
+
+Eigen::VectorXd &X2DemoState::getDesiredJointTorquesISplit() {
+    return desiredJointTorquesI_;
+}
+
+Eigen::VectorXd &X2DemoState::getDesiredJointTorquesDSplit() {
+    return desiredJointTorquesD_;
+}
+
+Eigen::VectorXd &X2DemoState::getDesiredJointPositions() {
+    return desiredJointPositions_;
 }

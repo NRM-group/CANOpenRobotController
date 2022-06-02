@@ -75,7 +75,7 @@ void app_programStart();
 /**
  * /brief Function is called before CO_init()
  */
-void app_communicationReset(int argc = 0, char *argv[] = {});
+void app_communicationReset(int argc = 0, char *argv[] = {}, const float updateT = 1);
 
 /**
  * \brief Function is called just before program ends.

@@ -45,7 +45,7 @@ class State {
      * \param p Pointer to the owning state machine
      * \param n Name of the state machine
      */
-    State(StateMachine *p, const char n[] = NULL): owner(p), numarcs(0) {
+    State(StateMachine *p, const char n[] = NULL): owner(p), numarcs(0){
         if(n==NULL)
             name = "";
         else

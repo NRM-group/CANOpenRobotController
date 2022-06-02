@@ -30,6 +30,7 @@
  * limitations under the License.
  */
 #include "application.h"
+#include <iostream>
 /* Threads and thread safety variables***********************************************************/
 /**
  * Mutex is locked, when CAN is not valid (configuration state).
@@ -51,8 +52,8 @@ static int rt_thread_epoll_fd; /*!< epoll file descriptor for rt thread */
 static int rtControlPriority = 80; /*!< priority of application thread */
 static void *rt_control_thread(void *arg);
 static pthread_t rt_control_thread_id;
-const float controlLoopPeriodInms = 10;   /*!< Define the control loop period (in ms): the period of rt_control_thread loop. */
-const float CANUpdateLoopPeriodInms = 10; /*!< Define the CAN PDO sync message period (and so PDO update rate). In ms. Less than 3 can lead to unstable communication  */
+const float controlLoopPeriodInms = 3;   /*!< Define the control loop period (in ms): the period of rt_control_thread loop. */
+const float CANUpdateLoopPeriodInms = 3; /*!< Define the CAN PDO sync message period (and so PDO update rate). In ms. Less than 3 can lead to unstable communication  */
 CO_NMT_reset_cmd_t reset_local = CO_RESET_NOT;
 
 /** @brief Task Timer used for the Control Loop*/
@@ -207,7 +208,7 @@ int main(int argc, char *argv[]) {
 
         CO_configure();
         /* Execute optional additional application code */
-        app_communicationReset(argc, argv);
+        app_communicationReset(argc, argv, controlLoopPeriodInms / 1000);
 
 
         /* initialize CANopen with CAN interface and nodeID */
@@ -389,7 +390,7 @@ static void inc_period(struct period_info *pinfo) {
 }
 static void periodic_task_init(struct period_info *pinfo) {
     /* for simplicity, hardcoding a 1ms period */
-    pinfo->period_ns = controlLoopPeriodInms * 1000000;
+    pinfo->period_ns = static_cast<long>(controlLoopPeriodInms * 1000000);
 
     clock_gettime(CLOCK_MONOTONIC, &(pinfo->next_period));
 }
