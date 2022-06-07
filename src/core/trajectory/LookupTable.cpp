@@ -94,13 +94,23 @@ void LookupTable::interpolateTrajectories(void) {
                 //Identify the end points associated with the series of NANs
                 double startPoint = csvData(i,j);
                 int endRow = i+1;
-                while(csvData(endRow,j) != csvData(endRow, j)) {
+                while(csvData(endRow,j) != csvData(endRow, j)) { //Check if this is a Nan
                     endRow++;
                 }
                 //The row wil be the endpoint of the interpolation
-                double endPoint = csvData(endRow, j);
-                std::vector<double> values {startPoint, endPoint};
-                std::vector<int> rows{i, endRow};
+                double endPoint;
+                std::vector<double> values;
+                std::vector<int> rows;
+                if(endRow >= 100) {
+                    double endPoint = csvData(endRow%100, j);
+                    values =  {startPoint, endPoint};
+                    rows = {i, endRow};   
+                } else {
+                    double endPoint = csvData(endRow, j);
+                    values = {startPoint, endPoint};
+                    rows = {i, endRow};
+                
+                }
                 LookupTable::interpolatePoints(values, rows, j);
                 i = endRow - 1; //skip all the rows it just defined
             }
@@ -160,7 +170,7 @@ double LookupTable::getPosition(int jointNo, double index) {
 
     if(index >= pointNo)
     {
-        index = index - pointNo;
+        index = index - pointNo * (int(index/pointNo));
     } else if(index < 0) 
     {
         throw std::invalid_argument("index must be positive!");   
