@@ -93,6 +93,7 @@ void LookupTable::interpolateTrajectories(void) {
             if(nanBelow(i, j)) {
                 //Identify the end points associated with the series of NANs
                 double startPoint = csvData(i,j);
+                // FIXME: error here when checking the last row - going to have a memory error
                 int endRow = i+1;
                 while(csvData(endRow,j) != csvData(endRow, j)) {
                     endRow++;

@@ -19,6 +19,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     refPos1 = 0;
     refPos2 = 0;
     refPosPeriod = 5;
+    rateLimit = 0.0;
 
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     frictionCompensationTorques = Eigen::VectorXd::Zero(8);
@@ -54,8 +55,7 @@ void X2DemoState::entry(void) {
 void X2DemoState::during(void) {
 
 //#ifndef SIM
-//    // GREEN BUTTON IS THE DEAD MAN SWITCH --> if it is not pressed, all motor torques are set to 0. Except controller 2 which sets 0 velocity
-//    if(robot_->getButtonValue(ButtonColor::GREEN) == 0 && controller_mode_ !=2){
+//    // GREEN BUTTON IS THE DEAD MAN SWITCH --> if it is not pressed, all motor torques are set to 0. Except controller 2 which sets 0 velocity //    if(robot_->getButtonValue(ButtonColor::GREEN) == 0 && controller_mode_ !=2){
 //        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
 //        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
 //        robot_->setTorque(desiredJointTorques_);
@@ -357,7 +357,7 @@ void X2DemoState::during(void) {
         }
 
         // TODO: fix the vel_limiter code as it is no longer running at 333 Hz, but rather at 10 Hz
-        // vel_limiter(deg2rad(rateLimit));
+        vel_limiter(deg2rad(rateLimit));
 
         auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
         
