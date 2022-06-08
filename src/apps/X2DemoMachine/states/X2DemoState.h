@@ -34,6 +34,11 @@
 
 #define LIMIT_TORQUE    80 // [Nm]
 
+#define LEFT_HIP        0
+#define LEFT_KNEE       1
+#define RIGHT_HIP       2
+#define RIGHT_KNEE      3
+
 /**
  * \brief Demo State for the X2DemoMachine
  *

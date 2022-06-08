@@ -21,6 +21,6 @@
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find x2_description)/rviz/view_robot.rviz"/>
 
   <!-- rqt_gui-->
-  <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui" args = "--perspective-file $(find CORC)/config/x2.perspective"/>
+  <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui" args = "--perspective-file $(find CORC)/config/simple_x2.perspective"/>
 
 </launch>
