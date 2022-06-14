@@ -14,6 +14,7 @@
 #include "State.h"
 #include "X2Robot.h"
 #include "controller.hpp"
+#include "LookupTable.h"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -95,6 +96,11 @@ private:
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;
 
+    LookupTable posReader;
+    timespec prevTime;
+    int gaitIndex;
+    double trajTime;
+    double currTrajProgress;
 };
 
 #endif

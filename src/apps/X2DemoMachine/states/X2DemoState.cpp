@@ -29,6 +29,13 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
     jointControllers[2].bind([](auto& Kp, auto& Ki, auto& Kd){});
     jointControllers[3].bind([](auto& Kp, auto& Ki, auto& Kd){});
+
+    posReader = LookupTable(X2_NUM_JOINTS);
+    posReader.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/src/apps/X2DemoMachine/gaits/GaitTrajectory_220602_1605.csv");
+    clock_gettime(CLOCK_MONOTONIC, &prevTime);
+    currTrajProgress = 0;
+    gaitIndex = 0;
+    trajTime = 2;
 }
 
 void X2DemoState::entry(void) {
@@ -158,6 +165,56 @@ void X2DemoState::during(void) {
 
         // increment callback counter
         t_count_++;
+    } else if (controller_mode_ == 3) {                                 // custom trajectory following mode
+
+        // switch motor control mode to torque control
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
+
+        timespec currTime;
+        clock_gettime(CLOCK_MONOTONIC, &currTime);
+
+        double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
+        prevTime = currTime;
+        currTrajProgress += timeElapsed; 
+        double progress = currTrajProgress / trajTime;
+        trajTime = period_;
+
+        int trajIndexes = 1;
+        Eigen::VectorXd start(4);
+        Eigen::VectorXd end(4);
+
+        if(progress >= 1) {
+            //When you have finished this linear point, move on to the next stage
+            currTrajProgress = 0;
+            gaitIndex += trajIndexes;
+            return;
+        }
+
+        for(int j = 0; j < X2_NUM_JOINTS; j++) {
+            
+            start[j] = posReader.getPosition(j, gaitIndex);
+            end[j] = posReader.getPosition(j, gaitIndex + trajIndexes);
+            desiredJointPositions_[j] = (start[j] + progress * (end[j] - start[j]));
+
+            if (j == LEFT_HIP || j == RIGHT_HIP) {
+                // check hip bounds
+                if (desiredJointPositions_[j] > deg2rad(120)) {
+                    desiredJointPositions_[j] = deg2rad(120);
+                } else if (desiredJointPositions_[j] < -deg2rad(40)) {
+                    desiredJointPositions_[j] = -deg2rad(40);
+                }
+            } else if (j == LEFT_KNEE || j == RIGHT_KNEE) {
+                // check knee bounds
+                if (desiredJointPositions_[j] < -deg2rad(120)) {
+                    desiredJointPositions_[j] = -deg2rad(120);
+                } else if (desiredJointPositions_[j] > 0) {
+                    desiredJointPositions_[j] = 0;
+                }
+            }
+        }
     }
 
     /* calculate required joint torques */
