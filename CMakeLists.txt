@@ -21,7 +21,7 @@ set (STATE_MACHINE_NAME "X2DemoMachine")
 #set (STATE_MACHINE_NAME "LoggingDevice")
 
 # Comment to use actual hardware, uncomment for a nor robot (virtual) app
-set(NO_ROBOT OFF)
+set(NO_ROBOT ON)
 
 # ROS Flag. set ON if you want to use ROS. Else, set OFF.
 set(USE_ROS ON)
@@ -80,8 +80,8 @@ if(NO_ROBOT)
 endif()
 
 ## Get all source and header files (only the target app folder is included)
-file(GLOB_RECURSE SOURCES "src/core/*.cpp" "src/core/*.c" "src/hardware/*.cpp" "src/hardware/*.c" "src/apps/${STATE_MACHINE_NAME}/*.c" "src/apps/${STATE_MACHINE_NAME}/*.cpp" "lib/FLNL/src/*.cpp")
-file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h*" "lib/controllerlib/src/*.hpp")
+file(GLOB_RECURSE SOURCES "src/core/*.cpp" "src/core/*.c" "src/hardware/*.cpp" "src/hardware/*.c" "src/apps/${STATE_MACHINE_NAME}/*.c" "src/apps/${STATE_MACHINE_NAME}/*.cpp" "lib/FLNL/src/*.cpp" "lib/trajectorylib/src/*.cpp")
+file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h*" "lib/controllerlib/src/*.hpp" "lib/trajectorylib/src/*.h")
 
 ## Set every folder containing .h file as include directory
 set (INCLUDE_DIRS "")

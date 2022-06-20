@@ -10,3 +10,6 @@
 [submodule "lib/controllerlib"]
 	path = lib/controllerlib
 	url = https://github.com/nrm-group/controllerlib
+[submodule "lib/trajectorylib"]
+	path = lib/trajectorylib
+	url = git@github.com:NRM-group/trajectorylib.git
