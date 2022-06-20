@@ -45,9 +45,9 @@ void X2DemoMachineROS::update() {
     publishJointStates();
     publishInteractionForces();
     publishGroundReactionForces();
+#endif
     publishRequestedJointTorques();
     publishJointReferencePositions();
-#endif
 }
 
 void X2DemoMachineROS::publishJointStates() {
@@ -90,7 +90,7 @@ void X2DemoMachineROS::publishInteractionForces() {
     interactionForceMsg_.name[3] = "right_thigh_force";
     interactionForceMsg_.name[4] = "right_shank_force";
 
-    for(int id = 0; id< X2_NUM_GENERALIZED_COORDINATES; id++){
+    for(int id = 0; id < X2_NUM_GENERALIZED_COORDINATES; id++){
         interactionForceMsg_.data[id] = interactionForces[id];
     }
 
@@ -189,10 +189,31 @@ bool X2DemoMachineROS::calibrateIMUCallback(std_srvs::Trigger::Request &req, std
 }
 
 void X2DemoMachineROS::updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains) {
-    x2DemoState_->jointControllers[0](gains->data[0], gains->data[1]);
-    x2DemoState_->jointControllers[1](gains->data[2], gains->data[3]);
-    x2DemoState_->jointControllers[2](gains->data[4], gains->data[5]);
-    x2DemoState_->jointControllers[3](gains->data[6], gains->data[7]);
+    double left_hip_kp = gains->data[0];
+    double left_hip_kd = gains->data[1];
+    double left_knee_kp = gains->data[2];
+    double left_knee_kd = gains->data[3];
+    double right_hip_kp = gains->data[4];
+    double right_hip_kd = gains->data[5];
+    double right_knee_kp = gains->data[6]; 
+    double right_knee_kd = gains->data[7];
+
+    Eigen::Matrix2d left_kp_gains;
+    Eigen::Matrix2d left_kd_gains;
+    Eigen::Matrix2d right_kp_gains;
+    Eigen::Matrix2d right_kd_gains;
+
+    left_kp_gains << left_hip_kp, 0,
+                     0, left_knee_kp;
+    left_kd_gains << left_hip_kd, 0,
+                     0, left_knee_kd;
+    right_kp_gains << right_hip_kp, 0,
+                      0, right_knee_kp;
+    right_kd_gains << right_hip_kd, 0,
+                      0, right_knee_kd;
+
+    x2DemoState_->jointControllers[0](left_kp_gains, left_kd_gains);
+    x2DemoState_->jointControllers[1](right_kp_gains, right_kd_gains);
 }
 
 void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas) {
@@ -201,58 +222,8 @@ void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray
     double knee_alpha1 = alphas->data[2];
     double knee_alpha2 = alphas->data[3];
 
-    x2DemoState_->jointControllers[0].pop();
-    x2DemoState_->jointControllers[1].pop();
-    x2DemoState_->jointControllers[2].pop();
-    x2DemoState_->jointControllers[3].pop();
-
-    x2DemoState_->jointControllers[0].bind(
-        [hip_alpha1, hip_alpha2](auto& Kp, auto& Ki, auto& Kd) {
-            auto limit = std::sqrt(Kp);
-
-            if (Kd < hip_alpha1 * limit) {
-                Kd = hip_alpha1 * limit;
-            } else if (Kd > hip_alpha2 * limit) {
-                Kd = hip_alpha2 * limit;
-            }
-        }
-    );
-
-    x2DemoState_->jointControllers[1].bind(
-        [knee_alpha1, knee_alpha2](auto& Kp, auto& Ki, auto& Kd) {
-            auto limit = std::sqrt(Kp);
-
-            if (Kd < knee_alpha1 * limit) {
-                Kd = knee_alpha1 * limit;
-            } else if (Kd > knee_alpha2 * limit) {
-                Kd = knee_alpha2 * limit;
-            }
-        }
-    );
-
-    x2DemoState_->jointControllers[2].bind(
-        [hip_alpha1, hip_alpha2](auto& Kp, auto& Ki, auto& Kd) {
-            auto limit = std::sqrt(Kp);
-
-            if (Kd < hip_alpha1 * limit) {
-                Kd = hip_alpha1 * limit;
-            } else if (Kd > hip_alpha2 * limit) {
-                Kd = hip_alpha2 * limit;
-            }
-        }
-    );
-
-    x2DemoState_->jointControllers[3].bind(
-        [knee_alpha1, knee_alpha2](auto& Kp, auto& Ki, auto& Kd) {
-            auto limit = std::sqrt(Kp);
-
-            if (Kd < knee_alpha1 * limit) {
-                Kd = knee_alpha1 * limit;
-            } else if (Kd > knee_alpha2 * limit) {
-                Kd = knee_alpha2 * limit;
-            }
-        }
-    );
+    x2DemoState_->jointControllers[0].set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
+    x2DemoState_->jointControllers[1].set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
 }
 
 void X2DemoMachineROS::updateExternalTorquesCallback(const std_msgs::Float64MultiArray::ConstPtr& externalTorques) {

@@ -24,11 +24,8 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     frictionCompensationTorques = Eigen::VectorXd::Zero(8);
 
-    jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
-    jointControllers[0].bind([](auto& Kp, auto& Ki, auto& Kd){});
-    jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
-    jointControllers[2].bind([](auto& Kp, auto& Ki, auto& Kd){});
-    jointControllers[3].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[0].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
+    jointControllers[1].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
 
     posReader = LookupTable(X2_NUM_JOINTS);
     posReader.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/src/apps/X2DemoMachine/gaits/GaitTrajectory_220602_1605.csv");
@@ -55,7 +52,8 @@ void X2DemoState::entry(void) {
 void X2DemoState::during(void) {
 
     // set maximum joint torque limits
-    jointControllers.set_limit(-maxTorqueLimit, maxTorqueLimit);
+    jointControllers[0].set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
+    jointControllers[1].set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
 
     if(controller_mode_ == 0){                                          // all joints step torque controller 
 
@@ -223,14 +221,11 @@ void X2DemoState::during(void) {
     vel_limiter(deg2rad(rateLimit));
 
     // obtain required joint torques from control loop to reach desiredJointPositions_
-    auto torques = jointControllers.loop(desiredJointPositions_.data(), robot_->getPosition().data());
+    desiredJointTorques_ = jointControllers.loop(desiredJointPositions_, robot_->getPosition());
 
     // store control loop torques for future use
-    for (size_t i = 0; i < X2_NUM_JOINTS; i++) {
-        desiredJointTorques_[i] = torques[i];
-        desiredJointTorquesP_[i] =  jointControllers[i].p();
-        desiredJointTorquesD_[i] = jointControllers[i].d();
-    }
+    desiredJointTorquesP_ = jointControllers.get_p();
+    desiredJointTorquesD_ = jointControllers.get_d();
 
     // add debug torques and friction compensation torques to all joints based on the torque direction being applied
     for (size_t i = 0; i < X2_NUM_JOINTS; i++) {

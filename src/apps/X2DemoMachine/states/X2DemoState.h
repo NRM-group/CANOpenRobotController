@@ -69,7 +69,7 @@ public:
     double refPos1;
     double refPos2;
     int refPosPeriod;
-    GroupController<PDController<double>, X2_NUM_JOINTS> jointControllers;
+    PDX2<double, X2_NUM_JOINTS / 2> jointControllers;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
 
