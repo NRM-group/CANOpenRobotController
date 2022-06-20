@@ -178,7 +178,7 @@ void X2DemoState::during(void) {
         prevTime = currTime;
         currTrajProgress += timeElapsed; 
         double progress = currTrajProgress / trajTime;
-        trajTime = period_;
+        trajTime = period_ / 10;
 
         int trajIndexes = 1;
         Eigen::VectorXd start(4);
