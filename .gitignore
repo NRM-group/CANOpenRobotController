@@ -11,4 +11,5 @@ bbbxc
 EXO_APP_2020
 cmake-build-debug/
 
-./src/apps/X2DemoMachine/gaits/*.csv
+./src/apps/X2DemoMachine/gaits/*
+./src/apps/X2Machine/gaits/*
