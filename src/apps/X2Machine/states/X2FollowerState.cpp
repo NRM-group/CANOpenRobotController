@@ -34,7 +34,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     jointControllers[1].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
 
     posReader = LookupTable(X2_NUM_JOINTS);
-    posReader.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/src/apps/X2Machine/gaits/GaitTrajectory_220602_1605.csv");
+    posReader.readCSV("/home/kermit/catkin_ws/src/CORC/lib/trajectorylib/gaits/GaitTrajectory_220602_1605.csv");
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     gaitIndex = 0;
