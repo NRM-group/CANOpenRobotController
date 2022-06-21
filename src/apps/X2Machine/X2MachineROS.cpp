@@ -8,13 +8,16 @@ X2MachineROS::X2MachineROS(X2Robot* robot, X2FollowerState* x2FollowerState, ros
     requestedJointTorquesMsg_.data.resize(3 * X2_NUM_JOINTS);
     desiredJointReferencePositionsMsg_.data.resize(X2_NUM_JOINTS);
 
+#ifndef SIM  // if simulation, these will be published by Gazebo
+    jointStatePublisher_ = nodeHandle_->advertise<sensor_msgs::JointState>("joint_states", 10);
+#endif
+
     gainUpdateSubscriber_ = nodeHandle_->subscribe("joint_gains", 1, &X2MachineROS::updateGainCallback, this);
     gainLimitUpdateSubscriber_ = nodeHandle_->subscribe("joint_gain_coeff", 1, &X2MachineROS::updateGainLimitCallback, this); 
     requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_reference", 10);
     frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compensation", 1, &X2MachineROS::updateFrictionCompensationCallback, this);
     jointCommandSubscriber_ = nodeHandle_->subscribe("joint_parameters", 1, &X2MachineROS::updateExternalTorquesCallback, this);
-    // getGaitCycle();
 }
 
 X2MachineROS::~X2MachineROS() {
