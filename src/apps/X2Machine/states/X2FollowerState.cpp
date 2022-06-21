@@ -28,13 +28,13 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     rateLimit = 0.0;
 
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    frictionCompensationTorques = Eigen::VectorXd::Zero(8);
+    frictionCompensationTorques = Eigen::VectorXd::Zero(2 * X2_NUM_JOINTS);
 
     jointControllers[0].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
     jointControllers[1].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
 
     posReader = LookupTable(X2_NUM_JOINTS);
-    posReader.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/src/apps/X2DemoMachine/gaits/GaitTrajectory_220602_1605.csv");
+    posReader.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/src/apps/X2Machine/gaits/GaitTrajectory_220602_1605.csv");
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     gaitIndex = 0;
@@ -150,7 +150,6 @@ void X2FollowerState::rateLimiter(double limit) {
 }
 
 void X2FollowerState::addDebugTorques(int joint) {
-
     // account for torque sign
     auto externalTorque = debugTorques[joint];
 
@@ -164,7 +163,6 @@ void X2FollowerState::addDebugTorques(int joint) {
 }
 
 void X2FollowerState::addFrictionCompensationTorques(int joint) {
-
     // account for torque sign
     auto externalTorquePos = frictionCompensationTorques[2 * joint]; 
     auto externalTorqueNeg = frictionCompensationTorques[2 * joint + 1];
@@ -175,7 +173,6 @@ void X2FollowerState::addFrictionCompensationTorques(int joint) {
     }
 
     if (desiredJointTorques_[joint] > 0) {
-
         if (abs(desiredJointTorques_[joint] + externalTorquePos) < maxTorqueLimit) {
             desiredJointTorques_[joint] += externalTorquePos;
         } else if (desiredJointTorques_[joint] + externalTorquePos > 0) {
@@ -184,7 +181,6 @@ void X2FollowerState::addFrictionCompensationTorques(int joint) {
             desiredJointTorques_[joint] = -maxTorqueLimit;
         }
     } else if (desiredJointTorques_[joint] < 0) {
-
         if (abs(desiredJointTorques_[joint] + externalTorqueNeg) < maxTorqueLimit) {
             desiredJointTorques_[joint] += externalTorqueNeg;
         } else if (desiredJointTorques_[joint] + externalTorqueNeg > 0) {
