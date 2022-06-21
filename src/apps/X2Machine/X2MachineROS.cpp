@@ -14,6 +14,7 @@ X2MachineROS::X2MachineROS(X2Robot* robot, X2FollowerState* x2FollowerState, ros
     referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_reference", 10);
     frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compensation", 1, &X2MachineROS::updateFrictionCompensationCallback, this);
     jointCommandSubscriber_ = nodeHandle_->subscribe("joint_parameters", 1, &X2MachineROS::updateExternalTorquesCallback, this);
+    // getGaitCycle();
 }
 
 X2MachineROS::~X2MachineROS() {
@@ -165,4 +166,14 @@ void X2MachineROS::updateFrictionCompensationCallback(const std_msgs::Float64Mul
     x2FollowerState_->frictionCompensationTorques[5] = frictionTorques->data[5];
     x2FollowerState_->frictionCompensationTorques[6] = frictionTorques->data[6];
     x2FollowerState_->frictionCompensationTorques[7] = frictionTorques->data[7];
+}
+
+void X2MachineROS::getGaitCycle(void) {
+    spdlog::info("HEEERRRRREEE");
+    if(nodeHandle_->hasParam("/x2/walking_gait")) {
+        nodeHandle_->getParam("/x2/walking_gait", x2FollowerState_->csvFileName);
+        spdlog::info("=================================================SUCCESS===================");
+    } else {
+        spdlog::info("Cannot Retrieve /x2/walking_gait");
+    }
 }
