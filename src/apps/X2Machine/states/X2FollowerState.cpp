@@ -43,7 +43,6 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
 
 void X2FollowerState::entry(void) {
     spdlog::info("Entered Follower State");
-    spdlog::info(csvFileName);
     posReader.readCSV(csvFileName);
     time0 = std::chrono::steady_clock::now();
 }

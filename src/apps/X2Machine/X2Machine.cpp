@@ -82,10 +82,8 @@ bool X2Machine::configureMasterPDOs() {
 std::string X2Machine::getGaitCycle(void) {
     ros::NodeHandle nh;
     std::string str;
-    spdlog::info("Retrieving walking Gait Cycle");
     nh.getParam("/x2/walking_gait", str);
     str.erase(remove(str.begin(), str.end(), ' '), str.end());
     str.erase(remove(str.begin(), str.end(), '\n'), str.end());
-    spdlog::info(str);
     return str;   
 }
