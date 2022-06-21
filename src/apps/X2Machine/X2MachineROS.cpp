@@ -2,7 +2,7 @@
 
 X2MachineROS::X2MachineROS(X2Robot* robot, X2FollowerState* x2FollowerState, ros::NodeHandle& nodeHandle) :
         robot_(robot),
-        x2FollowerState_(x2FollowerState_),
+        x2FollowerState_(x2FollowerState),
         nodeHandle_(&nodeHandle)
 {
     requestedJointTorquesMsg_.data.resize(3 * X2_NUM_JOINTS);

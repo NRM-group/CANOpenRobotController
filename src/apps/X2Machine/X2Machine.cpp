@@ -7,7 +7,7 @@ X2Machine::X2Machine(int argc, char* argv[], const float updateT) {
     ros::init(argc, argv, "x2", ros::init_options::NoSigintHandler);
     ros::NodeHandle nodeHandle("~");
 
-    // get robobt name from node name and remove '/'
+    // get robot name from node name and remove '/'
     robotName_ = ros::this_node::getName();
     robotName_.erase(0, 1);
 
