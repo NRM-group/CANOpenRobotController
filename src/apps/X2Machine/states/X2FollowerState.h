@@ -26,6 +26,7 @@ public:
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
 
+    std::string csvFileName;
     Eigen::VectorXd& getDesiredJointTorques();
     Eigen::VectorXd& getDesiredJointPositions();
     Eigen::VectorXd& getDesiredJointTorquesPSplit();

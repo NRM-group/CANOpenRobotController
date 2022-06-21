@@ -44,7 +44,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
 void X2FollowerState::entry(void) {
     spdlog::info("Entered Follower State");
     spdlog::info(csvFileName);
-    posReader.readCSV("/usr/share/exo/GaitTrajectory_220602_1605.csv");
+    posReader.readCSV(csvFileName);
     time0 = std::chrono::steady_clock::now();
 }
 
@@ -120,6 +120,8 @@ void X2FollowerState::during(void) {
     }
 
     // update motor torques to required values 
+    spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
+    spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
     robot_->setTorque(desiredJointTorques_);
 }
 

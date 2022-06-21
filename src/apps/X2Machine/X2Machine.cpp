@@ -31,6 +31,7 @@ void X2Machine::init() {
     spdlog::info("X2 Initalised");
 
     // create states with ROS features
+    x2FollowerState_->csvFileName = getGaitCycle();
     StateMachine::initialize(x2FollowerState_);
 
     initialised = robot_->initialise();
@@ -76,4 +77,15 @@ void X2Machine::update() {
 bool X2Machine::configureMasterPDOs() {
     spdlog::info("X2 PDOs Configured");
     return robot_->configureMasterPDOs();
+}
+
+std::string X2Machine::getGaitCycle(void) {
+    ros::NodeHandle nh;
+    std::string str;
+    spdlog::info("Retrieving walking Gait Cycle");
+    nh.getParam("/x2/walking_gait", str);
+    str.erase(remove(str.begin(), str.end(), ' '), str.end());
+    str.erase(remove(str.begin(), str.end(), '\n'), str.end());
+    spdlog::info(str);
+    return str;   
 }

@@ -168,12 +168,3 @@ void X2MachineROS::updateFrictionCompensationCallback(const std_msgs::Float64Mul
     x2FollowerState_->frictionCompensationTorques[7] = frictionTorques->data[7];
 }
 
-void X2MachineROS::getGaitCycle(void) {
-    spdlog::info("HEEERRRRREEE");
-    if(nodeHandle_->hasParam("/x2/walking_gait")) {
-        nodeHandle_->getParam("/x2/walking_gait", x2FollowerState_->csvFileName);
-        spdlog::info("=================================================SUCCESS===================");
-    } else {
-        spdlog::info("Cannot Retrieve /x2/walking_gait");
-    }
-}
