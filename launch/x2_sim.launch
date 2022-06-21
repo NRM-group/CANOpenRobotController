@@ -52,8 +52,4 @@
   <!-- CORC -->
   <node name="$(arg ns)" pkg="CORC" type="X2Machine_APP_NOROBOT" output="screen" args="-can vcan0"/>
 
-  <!-- rqt_gui-->
-  <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui" args = "--perspective-file $(find CORC)/config/simple_x2.perspective"/>
-
 </launch>
-
