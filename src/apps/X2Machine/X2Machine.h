@@ -38,6 +38,7 @@ public:
     void initRobot(X2Robot* robot);
     bool configureMasterPDOs();
 
+    std::string getGaitCycle(void);
     X2FollowerState* x2FollowerState_;
 
 
