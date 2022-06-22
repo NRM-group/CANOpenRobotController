@@ -39,7 +39,7 @@ public:
     void exit(void);
     X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name = NULL);
 
-    PDX2<double, X2_NUM_JOINTS / 2> jointControllers;
+    PDX2<> jointControllers;
 
 private:
     const int freq_;
