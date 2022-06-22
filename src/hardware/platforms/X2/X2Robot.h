@@ -39,10 +39,10 @@
 #define STR(x) #x
 
 #ifdef SIM
-#include "controller_manager_msgs/SwitchController.h"
-#include "ros/ros.h"
-#include "sensor_msgs/JointState.h"
-#include "std_msgs/Float64MultiArray.h"
+#include "controller_manager_msgs/srv/switch_controller.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
 #endif
 /**
      * \todo Load in paramaters and dictionary entries from JSON file.
@@ -61,6 +61,8 @@
 // Macros
 #define deg2rad(deg) ((deg)*M_PI / 180.0)
 #define rad2deg(rad) ((rad)*180.0 / M_PI)
+
+using std::placeholders::_1;
 
 /**
  * Structure which is used for joint limits. Defines minimum and maximum limits of the each joint
@@ -242,20 +244,20 @@ private:
 
 
 #ifdef SIM
-    ros::NodeHandle* nodeHandle_;
+    std::shared_ptr<rclcpp::Node> node;
 
-    ros::Publisher positionCommandPublisher_;
-    ros::Publisher velocityCommandPublisher_;
-    ros::Publisher torqueCommandPublisher_;
-    ros::Subscriber jointStateSubscriber_;
-    ros::ServiceClient controllerSwitchClient_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr positionCommandPublisher_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr velocityCommandPublisher_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torqueCommandPublisher_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr jointStateSubscriber_;
+    rclcpp::Client<controller_manager_msgs::srv::SwitchController>::SharedPtr controllerSwitchClient_;
 
-    std_msgs::Float64MultiArray positionCommandMsg_;
-    std_msgs::Float64MultiArray velocityCommandMsg_;
-    std_msgs::Float64MultiArray torqueCommandMsg_;
-    controller_manager_msgs::SwitchController controllerSwitchMsg_;
+    std_msgs::msg::Float64MultiArray positionCommandMsg_;
+    std_msgs::msg::Float64MultiArray velocityCommandMsg_;
+    std_msgs::msg::Float64MultiArray torqueCommandMsg_;
+    std::shared_ptr<controller_manager_msgs::srv::SwitchController::Request> controllerSwitchMsg_;
 
-    void jointStateCallback(const sensor_msgs::JointState& msg);
+    void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg);
 #endif
 #ifdef NOROBOT
     Eigen::VectorXd simJointPositions_;
@@ -277,7 +279,7 @@ public:
       */
 
 #ifdef SIM
-    X2Robot(ros::NodeHandle &nodeHandle, std::string robotName = XSTR(X2_NAME_DEFAULT), std::string yaml_config_file="x2_params.yaml");
+    X2Robot(std::shared_ptr<rclcpp::Node> &node, std::string robotName = XSTR(X2_NAME_DEFAULT), std::string yaml_config_file="x2_params.yaml");
 #else
     X2Robot(std::string robotName = XSTR(X2_NAME_DEFAULT), std::string yaml_config_file="x2_params.yaml");
 #endif
@@ -650,11 +652,11 @@ public:
     /**
        * \brief method to pass the nodeHandle. Only available in SIM mode
        */
-    void setNodeHandle(ros::NodeHandle& nodeHandle);
+    void setNodeHandle(std::shared_ptr<rclcpp::Node> &node);
     /**
        * \brief Initialize ROS services, publisher ans subscribers
       */
-    void initialiseROS(ros::NodeHandle &nodeHandle);
+    void initialiseROS(std::shared_ptr<rclcpp::Node> &node);
 #endif
 };
 #endif /*EXOROBOT_H*/

@@ -21,11 +21,7 @@
 #include <math.h>
 
 // dynamic reconfigure
-#include <dynamic_reconfigure/server.h>
-#include <dynamic_reconfigure/DoubleParameter.h>
-#include <dynamic_reconfigure/Reconfigure.h>
-#include <dynamic_reconfigure/Config.h>
-
+//#include <dynamic_reconfigure/server.h>
 #include <CORC/dynamic_paramsConfig.h>
 
 /**
