@@ -9,9 +9,11 @@ def generate_launch_description():
 	ld = LaunchDescription()
 
 	# Package share path
+	corc_path = get_package_share_directory("CORC")
 	x2_description_path = get_package_share_directory("x2_description")
 
 	# Package share files
+	gait_file = os.path.join(corc_path, "gaits", "walking.csv")
 	rviz_config = os.path.join(x2_description_path, "rviz", "view_robot.rviz")
 	urdf_file = process_file(
 		os.path.join(x2_description_path, "urdf", "x2_fixed_base.urdf.xacro")
@@ -23,7 +25,10 @@ def generate_launch_description():
 		executable="X2Machine_APP",
 		arguments=["-can", "can0"],
 		name="x2",
-		output="screen"
+		output="screen",
+        parameters=[
+            { "walking_gait" : gait_file }
+        ]
 	)
 	robot_state_node = Node(
 		package="robot_state_publisher",

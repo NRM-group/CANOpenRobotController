@@ -37,7 +37,6 @@ void X2Machine::init() {
     // create states with ROS features
     x2FollowerState_->csvFileName = getGaitCycle();
     StateMachine::initialize(x2FollowerState_);
-
     initialised = robot_->initialise();
     time0 = std::chrono::steady_clock::now();
 
@@ -86,12 +85,13 @@ bool X2Machine::configureMasterPDOs() {
 std::string X2Machine::getGaitCycle(void) {
     rclcpp::Parameter str_param;
     std::string str;
+    node_->declare_parameter("walking_gait");
+    node_->get_parameter("walking_gait", str);
 
-    node_->get_parameter("walking_gait", str_param);
-    str = str_param.value_to_string();
 
     str.erase(remove(str.begin(), str.end(), ' '), str.end());
     str.erase(remove(str.begin(), str.end(), '\n'), str.end());
+
 
     return str;   
 }
