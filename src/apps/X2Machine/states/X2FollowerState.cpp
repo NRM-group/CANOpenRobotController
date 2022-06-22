@@ -30,8 +30,8 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     frictionCompensationTorques = Eigen::VectorXd::Zero(2 * X2_NUM_JOINTS);
 
-    jointControllers[0].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
-    jointControllers[1].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
+    jointControllers.left().set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
+    jointControllers.right().set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
 
     posReader = LookupTable(X2_NUM_JOINTS);
     
@@ -50,8 +50,8 @@ void X2FollowerState::entry(void) {
 void X2FollowerState::during(void) {
 
     // set maximum joint torque limits
-    jointControllers[0].set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
-    jointControllers[1].set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
+    jointControllers.left().set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
+    jointControllers.right().set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
 
     // switch motor control mode to torque control
     if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
