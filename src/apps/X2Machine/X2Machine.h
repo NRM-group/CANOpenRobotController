@@ -22,6 +22,7 @@
 #include "StateMachine.h"
 
 #include "X2MachineROS2.h"
+#include "X2FollowerState.h"
 
 class X2Machine : public StateMachine {
 
@@ -53,7 +54,7 @@ private:
     std::chrono::steady_clock::time_point time0;
     double time;
 
-    std::shared_ptr<rclcpp::Node> node;
+    std::shared_ptr<rclcpp::Node> node_;
 };
 
 #endif

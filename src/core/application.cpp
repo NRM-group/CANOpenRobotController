@@ -24,9 +24,9 @@ LoopTiming loopTimer;
 STATE_MACHINE_TYPE *stateMachine;
 
 /******************** RUNS BEFORE CO_init() ********************/
-void app_communicationReset(int argc, char *argv[]) {
+void app_communicationReset(int argc, char *argv[], const float updateT = 1) {
 #ifdef USEROS
-    stateMachine = new STATE_MACHINE_TYPE(argc, argv);
+    stateMachine = new STATE_MACHINE_TYPE(argc, argv, updateT);
 #else
     stateMachine = new STATE_MACHINE_TYPE();
 #endif
