@@ -87,7 +87,7 @@ std::string X2Machine::getGaitCycle(void) {
     rclcpp::Parameter str_param;
     std::string str;
 
-    node_->get_parameter("/x2/walking_gait", str_param);
+    node_->get_parameter("walking_gait", str_param);
     str = str_param.value_to_string();
 
     str.erase(remove(str.begin(), str.end(), ' '), str.end());
