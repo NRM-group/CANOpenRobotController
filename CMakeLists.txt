@@ -3,7 +3,7 @@ project(CORC)
 
 
 # STATE MACHINE (APP)
-set(STATE_MACHINE_NAME "X2DemoMachineROS2")
+set(STATE_MACHINE_NAME "X2Machine")
 set(CORC_LOGGING_LEVEL INFO)
 
 
@@ -30,7 +30,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-	add_compile_options(-Wall -Wextra -Wpedantic)
+	# add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
 if(NOT STATE_MACHINE_NAME)
@@ -46,7 +46,7 @@ endif()
 file(GLOB_RECURSE SOURCES
 	"src/core/*.cpp" "src/core/*.c" "src/hardware/*.cpp" "src/hardware/*.c"
 	"src/apps/${STATE_MACHINE_NAME}/*.c" "src/apps/${STATE_MACHINE_NAME}/*.cpp"
-	"lib/FLNL/src/*.cpp" "lib/spdlog/src/*.cpp"
+	"lib/FLNL/src/*.cpp" "lib/spdlog/src/*.cpp" "lib/trajectorylib/src/*.cpp"
 )
 file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h")
 
@@ -61,6 +61,8 @@ list(APPEND INCLUDE_DIRS lib/)
 list(APPEND INCLUDE_DIRS lib/Eigen/)
 list(APPEND INCLUDE_DIRS lib/FLNL/include/)
 list(APPEND INCLUDE_DIRS lib/spdlog/include/)
+list(APPEND INCLUDE_DIRS lib/controllerlib/src/)
+list(APPEND INCLUDE_DIRS lib/trajectorylib/src/)
 add_subdirectory(lib/yaml-cpp/)
 
 

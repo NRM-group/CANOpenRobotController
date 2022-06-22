@@ -20,7 +20,7 @@ def generate_launch_description():
 	# Nodes
 	robot_node = Node(
 		package="CORC",
-		executable="X2DemoMachineROS2_APP",
+		executable="X2Machine_APP",
 		arguments=["-can", "can0"],
 		name="x2",
 		output="screen"
