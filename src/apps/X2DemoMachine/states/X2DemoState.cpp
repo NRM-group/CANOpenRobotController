@@ -4,6 +4,11 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const char *name) :
         State(m, name), robot_(exo) {
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+
+    startJointPositions_ = robot_->getPosition();
+    currTrajProgress = 0;
+
     enableJoints = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     kTransperancy_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
     amplitude_ = 0.0;
@@ -21,7 +26,10 @@ void X2DemoState::entry(void) {
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig>::CallbackType f;
     f = boost::bind(&X2DemoState::dynReconfCallback, this, _1, _2);
     server_.setCallback(f);
-
+    //Simulation has a length of 360mm
+    legkin.update_lengths(360, 360);
+    desiredCartesianPosition(0) = 400;
+    desiredCartesianPosition(1) = 0;
     time0 = std::chrono::steady_clock::now();
 
 }
@@ -30,15 +38,15 @@ void X2DemoState::during(void) {
 
 #ifndef SIM
     // GREEN BUTTON IS THE DEAD MAN SWITCH --> if it is not pressed, all motor torques are set to 0. Except controller 2 which sets 0 velocity
-    if(robot_->getButtonValue(ButtonColor::GREEN) == 0 && controller_mode_ !=2){
-        if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
-        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        robot_->setTorque(desiredJointTorques_);
+    // if(robot_->getButtonValue(ButtonColor::GREEN) == 0 && controller_mode_ !=2){
+    //     if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
+    //     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    //     robot_->setTorque(desiredJointTorques_);
 
-        return;
-    }
+    //     return;
+    // }
 #endif
-
+    
     if(controller_mode_ == 1){ // zero torque mode
 
         if(robot_->getControlMode()!=CM_TORQUE_CONTROL){
@@ -48,11 +56,54 @@ void X2DemoState::during(void) {
         desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
         robot_->setTorque(desiredJointTorques_);
 
-    } else if(controller_mode_ == 2){ // zero velocity mode
-        if(robot_->getControlMode()!=CM_VELOCITY_CONTROL) robot_->initVelocityControl();
+    } else if(controller_mode_ == 2){ // IK_testing
+        if (robot_->getControlMode()!=CM_POSITION_CONTROL) robot_->initPositionControl();
+        double x = desiredCartesianPosition(0);
+        double y = desiredCartesianPosition(1);
+        Eigen::Matrix<double, 2,1> angles = legkin.inv_kin(x, y);
+        Eigen::VectorXd destination = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        timespec currTime;
+        clock_gettime(CLOCK_MONOTONIC, &currTime);
 
-        desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        robot_->setVelocity(desiredJointVelocities_);
+        
+        double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
+        prevTime = currTime;
+        currTrajProgress += timeElapsed; 
+        double progress = currTrajProgress / trajTime;
+        trajTime = period_;
+        if(progress >= 1) {
+            //When you have finished this linear point, move on to the next stage
+            currTrajProgress = 0;
+            startJointPositions_ = robot_->getPosition();   
+            return;
+        }
+        destination[0] = angles(0);
+        destination[1] = angles(1);
+        destination[2] = angles(0);
+        destination[3] = angles(1);
+        //Interpolate the required changes to get to a location
+        for(int j = 0; j < X2_NUM_JOINTS ; j ++) {
+            desiredJointPositions_[j] = startJointPositions_[j]  + progress * (destination[j] - startJointPositions_[j]);
+            if (j == JOINT_1 || j == JOINT_3) {
+                // check hip bounds
+                if (desiredJointPositions_(j) > deg2rad(120)) {
+                    desiredJointPositions_(j) = deg2rad(120);
+                } else if (desiredJointPositions_(j) < -deg2rad(40)) {
+                    desiredJointPositions_(j) = -deg2rad(40);
+                }
+            } else if (j == JOINT_2 || j == JOINT_4) {
+                // check knee bounds
+                if (desiredJointPositions_(j) < -deg2rad(120)) {
+                    desiredJointPositions_(j) = -deg2rad(120);
+                } else if (desiredJointPositions_(j) > 0) {
+                    desiredJointPositions_(j) = 0;
+                }
+            }
+        }
+
+        robot_->setPosition(desiredJointPositions_);
+        //Increment the position of the legs to meet the deisired joint positions
+
 
     } else if(controller_mode_ == 3){ // " a very simple (and not ideal) transparent controller"
         if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();

@@ -28,6 +28,14 @@
 
 #include <CORC/dynamic_paramsConfig.h>
 
+//Custom includes
+#include "kinematics.hpp"
+
+#define JOINT_1 0
+#define JOINT_2 1
+#define JOINT_3 2
+#define JOINT_4 3
+
 /**
  * \brief Demo State for the X2DemoMachine
  *
@@ -44,7 +52,8 @@ public:
 
     Eigen::VectorXd& getDesiredJointTorques();
     Eigen::VectorXd& getDesiredJointVelocities();
-
+    
+    Eigen::Matrix<double, 2, 1> desiredCartesianPosition; //Vector used for controller 2
     int controller_mode_;
 
     Eigen::VectorXd enableJoints;
@@ -59,10 +68,16 @@ private:
     std::chrono::steady_clock::time_point time0;
     Eigen::VectorXd desiredJointTorques_;
     Eigen::VectorXd desiredJointVelocities_;
+    Eigen::VectorXd desiredJointPositions_;
+    Eigen::VectorXd startJointPositions_; //Used in the position controller
+
+    timespec prevTime;
+    double currTrajProgress;
+    double trajTime;    
 
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;
-
+    LegKinematics<double> legkin;
 };
 
 #endif
