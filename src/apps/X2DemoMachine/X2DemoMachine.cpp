@@ -42,6 +42,7 @@ void X2DemoMachine::init() {
     spdlog::debug("X2DemoMachine::init()");
 
     // Create states with ROS features // This should be created after ros::init()
+    x2DemoState_->csvFileName = getGaitCycle();
     StateMachine::initialize(x2DemoState_);
 
     initialised = robot_->initialise();
@@ -125,4 +126,13 @@ void X2DemoMachine::update() {
 bool X2DemoMachine::configureMasterPDOs() {
     spdlog::debug("X2DemoMachine::configureMasterPDOs()");
     return robot_->configureMasterPDOs();
+}
+
+std::string X2DemoMachine::getGaitCycle() {
+    ros::NodeHandle nh;
+    std::string filepath;
+    nh.getParam("/x2/walking_gait", filepath);
+    filepath.erase(remove(filepath.begin(), filepath.end(), ' '), filepath.end());
+    filepath.erase(remove(filepath.begin(), filepath.end(), '\n'), filepath.end());
+    return filepath;
 }

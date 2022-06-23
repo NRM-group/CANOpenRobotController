@@ -31,7 +31,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     jointControllers[3].bind([](auto& Kp, auto& Ki, auto& Kd){});
 
     posReader = LookupTable(X2_NUM_JOINTS);
-    posReader.readCSV("/home/kermit/catkin_ws/src/CORC/src/apps/X2DemoMachine/gaits/GaitTrajectory_220602_1605.csv");
+    
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     gaitIndex = 0;
@@ -42,7 +42,7 @@ void X2DemoState::entry(void) {
     std::cout << "Example State Entered " << std::endl
               << "===================" << std::endl
               << "===================" << std::endl;
-
+    posReader.readCSV(csvFileName);
     // set dynamic parameter server
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig>::CallbackType f;
     f = boost::bind(&X2DemoState::dynReconfCallback, this, _1, _2);

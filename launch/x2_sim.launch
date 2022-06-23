@@ -28,6 +28,9 @@
   <!-- Run a python script to the send a service call to gazebo_ros to spawn a URDF robot -->
   <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" args="-param $(arg robot_description_name) -urdf -model x2"/>
 
+  <!-- Initialise the parameter that has the csv file-->
+  <param name="x2/walking_gait" type="str" command = "realpath '$(find CORC)/lib/trajectorylib/gaits/walking.csv'"/>
+  
   <!-- Load joint controller configurations from YAML file to parameter server -->
   <rosparam file="$(find CORC)/config/x2_ros_control.yaml" command="load"/>
 

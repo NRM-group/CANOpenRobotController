@@ -55,6 +55,8 @@ public:
     void initRobot(X2Robot *rb);
     bool configureMasterPDOs();
 
+    std::string getGaitCycle(void);
+
     /**
      * Pointers to the relevant states - initialised in init
      *

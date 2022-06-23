@@ -65,6 +65,7 @@ public:
 
     Eigen::VectorXd enableJoints;
 
+    std::string csvFileName;
     int controller_mode_;
     double maxTorqueLimit;
     double rateLimit;
