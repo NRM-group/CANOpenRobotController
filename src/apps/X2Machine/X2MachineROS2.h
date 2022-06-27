@@ -4,9 +4,9 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
-
 #include "rclcpp/rclcpp.hpp"
 
+#include "x2_ik_ros.hpp"
 #include "X2Robot.h"
 #include "states/X2FollowerState.h"
 

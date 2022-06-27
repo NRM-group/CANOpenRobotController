@@ -61,7 +61,7 @@ list(APPEND INCLUDE_DIRS lib/)
 list(APPEND INCLUDE_DIRS lib/Eigen/)
 list(APPEND INCLUDE_DIRS lib/FLNL/include/)
 list(APPEND INCLUDE_DIRS lib/spdlog/include/)
-list(APPEND INCLUDE_DIRS lib/controllerlib/src/)
+list(APPEND INCLUDE_DIRS lib/controllerlib/include/)
 list(APPEND INCLUDE_DIRS lib/trajectorylib/src/)
 add_subdirectory(lib/yaml-cpp/)
 

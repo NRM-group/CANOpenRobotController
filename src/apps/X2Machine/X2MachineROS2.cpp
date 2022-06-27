@@ -29,6 +29,7 @@ X2MachineROS2::~X2MachineROS2() {
 }
 
 void X2MachineROS2::initalise() {
+    rclcpp::spin(std::make_shared<X2IKROS>());
     spdlog::info("X2 ROS state machine initalised");
 }
 
@@ -123,8 +124,8 @@ void X2MachineROS2::updateGainCallback(const std_msgs::msg::Float64MultiArray::S
     right_kd_gains << right_hip_kd, 0,
                       0, right_knee_kd;
 
-    x2FollowerState_->jointControllers.left()(left_kp_gains, left_kd_gains);
-    x2FollowerState_->jointControllers.right()(right_kp_gains, right_kd_gains);
+    // x2FollowerState_->jointControllers.left()(left_kp_gains, left_kd_gains);
+    // x2FollowerState_->jointControllers.right()(right_kp_gains, right_kd_gains);
 }
 
 void X2MachineROS2::updateGainLimitCallback(const std_msgs::msg::Float64MultiArray::SharedPtr alphas) {
@@ -133,8 +134,8 @@ void X2MachineROS2::updateGainLimitCallback(const std_msgs::msg::Float64MultiArr
     double knee_alpha1 = alphas->data[2];
     double knee_alpha2 = alphas->data[3];
 
-    x2FollowerState_->jointControllers.left().set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
-    x2FollowerState_->jointControllers.right().set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
+    // x2FollowerState_->jointControllers.left().set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
+    // x2FollowerState_->jointControllers.right().set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
 }
 
 void X2MachineROS2::updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques) {
