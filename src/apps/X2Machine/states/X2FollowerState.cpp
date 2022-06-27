@@ -27,11 +27,20 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     refPosPeriod = 5;
     rateLimit = 0.0;
 
-    debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    frictionCompensationTorques = Eigen::VectorXd::Zero(2 * X2_NUM_JOINTS);
 
-    jointControllers.left().set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
-    jointControllers.right().set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
+    PDCntrl = new PDController<double, X2_NUM_JOINTS>();
+    ExtCntrl = new ExternalController<double, X2_NUM_JOINTS>();
+    FricCntrl = new FrictionController<double, X2_NUM_JOINTS>();
+    
+    // controllers.insert(std::pair<cntrl, PDController<double, X2_NUM_JOINTS>*>(PD, PDCntrl));
+    // controllers.insert(std::pair<cntrl, ExternalController<double, X2_NUM_JOINTS>*>(Ext, ExtCntrl));
+    // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
+    // // Gravity to be implmented     
+    controllers = {PDCntrl, ExtCntrl, FricCntrl};
+    
+
+
+
 
     posReader = LookupTable(X2_NUM_JOINTS);
     
@@ -50,8 +59,7 @@ void X2FollowerState::entry(void) {
 void X2FollowerState::during(void) {
 
     // set maximum joint torque limits
-    jointControllers.left().set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
-    jointControllers.right().set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
+    // TODO
 
     // switch motor control mode to torque control
     if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
@@ -104,19 +112,13 @@ void X2FollowerState::during(void) {
 
     // limit the desiredJointPositions_ delta from previous callback
     rateLimiter(deg2rad(rateLimit));
+    PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
+    desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    for(auto &cnt : controllers) {
+        desiredJointTorques_ += cnt->output();
 
-    // obtain required joint torques from control loop to reach desiredJointPositions_
-    desiredJointTorques_ = jointControllers.loop(desiredJointPositions_, robot_->getPosition());
-
-    // store control loop torques for future use
-    desiredJointTorquesP_ = jointControllers.get_p();
-    desiredJointTorquesD_ = jointControllers.get_d();
-
-    // add debug torques and friction compensation torques to all joints based on the torque direction being applied
-    for (size_t i = 0; i < X2_NUM_JOINTS; i++) {
-        addDebugTorques(i);
-        addFrictionCompensationTorques(i);
     }
+    // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
     // update motor torques to required values 
     spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);

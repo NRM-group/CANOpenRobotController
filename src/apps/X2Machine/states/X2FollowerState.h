@@ -5,6 +5,8 @@
 #include "X2Robot.h"
 #include "controller.hpp"
 #include "LookupTable.h"
+#include <map>
+
 
 
 #define LIMIT_TORQUE    80 // [Nm]
@@ -38,8 +40,14 @@ public:
     void during(void);
     void exit(void);
     X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name = NULL);
+    
 
-    PDX2<> jointControllers;
+    enum cntrl {PD, Ext, Fric, Grav};
+    PDController<double, X2_NUM_JOINTS>* PDCntrl;
+    ExternalController<double, X2_NUM_JOINTS>* ExtCntrl;
+    FrictionController<double, X2_NUM_JOINTS>* FricCntrl;
+    std::array<BaseController<double, X2_NUM_JOINTS>*, 3> controllers;
+
 
 private:
     const int freq_;
