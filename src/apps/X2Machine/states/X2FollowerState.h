@@ -16,6 +16,9 @@
 #define RIGHT_HIP       2
 #define RIGHT_KNEE      3
 
+#define IK  0
+#define GAIT    1
+
 class X2FollowerState : public State {
     X2Robot* robot_;
 
@@ -27,6 +30,8 @@ public:
     int refPosPeriod;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
+
+    Eigen::VectorXd desiredJointReferences_; //Used to communicate with the IK node
 
     std::string csvFileName;
     Eigen::VectorXd& getDesiredJointTorques();
@@ -49,6 +54,7 @@ public:
     std::array<BaseController<double, X2_NUM_JOINTS>*, 3> controllers;
 
     bool checkSafety(void);
+    
 
 private:
     const int freq_;
@@ -62,6 +68,7 @@ private:
 
     bool safetyFlag;
 
+    int mode;
     std::chrono::steady_clock::time_point time0;
     Eigen::VectorXd desiredJointPositions_;         // the desired joint positions
     Eigen::VectorXd prevDesiredJointPositions_;     // the previous desired joint position set by rate limiter
@@ -70,6 +77,7 @@ private:
     Eigen::VectorXd desiredJointTorquesP_;
     Eigen::VectorXd desiredJointTorquesI_;
     Eigen::VectorXd desiredJointTorquesD_;
+
 
     void rateLimiter(double limit);
     void addDebugTorques(int joint);
