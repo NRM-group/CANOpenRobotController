@@ -37,11 +37,6 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
     // // Gravity to be implmented     
     controllers = {PDCntrl, ExtCntrl, FricCntrl};
-    
-
-
-
-
     posReader = LookupTable(X2_NUM_JOINTS);
     
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
@@ -53,6 +48,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
 void X2FollowerState::entry(void) {
     spdlog::info("Entered Follower State");
     posReader.readCSV(csvFileName);
+    safetyFlag = false; //Initialise with no safetyfkag
     time0 = std::chrono::steady_clock::now();
 }
 
@@ -60,7 +56,10 @@ void X2FollowerState::during(void) {
 
     // set maximum joint torque limits
     // TODO
-
+    //Do not run if the safety flag is triggered
+    if (safetyFlag) {
+        return;
+    }
     // switch motor control mode to torque control
     if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
         robot_->initTorqueControl();
@@ -123,6 +122,7 @@ void X2FollowerState::during(void) {
     // update motor torques to required values 
     spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
     spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+
     robot_->setTorque(desiredJointTorques_);
 }
 
@@ -219,4 +219,15 @@ Eigen::VectorXd &X2FollowerState::getDesiredJointTorquesDSplit() {
 
 Eigen::VectorXd &X2FollowerState::getDesiredJointPositions() {
     return desiredJointPositions_;
+}
+
+bool X2FollowerState::checkSafety() {
+    //Check that the robot's torque has not exceeded the limits
+    for(int i = 0; i < X2_NUM_JOINTS; i++) {
+        if (abs(robot_->getTorque()[i]) > LIMIT_TORQUE) {
+            safetyFlag = true;
+            return true;
+        }
+    }
+    return false;
 }

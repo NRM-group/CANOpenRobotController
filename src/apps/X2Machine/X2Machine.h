@@ -23,6 +23,7 @@
 
 #include "X2MachineROS2.h"
 #include "X2FollowerState.h"
+#include "X2SafetyState.hpp"
 
 class X2Machine : public StateMachine {
 
@@ -44,10 +45,12 @@ public:
 
     std::string getGaitCycle(void);
     X2FollowerState* x2FollowerState_;
+    X2SafetyState* x2SafetyState_;
 
 
 private:
     EventObject(StartExo)* startExo;
+    EventObject(ExitSafe)* exitSafe;
 
     std::string robotName_;
 

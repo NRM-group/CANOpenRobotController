@@ -48,6 +48,7 @@ public:
     FrictionController<double, X2_NUM_JOINTS>* FricCntrl;
     std::array<BaseController<double, X2_NUM_JOINTS>*, 3> controllers;
 
+    bool checkSafety(void);
 
 private:
     const int freq_;
@@ -58,6 +59,8 @@ private:
     int gaitIndex;
     double trajTime;
     double currTrajProgress;
+
+    bool safetyFlag;
 
     std::chrono::steady_clock::time_point time0;
     Eigen::VectorXd desiredJointPositions_;         // the desired joint positions
