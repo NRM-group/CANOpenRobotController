@@ -202,7 +202,6 @@ void X2FollowerState::exit(void) {
 }
 
 void X2FollowerState::torqueLimiter(double limit) {
-    auto dJointTorques = desiredJointTorques_ - prevDesiredJointTorques_;
     for (int i = 0; i < desiredJointTorques_.size() ; i ++) {
         if (desiredJointTorques_[i] > limit) {
             desiredJointTorques_[i] = limit;
@@ -304,9 +303,9 @@ bool X2FollowerState::checkSafety() {
     //Change to differences
     //Check that the robot's torque has not exceeded the limits
 
-    double jerkLim = maxTorqueLimit * 0.25;
+    double jerkLim = abs(maxTorqueLimit * 0.25 / freq_);
     for(int i = 0; i < desiredJointTorques_.size(); i++) {
-        if(abs(desiredJointTorques_[i] - prevDesiredJointTorques_[i])) {
+        if(abs(desiredJointTorques_[i] - prevDesiredJointTorques_[i]) > jerkLim) {
             return true;
         }
     }
