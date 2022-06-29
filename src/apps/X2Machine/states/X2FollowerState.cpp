@@ -203,8 +203,8 @@ void X2FollowerState::exit(void) {
 
 void X2FollowerState::torqueLimiter(double limit) {
     for (int i = 0; i < desiredJointTorques_.size() ; i ++) {
-        if (desiredJointTorques_[i] > limit) {
-            desiredJointTorques_[i] = limit;
+        if (abs(desiredJointTorques_[i]) > limit) {
+            desiredJointTorques_[i] = limit * desiredJointTorques_[i] / desiredJointTorques_[i];
         }
     }
     prevDesiredJointTorques_ = desiredJointTorques_;
