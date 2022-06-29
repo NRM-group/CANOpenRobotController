@@ -86,8 +86,6 @@ private:
     bool calibrateIMUCallback(std_srvs::Trigger::Request& req,
                               std_srvs::Trigger::Response& res);
     
-    void updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains);
-    void updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas);
     void updateFrictionCompensationCallback(const std_msgs::Float64MultiArray::ConstPtr& frictionTorques);
     void updateExternalTorquesCallback(const std_msgs::Float64MultiArray::ConstPtr& externalTorques);
 

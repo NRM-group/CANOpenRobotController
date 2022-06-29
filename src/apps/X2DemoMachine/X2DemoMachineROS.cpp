@@ -23,8 +23,6 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     startHomingService_ = nodeHandle_->advertiseService("start_homing", &X2DemoMachineROS::startHomingCallback, this);
     imuCalibrationService_ = nodeHandle_->advertiseService("calibrate_imu", &X2DemoMachineROS::calibrateIMUCallback, this);
     interactionForceCommand_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    gainUpdateSubscriber_ = nodeHandle_->subscribe("joint_gains", 1, &X2DemoMachineROS::updateGainCallback, this);
-    gainLimitUpdateSubscriber_ = nodeHandle_->subscribe("joint_gain_coeff", 1, &X2DemoMachineROS::updateGainLimitCallback, this); 
     requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_reference", 10);
     frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compensation", 1, &X2DemoMachineROS::updateFrictionCompensationCallback, this);
@@ -186,44 +184,6 @@ bool X2DemoMachineROS::calibrateIMUCallback(std_srvs::Trigger::Request &req, std
 
 //    robot_->calibrateContactIMUAngles(2.0);
     return true;
-}
-
-void X2DemoMachineROS::updateGainCallback(const std_msgs::Float64MultiArray::ConstPtr& gains) {
-    double left_hip_kp = gains->data[0];
-    double left_hip_kd = gains->data[1];
-    double left_knee_kp = gains->data[2];
-    double left_knee_kd = gains->data[3];
-    double right_hip_kp = gains->data[4];
-    double right_hip_kd = gains->data[5];
-    double right_knee_kp = gains->data[6]; 
-    double right_knee_kd = gains->data[7];
-
-    Eigen::Matrix2d left_kp_gains;
-    Eigen::Matrix2d left_kd_gains;
-    Eigen::Matrix2d right_kp_gains;
-    Eigen::Matrix2d right_kd_gains;
-
-    left_kp_gains << left_hip_kp, 0,
-                     0, left_knee_kp;
-    left_kd_gains << left_hip_kd, 0,
-                     0, left_knee_kd;
-    right_kp_gains << right_hip_kp, 0,
-                      0, right_knee_kp;
-    right_kd_gains << right_hip_kd, 0,
-                      0, right_knee_kd;
-
-    x2DemoState_->jointControllers[0](left_kp_gains, left_kd_gains);
-    x2DemoState_->jointControllers[1](right_kp_gains, right_kd_gains);
-}
-
-void X2DemoMachineROS::updateGainLimitCallback(const std_msgs::Float64MultiArray::ConstPtr& alphas) {
-    double hip_alpha1 = alphas->data[0];
-    double hip_alpha2 = alphas->data[1];
-    double knee_alpha1 = alphas->data[2];
-    double knee_alpha2 = alphas->data[3];
-
-    x2DemoState_->jointControllers[0].set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
-    x2DemoState_->jointControllers[1].set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
 }
 
 void X2DemoMachineROS::updateExternalTorquesCallback(const std_msgs::Float64MultiArray::ConstPtr& externalTorques) {

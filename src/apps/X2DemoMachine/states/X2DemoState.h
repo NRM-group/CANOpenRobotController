@@ -53,6 +53,7 @@ public:
     void during(void);
     void exit(void);
     X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, const char *name = NULL);
+    ~X2DemoState(void);
 
     Eigen::VectorXd& getDesiredJointTorques();
     Eigen::VectorXd& getDesiredJointPositions();
@@ -69,14 +70,17 @@ public:
     double refPos1;
     double refPos2;
     int refPosPeriod;
-    PDX2<double, X2_NUM_JOINTS / 2> jointControllers;
+    AdaptiveController<double, 2, 50>* affc;
+    std::shared_ptr<spdlog::logger> lambda_logger;
+    std::shared_ptr<spdlog::logger> tracking_error_logger;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
 
 private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
-    void vel_limiter(double limit);
+    void vel_limiter(const double limit);
+    void torque_limiter(const double lower_limit, const double upper_limit);
     void addDebugTorques(int joint);
     void addFrictionCompensationTorques(int joint);
 

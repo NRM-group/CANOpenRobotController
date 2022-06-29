@@ -24,15 +24,42 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     frictionCompensationTorques = Eigen::VectorXd::Zero(8);
 
-    jointControllers[0].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
-    jointControllers[1].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
-
     posReader = LookupTable(X2_NUM_JOINTS);
     posReader.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/src/apps/X2DemoMachine/gaits/GaitTrajectory_220602_1605.csv");
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     gaitIndex = 0;
     trajTime = 2;
+
+    Eigen::Matrix<double, 2, 2> p_gains;
+    Eigen::Matrix<double, 2, 2> d_gains;
+    Eigen::Matrix<double, 2, 1> lengths;
+    Eigen::Matrix<double, 10, 1> learning_rate; 
+
+    // single length hip and shank lengths
+    lengths << 0.39, 0.40;
+
+    // AFFC learning rates
+    learning_rate << 10, 200, 1, 1, 10, 1, 50, 1, 20, 1;
+    learning_rate *= 2e-6;
+
+    // One leg low PD controller gains
+    p_gains(0, 0) = 450.0 * 0.1;
+    p_gains(1, 1) = 450.0 * 0.1;
+    d_gains(0, 0) = sqrt(p_gains(0, 0));
+    d_gains(1, 1) = sqrt(p_gains(1, 1));
+
+    // setup AFFC controller and set Criterion 1 and Criterion 2
+    affc = new AdaptiveController<double, 2, 50>(lengths, learning_rate, p_gains, d_gains);
+    affc->set_criterions(2, 0.5);
+
+    // unknown parameter logger
+    lambda_logger = spdlog::basic_logger_mt("lambda_logger", "logs/affc_lambdas.log");
+    tracking_error_logger = spdlog::basic_logger_mt("tracking_error_logger", "logs/affc_tracking_error.log");
+}
+
+X2DemoState::~X2DemoState(void) {
+   delete affc; 
 }
 
 void X2DemoState::entry(void) {
@@ -51,119 +78,8 @@ void X2DemoState::entry(void) {
 
 void X2DemoState::during(void) {
 
-    // set maximum joint torque limits
-    jointControllers[0].set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
-    jointControllers[1].set_limit({-maxTorqueLimit, -maxTorqueLimit}, {maxTorqueLimit, maxTorqueLimit});
-
-    if(controller_mode_ == 0){                                          // all joints step torque controller 
-
-        // switch motor control mode to torque control mode
-        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
-            robot_->initTorqueControl();
-            spdlog::info("Initalised Torque Control Mode");
-        }
-
-        // switch between two set joint positions
-        switch(state_) {
-            case STEP_UP:
-                    desiredJointPositions_[LEFT_HIP] = deg2rad(refPos1);
-                    desiredJointPositions_[LEFT_KNEE] = deg2rad(refPos1);
-                    desiredJointPositions_[RIGHT_HIP] = deg2rad(refPos1);
-                    desiredJointPositions_[RIGHT_KNEE] = deg2rad(refPos1);
-
-                if (!(t_count_ % (refPosPeriod * freq_))) {
-                    state_ = STEP_DOWN;
-                    t_count_ = 0;
-                }
-                break;
-            case STEP_DOWN:
-                    desiredJointPositions_[LEFT_HIP] = deg2rad(refPos2);
-                    desiredJointPositions_[LEFT_KNEE] = deg2rad(refPos2);
-                    desiredJointPositions_[RIGHT_HIP] = deg2rad(refPos2);
-                    desiredJointPositions_[RIGHT_KNEE] = deg2rad(refPos2);
-
-                if (!(t_count_ % (refPosPeriod * freq_))) {
-                    state_ = STEP_UP;
-                    t_count_ = 0;
-                }
-                break;
-        }
-
-        // increment callback counter
-        t_count_++;
-    } else if (controller_mode_ == 1) {                                // left hip with locked left knee control mode
-
-        // change motor control mode to torque control
-        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
-            robot_->initTorqueControl();
-            spdlog::info("Initalised Torque Control Mode");
-        }
-
-        // switch between two set joint positions
-        switch(state_) {
-            case STEP_UP:
-                    desiredJointPositions_[LEFT_HIP] = deg2rad(refPos1);
-                    desiredJointPositions_[LEFT_KNEE] = deg2rad(0);
-                    desiredJointPositions_[RIGHT_HIP] = deg2rad(0);
-                    desiredJointPositions_[RIGHT_KNEE] = deg2rad(0);
-
-                if (!(t_count_ % (refPosPeriod * freq_))) {
-                    state_ = STEP_DOWN;
-                    t_count_ = 0;
-                }
-                break;
-            case STEP_DOWN:
-                    desiredJointPositions_[LEFT_HIP] = deg2rad(refPos2);
-                    desiredJointPositions_[LEFT_KNEE] = deg2rad(0);
-                    desiredJointPositions_[RIGHT_HIP] = deg2rad(0);
-                    desiredJointPositions_[RIGHT_KNEE] = deg2rad(0);
-
-                if (!(t_count_ % (refPosPeriod * freq_))) {
-                    state_ = STEP_UP;
-                    t_count_ = 0;
-                }
-                break;
-        }
-
-        // increment callback counter 
-        t_count_++;
-    } else if (controller_mode_ == 2) {                                  // right hip with right knee locked control mode
-
-        // switch motor control mode to torque control
-        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
-            robot_->initTorqueControl();
-            spdlog::info("Initalised Torque Control Mode");
-        }
-
-        // switch between two set joint positions
-        switch(state_) {
-            case STEP_UP:
-                    desiredJointPositions_[LEFT_HIP] = deg2rad(0);
-                    desiredJointPositions_[LEFT_KNEE] = deg2rad(0);
-                    desiredJointPositions_[RIGHT_HIP] = deg2rad(refPos1);
-                    desiredJointPositions_[RIGHT_KNEE] = deg2rad(0);
-
-                if (!(t_count_ % (refPosPeriod * freq_))) {
-                    state_ = STEP_DOWN;
-                    t_count_ = 0;
-                }
-                break;
-            case STEP_DOWN:
-                    desiredJointPositions_[LEFT_HIP] = deg2rad(0);
-                    desiredJointPositions_[LEFT_KNEE] = deg2rad(0);
-                    desiredJointPositions_[RIGHT_HIP] = deg2rad(refPos2);
-                    desiredJointPositions_[RIGHT_KNEE] = deg2rad(0);
-
-                if (!(t_count_ % (refPosPeriod * freq_))) {
-                    state_ = STEP_UP;
-                    t_count_ = 0;
-                }
-                break;
-        }
-
-        // increment callback counter
-        t_count_++;
-    } else if (controller_mode_ == 3) {                                 // custom trajectory following mode
+    if(controller_mode_ == 0){
+        // AFFC Controller Mode
 
         // switch motor control mode to torque control
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
@@ -178,20 +94,21 @@ void X2DemoState::during(void) {
         prevTime = currTime;
         currTrajProgress += timeElapsed; 
         double progress = currTrajProgress / trajTime;
-        trajTime = period_ / 10;
+        trajTime = 0.01;
 
-        int trajIndexes = 1;
+        std::size_t trajIndexes = 1;
         Eigen::VectorXd start(4);
         Eigen::VectorXd end(4);
 
-        if(progress >= 1) {
-            //When you have finished this linear point, move on to the next stage
+        if (progress >= 1) {
+            // when you have finished this linear point, move onto the next stage
             currTrajProgress = 0;
             gaitIndex += trajIndexes;
             return;
         }
 
-        for(int j = 0; j < X2_NUM_JOINTS; j++) {
+        // we only want to loop through one leg at a time 
+        for(int j = 0; j < X2_NUM_JOINTS / 2; j++) {
             
             start[j] = posReader.getPosition(j, gaitIndex);
             end[j] = posReader.getPosition(j, gaitIndex + trajIndexes);
@@ -213,28 +130,50 @@ void X2DemoState::during(void) {
                 }
             }
         }
+
+        // limit the desiredJointPositions_ delta from previous callback
+        vel_limiter(deg2rad(rateLimit));
+
+        // check if the AFFC algorithm is finished
+        if (affc->is_finished()) {
+            spdlog::info("AFFC is finished");
+            return;
+        }
+
+        // iterate the AFFC algorithm once
+        if (posReader.isTrajectoryFinished(gaitIndex)) {
+            // a complete period of the trajectory has been completed
+            affc->loop(desiredJointPositions_, robot_->getPosition(), true);
+
+            // log unknown parameters and tracking error over iterations
+            Eigen::Matrix<double, 10, 1> lamdas = affc->peek_learned_params();
+            Eigen::Matrix<double, 2, 1> tracking_err = affc->peek_tracking_error();
+            lambda_logger->info("{},{},{},{},{},{},{},{},{},{}", 
+                                lamdas(0, 0),
+                                lamdas(1, 0),
+                                lamdas(2, 0),
+                                lamdas(3, 0),
+                                lamdas(4, 0),
+                                lamdas(5, 0),
+                                lamdas(6, 0),
+                                lamdas(7, 0),
+                                lamdas(8, 0),
+                                lamdas(9, 0)
+            );
+            tracking_error_logger->info("{}, {}", tracking_err(0, 0), tracking_err(1, 0));
+        } else {
+            affc->loop(desiredJointPositions_, robot_->getPosition(), false);
+        }
+
+        // obtain required joint torques from AFFC control loop to reach desiredJointPositions_
+        desiredJointTorques_ = affc->output();
+
+        // limit torques
+        torque_limiter(-80.0, 80.0);
+
+        // update motor torques to required values 
+        robot_->setTorque(desiredJointTorques_);
     }
-
-    /* calculate required joint torques */
-
-    // limit the desiredJointPositions_ delta from previous callback
-    vel_limiter(deg2rad(rateLimit));
-
-    // obtain required joint torques from control loop to reach desiredJointPositions_
-    desiredJointTorques_ = jointControllers.loop(desiredJointPositions_, robot_->getPosition());
-
-    // store control loop torques for future use
-    desiredJointTorquesP_ = jointControllers.get_p();
-    desiredJointTorquesD_ = jointControllers.get_d();
-
-    // add debug torques and friction compensation torques to all joints based on the torque direction being applied
-    for (size_t i = 0; i < X2_NUM_JOINTS; i++) {
-        addDebugTorques(i);
-        addFrictionCompensationTorques(i);
-    }
-
-    // update motor torques to required values 
-    robot_->setTorque(desiredJointTorques_);
 }
 
 void X2DemoState::exit(void) {
@@ -271,8 +210,7 @@ void X2DemoState::dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t
     return;
 }
 
-void X2DemoState::vel_limiter(double limit) {
-
+void X2DemoState::vel_limiter(const double limit) {
     auto dJointPositions = desiredJointPositions_ - prevDesiredJointPositions_;
     double maxJointPositionDelta = abs(limit / freq_);
 
@@ -294,8 +232,19 @@ void X2DemoState::vel_limiter(double limit) {
     } 
 }
 
-void X2DemoState::addDebugTorques(int joint) {
+void X2DemoState::torque_limiter(const double lower_limit, const double upper_limit) {
+    for (std::size_t i = 0; i < X2_NUM_JOINTS; i++) {
+        if (abs(desiredJointTorques_[i]) > maxTorqueLimit) {
+            if (desiredJointTorques_[i] > 0) {
+                desiredJointTorques_[i] = upper_limit;
+            } else {
+                desiredJointTorques_[i] = lower_limit;
+            }
+        } 
+    }
+}
 
+void X2DemoState::addDebugTorques(int joint) {
     // account for torque sign
     auto externalTorque = debugTorques[joint];
 
