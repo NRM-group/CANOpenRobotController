@@ -16,13 +16,16 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
     jointStatePublisher_ = node_->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
 #endif
 
-    gainUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::PD>("pd_params", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
     requestedTorquePublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_reference", 10);
-    // frictionCompensationSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_friction_compensation", 1, std::bind(&X2MachineROS2::updateFrictionCompensationCallback, this, _1));
-    jointCommandSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_parameters", 1, std::bind(&X2MachineROS2::updateExternalTorquesCallback, this, _1));
 
+    controllerOutputPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("controller_outputs",10);
+
+    gainUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::PD>("pd_params", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
+    // frictionCompensationSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_friction_compensation", 1, std::bind(&X2MachineROS2::updateFrictionCompensationCallback, this, _1));
+    // jointCommandSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_parameters", 1, std::bind(&X2MachineROS2::updateExternalTorquesCallback, this, _1));
     jointStateSubscriber_ = node_->create_subscription<sensor_msgs::msg::JointState>("joint_references", 1, std::bind(&X2MachineROS2::jointRefCallback, this, _1));
+    corcParamsSubscriber_ = node_->create_subscription<x2_msgs::msg::Corc>("corc_params",1, std::bind(&X2MachineROS2::corcParamCallback, this, _1));
 
     externalUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::External>("external_params",1, std::bind(&X2MachineROS2::externalForceCallback, this, _1));
     frictionUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::Friction>("friction_params", 1, std::bind(&X2MachineROS2::frictionForceCallback, this, _1));
@@ -145,24 +148,29 @@ void X2MachineROS2::enablerCallback(const x2_msgs::msg::Enable::SharedPtr enable
     //TODO
 }
 
-void X2MachineROS2::updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques) {
-    auto joint0_debug_torque = externalTorques->data[0];
-    auto joint1_debug_torque = externalTorques->data[1];
-    auto joint2_debug_torque = externalTorques->data[2];
-    auto joint3_debug_torque = externalTorques->data[3];
-    auto torqueLimit = externalTorques->data[4];
-    auto refPos1 = externalTorques->data[5];
-    auto refPos2 = externalTorques->data[6];
-    auto refPosPeriod = floor(externalTorques->data[7]);
-    auto rateLimit = externalTorques->data[8];
+// void X2MachineROS2::updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques) {
+//     auto joint0_debug_torque = externalTorques->data[0];
+//     auto joint1_debug_torque = externalTorques->data[1];
+//     auto joint2_debug_torque = externalTorques->data[2];
+//     auto joint3_debug_torque = externalTorques->data[3];
+//     auto torqueLimit = externalTorques->data[4];
+//     auto refPos1 = externalTorques->data[5];
+//     auto refPos2 = externalTorques->data[6];
+//     auto refPosPeriod = floor(externalTorques->data[7]);
+//     auto rateLimit = externalTorques->data[8];
 
-    x2FollowerState_->debugTorques[0] = joint0_debug_torque;
-    x2FollowerState_->debugTorques[1] = joint1_debug_torque;
-    x2FollowerState_->debugTorques[2] = joint2_debug_torque;
-    x2FollowerState_->debugTorques[3] = joint3_debug_torque;
-    x2FollowerState_->maxTorqueLimit = torqueLimit;
-    x2FollowerState_->refPos1 = refPos1;
-    x2FollowerState_->refPos2 = refPos2;
-    x2FollowerState_->refPosPeriod = refPosPeriod;
-    x2FollowerState_->rateLimit = rateLimit;
+//     x2FollowerState_->debugTorques[0] = joint0_debug_torque;
+//     x2FollowerState_->debugTorques[1] = joint1_debug_torque;
+//     x2FollowerState_->debugTorques[2] = joint2_debug_torque;
+//     x2FollowerState_->debugTorques[3] = joint3_debug_torque;
+//     x2FollowerState_->maxTorqueLimit = torqueLimit;
+//     x2FollowerState_->refPos1 = refPos1;
+//     x2FollowerState_->refPos2 = refPos2;
+//     x2FollowerState_->refPosPeriod = refPosPeriod;
+//     x2FollowerState_->rateLimit = rateLimit;
+// }
+
+void X2MachineROS2::corcParamCallback(const x2_msgs::msg::Corc::SharedPtr corcParams) {
+    x2FollowerState_->rateLimit = corcParams->reference_limit;
+    x2FollowerState_->maxTorqueLimit = corcParams->maximum_torque;
 }

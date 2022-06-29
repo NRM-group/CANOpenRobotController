@@ -9,6 +9,7 @@
 #include "x2_msgs/msg/external.hpp"
 #include "x2_msgs/msg/friction.hpp"
 #include "x2_msgs/msg/enable.hpp"
+#include "x2_msgs/msg/corc.hpp"
 
 
 #include "x2_ik_ros.hpp"
@@ -38,10 +39,12 @@ private:
 
     std::shared_ptr<rclcpp::Node> node_;
 
+    //Publishers
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr jointStatePublisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr requestedTorquePublisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr referenceJointPositionsPublisher_;
-    
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr controllerOutputPublisher_;
+    //Subscribers    
     // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr gainUpdateSubscriber_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr jointStateSubscriber_;
     rclcpp::Subscription<x2_msgs::msg::PD>::SharedPtr gainUpdateSubscriber_;
@@ -49,19 +52,21 @@ private:
     rclcpp::Subscription<x2_msgs::msg::Friction>::SharedPtr frictionUpdateSubscriber_;
     rclcpp::Subscription<x2_msgs::msg::Enable>::SharedPtr enableUpdateSubscriber_;
 
+    rclcpp::Subscription<x2_msgs::msg::Corc>::SharedPtr corcParamsSubscriber_;
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr frictionCompensationSubscriber_;
-    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr jointCommandSubscriber_;
+    // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr jointCommandSubscriber_;
 
     sensor_msgs::msg::JointState jointStateMsg_;
     std_msgs::msg::Float64MultiArray requestedJointTorquesMsg_;
     std_msgs::msg::Float64MultiArray desiredJointReferencePositionsMsg_;
     
-    void updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques);
+    // void updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques);
     void jointRefCallback(const sensor_msgs::msg::JointState::SharedPtr jointRef);
     void updateGainCallback(const x2_msgs::msg::PD::SharedPtr gains);
     void externalForceCallback(const x2_msgs::msg::External::SharedPtr ext);
     void frictionForceCallback(const x2_msgs::msg::Friction::SharedPtr fric);
     void enablerCallback(const x2_msgs::msg::Enable::SharedPtr enable);
+    void corcParamCallback(const x2_msgs::msg::Corc::SharedPtr corcParams);
 };
 
 #endif

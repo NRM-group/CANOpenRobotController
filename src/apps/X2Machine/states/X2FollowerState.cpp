@@ -29,7 +29,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     refPos2 = 0;
     refPosPeriod = 5;
     rateLimit = 0.0;
-
+    maxTorqueLimit = LIMIT_TORQUE;
 
     PDCntrl = new PDController<double, X2_NUM_JOINTS>();
     ExtCntrl = new ExternalController<double, X2_NUM_JOINTS>();
@@ -287,7 +287,7 @@ Eigen::VectorXd &X2FollowerState::getDesiredJointPositions() {
 bool X2FollowerState::checkSafety() {
     //Check that the robot's torque has not exceeded the limits
     for(int i = 0; i < X2_NUM_JOINTS; i++) {
-        if (abs(robot_->getTorque()[i]) > LIMIT_TORQUE) {
+        if (abs(robot_->getTorque()[i]) > maxTorqueLimit) {
             safetyFlag = true;
             return true;
         }
