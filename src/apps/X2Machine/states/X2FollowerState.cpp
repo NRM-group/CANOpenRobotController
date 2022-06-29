@@ -23,6 +23,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     desiredJointTorquesP_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorquesI_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorquesD_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    startJointPositions_ = robot_->getPosition();
 
     refPos1 = 0;
     refPos2 = 0;
@@ -130,7 +131,6 @@ void X2FollowerState::during(void) {
     } else if (mode == IK) {
 
         trajTime = 0.05;
-        Eigen::VectorXd startJointPositions_;
         if (robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
         
         

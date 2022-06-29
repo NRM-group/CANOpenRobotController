@@ -7,6 +7,7 @@ CANopenSocket/canopend/X2_log.txt
 /.devcontainer/Dockerfile
 /.devcontainer/devcontainer.json
 /build/*
+logs/
 bbbxc
 EXO_APP_2020
 cmake-build-debug/

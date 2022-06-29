@@ -77,6 +77,7 @@ private:
     Eigen::VectorXd desiredJointTorquesP_;
     Eigen::VectorXd desiredJointTorquesI_;
     Eigen::VectorXd desiredJointTorquesD_;
+    Eigen::VectorXd startJointPositions_;
 
 
     void rateLimiter(double limit);
