@@ -16,12 +16,18 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
     jointStatePublisher_ = node_->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
 #endif
 
-    gainUpdateSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_gains", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
-    gainLimitUpdateSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_gain_coeff", 1, std::bind(&X2MachineROS2::updateGainLimitCallback, this, _1));
+    gainUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::PD>("pd_params", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
     requestedTorquePublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_reference", 10);
-    frictionCompensationSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_friction_compensation", 1, std::bind(&X2MachineROS2::updateFrictionCompensationCallback, this, _1));
+    // frictionCompensationSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_friction_compensation", 1, std::bind(&X2MachineROS2::updateFrictionCompensationCallback, this, _1));
     jointCommandSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_parameters", 1, std::bind(&X2MachineROS2::updateExternalTorquesCallback, this, _1));
+
+    jointStateSubscriber_ = node_->create_subscription<sensor_msgs::msg::JointState>("joint_references", 1, std::bind(&X2MachineROS2::jointRefCallback, this, _1));
+
+    externalUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::External>("external_params",1, std::bind(&X2MachineROS2::externalForceCallback, this, _1));
+    frictionUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::Friction>("friction_params", 1, std::bind(&X2MachineROS2::frictionForceCallback, this, _1));
+    enableUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::Enable>("enable",1, std::bind(&X2MachineROS2::enablerCallback, this, _1));
+
 }
 
 X2MachineROS2::~X2MachineROS2() {
@@ -100,42 +106,43 @@ void X2MachineROS2::publishJointReferencePositions(void) {
     referenceJointPositionsPublisher_->publish(desiredJointReferencePositionsMsg_);
 }
 
-void X2MachineROS2::updateGainCallback(const std_msgs::msg::Float64MultiArray::SharedPtr gains) {
-    double left_hip_kp = gains->data[0];
-    double left_hip_kd = gains->data[1];
-    double left_knee_kp = gains->data[2];
-    double left_knee_kd = gains->data[3];
-    double right_hip_kp = gains->data[4];
-    double right_hip_kd = gains->data[5];
-    double right_knee_kp = gains->data[6]; 
-    double right_knee_kd = gains->data[7];
-
-    Eigen::Matrix2d left_kp_gains;
-    Eigen::Matrix2d left_kd_gains;
-    Eigen::Matrix2d right_kp_gains;
-    Eigen::Matrix2d right_kd_gains;
-
-    left_kp_gains << left_hip_kp, 0,
-                     0, left_knee_kp;
-    left_kd_gains << left_hip_kd, 0,
-                     0, left_knee_kd;
-    right_kp_gains << right_hip_kp, 0,
-                      0, right_knee_kp;
-    right_kd_gains << right_hip_kd, 0,
-                      0, right_knee_kd;
-
-    // x2FollowerState_->jointControllers.left()(left_kp_gains, left_kd_gains);
-    // x2FollowerState_->jointControllers.right()(right_kp_gains, right_kd_gains);
+void X2MachineROS2::updateGainCallback(const x2_msgs::msg::PD::SharedPtr gains) {
+    Tm kp, kd;
+    Tv alphaMax(gains->alpha_max.data()), alphaMin(gains->alpha_min.data());
+    kp << gains->left_kp[0], gains->left_kp[1], 0 , 0,
+                gains->left_kp[2], gains->left_kp[3], 0, 0,
+                0, 0, gains->right_kp[0], gains->right_kp[1],
+                0, 0, gains->right_kp[2], gains->right_kp[3];
+    
+    kd << gains->left_kd[0], gains->left_kd[1], 0 , 0,
+                gains->left_kd[2], gains->left_kd[3], 0, 0,
+                0, 0, gains->right_kp[0], gains->right_kp[1],
+                0, 0, gains->right_kp[2], gains->right_kp[3];
+    x2FollowerState_->PDCntrl->set_gains(kp,kd);
+    x2FollowerState_->PDCntrl->set_alphas(alphaMin, alphaMax);
 }
 
-void X2MachineROS2::updateGainLimitCallback(const std_msgs::msg::Float64MultiArray::SharedPtr alphas) {
-    double hip_alpha1 = alphas->data[0];
-    double hip_alpha2 = alphas->data[1];
-    double knee_alpha1 = alphas->data[2];
-    double knee_alpha2 = alphas->data[3];
+void X2MachineROS2::jointRefCallback(const sensor_msgs::msg::JointState::SharedPtr angles) {
+    //Update the joint references in X2follower state
+    Tv jointRef(angles->position.data());
+    x2FollowerState_->desiredJointReferences_ = jointRef;
+}
 
-    // x2FollowerState_->jointControllers.left().set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
-    // x2FollowerState_->jointControllers.right().set_alpha({hip_alpha1, knee_alpha1}, {hip_alpha2, knee_alpha2});
+void X2MachineROS2::externalForceCallback(const x2_msgs::msg::External::SharedPtr ext){
+    Tv torque(ext->torque.data());
+    x2FollowerState_->ExtCntrl->set_external_torque(torque);
+}
+
+void X2MachineROS2::frictionForceCallback(const x2_msgs::msg::Friction::SharedPtr fric) {
+    Tv pos_c(fric->positive_c.data()), neg_c(fric->negative_c.data()); 
+    Tv pos_m(fric->positive_m.data()), neg_m(fric->positive_m.data());
+    x2FollowerState_->FricCntrl->set_vel_c(pos_c, neg_c);
+    x2FollowerState_->FricCntrl->set_vel_m(pos_m, neg_m);
+
+}
+
+void X2MachineROS2::enablerCallback(const x2_msgs::msg::Enable::SharedPtr enable) {
+    //TODO
 }
 
 void X2MachineROS2::updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques) {
@@ -158,15 +165,4 @@ void X2MachineROS2::updateExternalTorquesCallback(const std_msgs::msg::Float64Mu
     x2FollowerState_->refPos2 = refPos2;
     x2FollowerState_->refPosPeriod = refPosPeriod;
     x2FollowerState_->rateLimit = rateLimit;
-}
-
-void X2MachineROS2::updateFrictionCompensationCallback(const std_msgs::msg::Float64MultiArray::SharedPtr frictionTorques) {
-    x2FollowerState_->frictionCompensationTorques[0] = frictionTorques->data[0];
-    x2FollowerState_->frictionCompensationTorques[1] = frictionTorques->data[1];
-    x2FollowerState_->frictionCompensationTorques[2] = frictionTorques->data[2];
-    x2FollowerState_->frictionCompensationTorques[3] = frictionTorques->data[3];
-    x2FollowerState_->frictionCompensationTorques[4] = frictionTorques->data[4];
-    x2FollowerState_->frictionCompensationTorques[5] = frictionTorques->data[5];
-    x2FollowerState_->frictionCompensationTorques[6] = frictionTorques->data[6];
-    x2FollowerState_->frictionCompensationTorques[7] = frictionTorques->data[7];
 }

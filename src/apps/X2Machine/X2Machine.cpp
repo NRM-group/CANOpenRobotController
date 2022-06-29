@@ -26,11 +26,17 @@ X2Machine::X2Machine(int argc, char** argv, const float updateT) {
 
     // Create PRE-DESIGNED State Machine events and state objects
     startExo = new StartExo(this);
+    exitSafe = new ExitSafe(this);
 
-    // create state object
+    // create state objects
     x2FollowerState_ = new X2FollowerState(this, robot_, updateT);
-
+    x2SafetyState_ = new X2SafetyState(this, robot_, updateT);
+    
     x2MachineRos2_ = new X2MachineROS2(robot_, x2FollowerState_, node_);
+
+    //Transition Events
+    NewTransition(x2FollowerState_, exitSafe, x2SafetyState_);
+    NewTransition(x2SafetyState_, startExo, x2FollowerState_);
 }
 
 void X2Machine::init() {
@@ -63,6 +69,15 @@ bool X2Machine::StartExo::check(void) {
         return true;
     }
 
+    return false;
+}
+
+bool X2Machine::ExitSafe::check(void) {
+    //TODO: Need a seperate Safety management program
+    if (OWNER->x2FollowerState_->checkSafety()) {
+        spdlog::warn("Excessive Torque detected, transitioning to safe state");
+        return true;
+    }
     return false;
 }
 

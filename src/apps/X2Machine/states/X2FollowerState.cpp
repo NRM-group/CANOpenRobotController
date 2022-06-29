@@ -14,6 +14,8 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
+    mode = IK;
+    desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -37,11 +39,6 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
     // // Gravity to be implmented     
     controllers = {PDCntrl, ExtCntrl, FricCntrl};
-    
-
-
-
-
     posReader = LookupTable(X2_NUM_JOINTS);
     
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
@@ -53,6 +50,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
 void X2FollowerState::entry(void) {
     spdlog::info("Entered Follower State");
     posReader.readCSV(csvFileName);
+    safetyFlag = false; //Initialise with no safetyfkag
     time0 = std::chrono::steady_clock::now();
 }
 
@@ -60,70 +58,138 @@ void X2FollowerState::during(void) {
 
     // set maximum joint torque limits
     // TODO
-
-    // switch motor control mode to torque control
-    if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
-        robot_->initTorqueControl();
-        spdlog::info("Initalised Torque Control Mode");
-    }
-
-    timespec currTime;
-    clock_gettime(CLOCK_MONOTONIC, &currTime);
-
-    double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
-    prevTime = currTime;
-    currTrajProgress += timeElapsed; 
-    double progress = currTrajProgress / trajTime;
-    trajTime = 0.05;
-
-    int trajIndexes = 1;
-    Eigen::VectorXd start(4);
-    Eigen::VectorXd end(4);
-
-    if(progress >= 1) {
-        //When you have finished this linear point, move on to the next stage
-        currTrajProgress = 0;
-        gaitIndex += trajIndexes;
+    //Do not run if the safety flag is triggered
+    if (safetyFlag) {
         return;
     }
+    if (mode == GAIT){
+        // switch motor control mode to torque control
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
 
-    for(int j = 0; j < X2_NUM_JOINTS; j++) {
-        
-        start[j] = posReader.getPosition(j, gaitIndex);
-        end[j] = posReader.getPosition(j, gaitIndex + trajIndexes);
-        desiredJointPositions_[j] = (start[j] + progress * (end[j] - start[j]));
+        timespec currTime;
+        clock_gettime(CLOCK_MONOTONIC, &currTime);
 
-        if (j == LEFT_HIP || j == RIGHT_HIP) {
-            // check hip bounds
-            if (desiredJointPositions_[j] > deg2rad(120)) {
-                desiredJointPositions_[j] = deg2rad(120);
-            } else if (desiredJointPositions_[j] < -deg2rad(40)) {
-                desiredJointPositions_[j] = -deg2rad(40);
-            }
-        } else if (j == LEFT_KNEE || j == RIGHT_KNEE) {
-            // check knee bounds
-            if (desiredJointPositions_[j] < -deg2rad(120)) {
-                desiredJointPositions_[j] = -deg2rad(120);
-            } else if (desiredJointPositions_[j] > 0) {
-                desiredJointPositions_[j] = 0;
+        double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
+        prevTime = currTime;
+        currTrajProgress += timeElapsed; 
+        double progress = currTrajProgress / trajTime;
+        trajTime = 0.05;
+
+        int trajIndexes = 1;
+        Eigen::VectorXd start(4);
+        Eigen::VectorXd end(4);
+
+        if(progress >= 1) {
+            //When you have finished this linear point, move on to the next stage
+            currTrajProgress = 0;
+            gaitIndex += trajIndexes;
+            return;
+        }
+
+        for(int j = 0; j < X2_NUM_JOINTS; j++) {
+            
+            start[j] = posReader.getPosition(j, gaitIndex);
+            end[j] = posReader.getPosition(j, gaitIndex + trajIndexes);
+            desiredJointPositions_[j] = (start[j] + progress * (end[j] - start[j]));
+
+            if (j == LEFT_HIP || j == RIGHT_HIP) {
+                // check hip bounds
+                if (desiredJointPositions_[j] > deg2rad(120)) {
+                    desiredJointPositions_[j] = deg2rad(120);
+                } else if (desiredJointPositions_[j] < -deg2rad(40)) {
+                    desiredJointPositions_[j] = -deg2rad(40);
+                }
+            } else if (j == LEFT_KNEE || j == RIGHT_KNEE) {
+                // check knee bounds
+                if (desiredJointPositions_[j] < -deg2rad(120)) {
+                    desiredJointPositions_[j] = -deg2rad(120);
+                } else if (desiredJointPositions_[j] > 0) {
+                    desiredJointPositions_[j] = 0;
+                }
             }
         }
+
+        // limit the desiredJointPositions_ delta from previous callback
+        rateLimiter(deg2rad(rateLimit));
+        PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
+        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        for(auto &cnt : controllers) {
+            desiredJointTorques_ += cnt->output();
+
+        }
+        // add debug torques and friction compensation torques to all joints based on the torque direction being applied
+
+        // update motor torques to required values 
+        spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
+        spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+
+        robot_->setTorque(desiredJointTorques_);
+    } else if (mode == IK) {
+
+        trajTime = 0.05;
+        Eigen::VectorXd startJointPositions_;
+        if (robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
+        
+        
+        Eigen::VectorXd destination = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        timespec currTime;
+        clock_gettime(CLOCK_MONOTONIC, &currTime);
+
+        
+        double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
+        prevTime = currTime;
+        currTrajProgress += timeElapsed; 
+        double progress = currTrajProgress / trajTime;
+        
+        if(progress >= 1) {
+            //When you have finished this linear point, move on to the next stage
+            currTrajProgress = 0;
+            startJointPositions_ = robot_->getPosition();   
+            return;
+        }
+
+        destination[0] = desiredJointReferences_(0);
+        destination[1] = desiredJointReferences_(1);
+        destination[2] = desiredJointReferences_(2);
+        destination[3] = desiredJointReferences_(3);
+        //Interpolate the required changes to get to a location
+        for(int j = 0; j < X2_NUM_JOINTS ; j ++) {
+            desiredJointPositions_[j] = startJointPositions_[j]  + progress * (destination[j] - startJointPositions_[j]);
+            if (j == LEFT_HIP || j == RIGHT_HIP) {
+                // check hip bounds
+                if (desiredJointPositions_(j) > deg2rad(120)) {
+                    desiredJointPositions_(j) = deg2rad(120);
+                } else if (desiredJointPositions_(j) < -deg2rad(40)) {
+                    desiredJointPositions_(j) = -deg2rad(40);
+                }
+            } else if (j == LEFT_KNEE || j == RIGHT_KNEE) {
+                // check knee bounds
+                if (desiredJointPositions_(j) < -deg2rad(120)) {
+                    desiredJointPositions_(j) = -deg2rad(120);
+                } else if (desiredJointPositions_(j) > 0) {
+                    desiredJointPositions_(j) = 0;
+                }
+            }
+        }
+        rateLimiter(deg2rad(rateLimit));
+        PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
+        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        for(auto &cnt : controllers) {
+            desiredJointTorques_ += cnt->output();
+
+        }
+        // add debug torques and friction compensation torques to all joints based on the torque direction being applied
+
+        // update motor torques to required values 
+        spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
+        spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+
+        robot_->setTorque(desiredJointTorques_);
+
     }
-
-    // limit the desiredJointPositions_ delta from previous callback
-    rateLimiter(deg2rad(rateLimit));
-    PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
-    desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    for(auto &cnt : controllers) {
-        desiredJointTorques_ += cnt->output();
-
-    }
-    // add debug torques and friction compensation torques to all joints based on the torque direction being applied
-
-    // update motor torques to required values 
-    // spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
-    // spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
-    robot_->setTorque(desiredJointTorques_);
 }
 
 void X2FollowerState::exit(void) {
@@ -219,4 +285,15 @@ Eigen::VectorXd &X2FollowerState::getDesiredJointTorquesDSplit() {
 
 Eigen::VectorXd &X2FollowerState::getDesiredJointPositions() {
     return desiredJointPositions_;
+}
+
+bool X2FollowerState::checkSafety() {
+    //Check that the robot's torque has not exceeded the limits
+    for(int i = 0; i < X2_NUM_JOINTS; i++) {
+        if (abs(robot_->getTorque()[i]) > LIMIT_TORQUE) {
+            safetyFlag = true;
+            return true;
+        }
+    }
+    return false;
 }
