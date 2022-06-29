@@ -85,6 +85,9 @@ ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geome
 ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs)
 
 install(TARGETS ${APP_NAME} DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS script/initCAN0.sh DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY lib/trajectorylib/gaits DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 ament_package()

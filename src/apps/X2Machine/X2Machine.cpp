@@ -13,13 +13,15 @@ X2Machine::X2Machine(int argc, char** argv, const float updateT) {
     node_ = rclcpp::Node::make_shared("x2");
 
     // get robot name from node name and remove '/'
-    robotName_ = node_->get_name();
-    robotName_.erase(0, 1);
+    robotName_ = "x2";
 
 #ifdef SIM
     robot_ = new X2Robot(node updateT, robotName_);
 #else
-    robot_ = new X2Robot(updateT, robotName_);
+    std::string param_file;
+    node_->declare_parameter("x2_params");
+    node_->get_parameter("x2_params", param_file);
+    robot_ = new X2Robot(updateT, robotName_, param_file);
 #endif
 
     // Create PRE-DESIGNED State Machine events and state objects
@@ -83,15 +85,12 @@ bool X2Machine::configureMasterPDOs() {
 }
 
 std::string X2Machine::getGaitCycle(void) {
-    rclcpp::Parameter str_param;
-    std::string str;
+    std::string buffer;
     node_->declare_parameter("walking_gait");
-    node_->get_parameter("walking_gait", str);
+    node_->get_parameter("walking_gait", buffer);
 
+    buffer.erase(remove(buffer.begin(), buffer.end(), ' '), buffer.end());
+    buffer.erase(remove(buffer.begin(), buffer.end(), '\n'), buffer.end());
 
-    str.erase(remove(str.begin(), str.end(), ' '), str.end());
-    str.erase(remove(str.begin(), str.end(), '\n'), str.end());
-
-
-    return str;   
+    return buffer;
 }

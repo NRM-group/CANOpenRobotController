@@ -121,8 +121,8 @@ void X2FollowerState::during(void) {
     // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
     // update motor torques to required values 
-    spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
-    spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+    // spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
+    // spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
     robot_->setTorque(desiredJointTorques_);
 }
 
