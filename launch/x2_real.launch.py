@@ -13,8 +13,9 @@ def generate_launch_description():
 	x2_description_path = get_package_share_directory("x2_description")
 
 	# Package share files
+	x2_file = os.path.join(corc_path, "config", "x2_params.yaml")
 	gait_file = os.path.join(corc_path, "gaits", "walking.csv")
-	rviz_config = os.path.join(x2_description_path, "rviz", "view_robot.rviz")
+	rviz_config = os.path.join(x2_description_path, "rviz", "x2.rviz")
 	urdf_file = process_file(
 		os.path.join(x2_description_path, "urdf", "x2_fixed_base.urdf.xacro")
 	)
@@ -27,8 +28,9 @@ def generate_launch_description():
 		name="x2",
 		output="screen",
         parameters=[
-            { "walking_gait" : gait_file }
-        ]
+            { "walking_gait" : gait_file },
+            { "x2_params"    : x2_file   }
+		]
 	)
 	robot_state_node = Node(
 		package="robot_state_publisher",
@@ -36,16 +38,12 @@ def generate_launch_description():
 		name="robot_state_publisher",
 		parameters=[
 			{ "robot_description": urdf_file.toprettyxml(indent='	') }
-		],
-		remappings=[
-			("joint_states", "x2/joint_states"),
-			("robot_description", "x2/robot_description")
 		]
 	)
 	rviz_node = Node(
 		package="rviz2",
 		executable="rviz2",
-		# arguments=["-d", rviz_config],
+		arguments=["-d", rviz_config],
 		name="rviz2"
 	)
 

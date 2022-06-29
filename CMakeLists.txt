@@ -73,6 +73,7 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(x2_msgs REQUIRED)
 find_package(Threads REQUIRED)
 
 set(APP_NAME ${STATE_MACHINE_NAME}_APP)
@@ -81,10 +82,13 @@ target_link_libraries(${APP_NAME} ${CMAKE_THREAD_LIBS_INIT} yaml-cpp)
 target_include_directories(${APP_NAME} PUBLIC ${INCLUDE_DIRS})
 include_directories(${INCLUDE_DIRS})
 
-ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs)
-ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs)
+ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs x2_msgs)
+ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs x2_msgs)
 
 install(TARGETS ${APP_NAME} DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS script/initCAN0.sh DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY lib/trajectorylib/gaits DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 ament_package()
