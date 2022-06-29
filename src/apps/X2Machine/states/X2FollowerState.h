@@ -74,6 +74,7 @@ private:
     Eigen::VectorXd prevDesiredJointPositions_;     // the previous desired joint position set by rate limiter
     Eigen::VectorXd desiredJointVelocities_;
     Eigen::VectorXd desiredJointTorques_;
+    Eigen::VectorXd prevDesiredJointTorques_;
     Eigen::VectorXd desiredJointTorquesP_;
     Eigen::VectorXd desiredJointTorquesI_;
     Eigen::VectorXd desiredJointTorquesD_;
@@ -81,6 +82,7 @@ private:
 
 
     void rateLimiter(double limit);
+    void torqueLimiter(double limit);
     void addDebugTorques(int joint);
     void addFrictionCompensationTorques(int joint);
 };

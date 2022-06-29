@@ -18,6 +18,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    prevDesiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorquesP_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -29,7 +30,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     refPos2 = 0;
     refPosPeriod = 5;
     rateLimit = 0.0;
-    maxTorqueLimit = LIMIT_TORQUE;
+    maxTorqueLimit = 0;
 
     PDCntrl = new PDController<double, X2_NUM_JOINTS>();
     ExtCntrl = new ExternalController<double, X2_NUM_JOINTS>();
@@ -175,9 +176,11 @@ void X2FollowerState::during(void) {
         PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
         desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
         for(auto &cnt : controllers) {
+            //Change to be the max torque if greater than
             desiredJointTorques_ += cnt->output();
 
         }
+        //Torque limiter function
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
         // update motor torques to required values 
@@ -193,6 +196,16 @@ void X2FollowerState::exit(void) {
     // setting 0 torque for safety.
     robot_->initTorqueControl();
     robot_->setTorque(Eigen::VectorXd::Zero(X2_NUM_JOINTS));
+}
+
+void X2FollowerState::torqueLimiter(double limit) {
+    auto dJointTorques = desiredJointTorques_ - prevDesiredJointTorques_;
+    for (int i = 0; i < desiredJointTorques_.size() ; i ++) {
+        if (desiredJointTorques_[i] > limit) {
+            desiredJointTorques_[i] = limit;
+        }
+    }
+    prevDesiredJointTorques_ = desiredJointTorques_;
 }
 
 void X2FollowerState::rateLimiter(double limit) {
@@ -285,10 +298,12 @@ Eigen::VectorXd &X2FollowerState::getDesiredJointPositions() {
 }
 
 bool X2FollowerState::checkSafety() {
+    //Change to differences
     //Check that the robot's torque has not exceeded the limits
-    for(int i = 0; i < X2_NUM_JOINTS; i++) {
-        if (abs(robot_->getTorque()[i]) > maxTorqueLimit) {
-            safetyFlag = true;
+
+    double jerkLim = maxTorqueLimit * 0.25;
+    for(int i = 0; i < desiredJointTorques_.size(); i++) {
+        if(abs(desiredJointTorques_[i] - prevDesiredJointTorques_[i])) {
             return true;
         }
     }
