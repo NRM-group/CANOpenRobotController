@@ -123,6 +123,8 @@ void X2FollowerState::during(void) {
         //     desiredJointTorques_ += cnt->output();
 
         // }
+        torqueLimiter(maxTorqueLimit);
+
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
         // update motor torques to required values 
@@ -181,6 +183,7 @@ void X2FollowerState::during(void) {
 
         }
         //Torque limiter function
+        torqueLimiter(maxTorqueLimit);
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
         // update motor torques to required values 
