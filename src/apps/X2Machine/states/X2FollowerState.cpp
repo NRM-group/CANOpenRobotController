@@ -14,7 +14,7 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
-    mode = IK;
+    mode = GAIT;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -116,16 +116,17 @@ void X2FollowerState::during(void) {
         // limit the desiredJointPositions_ delta from previous callback
         rateLimiter(deg2rad(rateLimit));
         PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
-        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        for(auto &cnt : controllers) {
-            desiredJointTorques_ += cnt->output();
+        // desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        desiredJointTorques_ = PDCntrl->output();
+        // for(auto &cnt : controllers) {
+        //     desiredJointTorques_ += cnt->output();
 
-        }
+        // }
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
         // update motor torques to required values 
-        spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
-        spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+        spdlog::info("TORQUE: {} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
+        spdlog::info("DESIRED POS: {} {} {} {}", end[0], end[1],end[2], end[3]);
 
         robot_->setTorque(desiredJointTorques_);
     } else if (mode == IK) {
@@ -151,13 +152,9 @@ void X2FollowerState::during(void) {
             return;
         }
 
-        destination[0] = desiredJointReferences_(0);
-        destination[1] = desiredJointReferences_(1);
-        destination[2] = desiredJointReferences_(2);
-        destination[3] = desiredJointReferences_(3);
         //Interpolate the required changes to get to a location
         for(int j = 0; j < X2_NUM_JOINTS ; j ++) {
-            desiredJointPositions_[j] = startJointPositions_[j]  + progress * (destination[j] - startJointPositions_[j]);
+            desiredJointPositions_[j] = startJointPositions_[j]  + progress * (desiredJointReferences_[j] - startJointPositions_[j]);
             if (j == LEFT_HIP || j == RIGHT_HIP) {
                 // check hip bounds
                 if (desiredJointPositions_(j) > deg2rad(120)) {
@@ -184,8 +181,8 @@ void X2FollowerState::during(void) {
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
         // update motor torques to required values 
-        spdlog::info("{} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
-        spdlog::info("{} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+        spdlog::info("TORQUE  : {} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
+        spdlog::info("POSITION: {} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
 
         robot_->setTorque(desiredJointTorques_);
 

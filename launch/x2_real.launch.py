@@ -32,6 +32,10 @@ def generate_launch_description():
             { "x2_params"    : x2_file   }
 		]
 	)
+	x2_ik_node = Node(
+		package="CORC",
+		executable="x2_ik"
+	)
 	robot_state_node = Node(
 		package="robot_state_publisher",
 		executable="robot_state_publisher",
@@ -48,6 +52,7 @@ def generate_launch_description():
 	)
 
 	ld.add_action(robot_node)
+	ld.add_action(x2_ik_node)
 	ld.add_action(robot_state_node)
 	ld.add_action(rviz_node)
 	return ld

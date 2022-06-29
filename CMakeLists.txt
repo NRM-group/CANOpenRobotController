@@ -46,7 +46,7 @@ endif()
 file(GLOB_RECURSE SOURCES
 	"src/core/*.cpp" "src/core/*.c" "src/hardware/*.cpp" "src/hardware/*.c"
 	"src/apps/${STATE_MACHINE_NAME}/*.c" "src/apps/${STATE_MACHINE_NAME}/*.cpp"
-	"lib/FLNL/src/*.cpp" "lib/spdlog/src/*.cpp" "lib/trajectorylib/src/*.cpp"
+	"lib/FLNL/src/*.cpp" "lib/spdlog/src/*.cpp" "lib/trajectorylib/src/LookupTable.cpp"
 )
 file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h")
 
@@ -82,10 +82,15 @@ target_link_libraries(${APP_NAME} ${CMAKE_THREAD_LIBS_INIT} yaml-cpp)
 target_include_directories(${APP_NAME} PUBLIC ${INCLUDE_DIRS})
 include_directories(${INCLUDE_DIRS})
 
+
 ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs x2_msgs)
 ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs x2_msgs)
 
-install(TARGETS ${APP_NAME} DESTINATION lib/${PROJECT_NAME})
+add_executable(x2_ik lib/trajectorylib/src/main.cpp)
+target_include_directories(x2_ik PUBLIC lib/trajectorylib/src)
+ament_target_dependencies(x2_ik rclcpp sensor_msgs x2_msgs)
+
+install(TARGETS ${APP_NAME} x2_ik DESTINATION lib/${PROJECT_NAME})
 install(PROGRAMS script/initCAN0.sh DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY lib/trajectorylib/gaits DESTINATION share/${PROJECT_NAME})
