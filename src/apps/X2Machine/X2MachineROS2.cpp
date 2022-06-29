@@ -19,7 +19,7 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
     requestedTorquePublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_reference", 10);
 
-    controllerOutputPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("controller_outputs",10);
+    controllerOutputPublisher_ = node_->create_publisher<x2_msgs::msg::Output>("controller_outputs",10);
 
     gainUpdateSubscriber_ = node_->create_subscription<x2_msgs::msg::PD>("pd_params", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
     // frictionCompensationSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_friction_compensation", 1, std::bind(&X2MachineROS2::updateFrictionCompensationCallback, this, _1));
@@ -48,7 +48,34 @@ void X2MachineROS2::update() {
 #endif
     publishRequestedJointTorques();
     publishJointReferencePositions();
+    publishControullerOutputs();
 }
+
+void X2MachineROS2::publishControullerOutputs(void){ 
+    //TODO Gravity
+    Eigen::VectorXd  PDout = x2FollowerState_->PDCntrl->output();
+    Eigen::VectorXd  ExtOut = x2FollowerState_->ExtCntrl->output();
+    Eigen::VectorXd  FricOut = x2FollowerState_->FricCntrl->output();
+
+    controllerOutputsMsg_.pd[0] = PDout[0];
+    controllerOutputsMsg_.pd[1] = PDout[1];
+    controllerOutputsMsg_.pd[2] = PDout[2];
+    controllerOutputsMsg_.pd[3] = PDout[3];
+
+    controllerOutputsMsg_.external[0] = ExtOut[0];
+    controllerOutputsMsg_.external[1] = ExtOut[1];
+    controllerOutputsMsg_.external[2] = ExtOut[2];
+    controllerOutputsMsg_.external[3] = ExtOut[3];
+
+    controllerOutputsMsg_.friction[0] = FricOut[0];
+    controllerOutputsMsg_.friction[1] = FricOut[1];
+    controllerOutputsMsg_.friction[2] = FricOut[2];
+    controllerOutputsMsg_.friction[3] = FricOut[3];
+
+
+    controllerOutputPublisher_->publish(controllerOutputsMsg_);
+}
+
 
 void X2MachineROS2::publishJointStates(void) {
     Eigen::VectorXd jointPositions = robot_->getPosition();

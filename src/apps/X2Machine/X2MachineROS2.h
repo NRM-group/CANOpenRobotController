@@ -10,6 +10,7 @@
 #include "x2_msgs/msg/friction.hpp"
 #include "x2_msgs/msg/enable.hpp"
 #include "x2_msgs/msg/corc.hpp"
+#include "x2_msgs/msg/output.hpp"
 
 
 #include "x2_ik_ros.hpp"
@@ -32,6 +33,7 @@ public:
     void publishJointStates(void);
     void publishRequestedJointTorques(void);
     void publishJointReferencePositions(void);
+    void publishControullerOutputs(void);
 
 private:
     X2Robot* robot_;
@@ -43,7 +45,7 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr jointStatePublisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr requestedTorquePublisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr referenceJointPositionsPublisher_;
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr controllerOutputPublisher_;
+    rclcpp::Publisher<x2_msgs::msg::Output>::SharedPtr controllerOutputPublisher_;
     //Subscribers    
     // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr gainUpdateSubscriber_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr jointStateSubscriber_;
@@ -59,6 +61,7 @@ private:
     sensor_msgs::msg::JointState jointStateMsg_;
     std_msgs::msg::Float64MultiArray requestedJointTorquesMsg_;
     std_msgs::msg::Float64MultiArray desiredJointReferencePositionsMsg_;
+    x2_msgs::msg::Output controllerOutputsMsg_;
     
     // void updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques);
     void jointRefCallback(const sensor_msgs::msg::JointState::SharedPtr jointRef);
