@@ -139,15 +139,25 @@ void X2MachineROS2::publishJointReferencePositions(void) {
 void X2MachineROS2::updateGainCallback(const x2_msgs::msg::PD::SharedPtr gains) {
     Tm kp, kd;
     Tv alphaMax(gains->alpha_max.data()), alphaMin(gains->alpha_min.data());
-    kp << gains->left_kp[0], gains->left_kp[1], 0 , 0,
-                gains->left_kp[2], gains->left_kp[3], 0, 0,
-                0, 0, gains->right_kp[0], gains->right_kp[1],
-                0, 0, gains->right_kp[2], gains->right_kp[3];
+    //kp << gains->left_kp[0], gains->left_kp[1], 0 , 0,
+    //            gains->left_kp[2], gains->left_kp[3], 0, 0,
+    //            0, 0, gains->right_kp[0], gains->right_kp[1],
+    //            0, 0, gains->right_kp[2], gains->right_kp[3];
     
-    kd << gains->left_kd[0], gains->left_kd[1], 0 , 0,
-                gains->left_kd[2], gains->left_kd[3], 0, 0,
-                0, 0, gains->right_kp[0], gains->right_kp[1],
-                0, 0, gains->right_kp[2], gains->right_kp[3];
+    //kd << gains->left_kd[0], gains->left_kd[1], 0 , 0,
+    //            gains->left_kd[2], gains->left_kd[3], 0, 0,
+    //            0, 0, gains->right_kp[0], gains->right_kp[1],
+    //            0, 0, gains->right_kp[2], gains->right_kp[3];
+
+    kp << gains->left_kp[1], gains->left_kp[2], 0 , 0,
+                gains->left_kp[3], gains->left_kp[4], 0, 0,
+                0, 0, gains->right_kp[1], gains->right_kp[2],
+                0, 0, gains->right_kp[3], gains->right_kp[4];
+
+    kd << gains->left_kd[1], gains->left_kd[2], 0 , 0,
+                gains->left_kd[3], gains->left_kd[4], 0, 0,
+                0, 0, gains->right_kp[1], gains->right_kp[2],
+                0, 0, gains->right_kp[3], gains->right_kp[4];
     x2FollowerState_->PDCntrl->set_gains(kp,kd);
     x2FollowerState_->PDCntrl->set_alphas(alphaMin, alphaMax);
 }

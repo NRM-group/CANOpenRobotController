@@ -176,12 +176,13 @@ void X2FollowerState::during(void) {
         }
         rateLimiter(deg2rad(rateLimit));
         PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
-        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        for(auto &cnt : controllers) {
-            //Change to be the max torque if greater than
-            desiredJointTorques_ += cnt->output();
+        //desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        //for(auto &cnt : controllers) {
+        //    //Change to be the max torque if greater than
+        //    desiredJointTorques_ += cnt->output();
 
-        }
+        //}
+        desiredJointTorques_ = PDCntrl->output();
         //Torque limiter function
         torqueLimiter(maxTorqueLimit);
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
