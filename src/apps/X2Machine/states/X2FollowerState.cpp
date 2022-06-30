@@ -128,8 +128,8 @@ void X2FollowerState::during(void) {
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
         // update motor torques to required values 
-        spdlog::info("TORQUE: {} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
-        spdlog::info("DESIRED POS: {} {} {} {}", end[0], end[1],end[2], end[3]);
+        // spdlog::info("TORQUE: {} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
+        // spdlog::info("DESIRED POS: {} {} {} {}", end[0], end[1],end[2], end[3]);
 
         robot_->setTorque(desiredJointTorques_);
     } else if (mode == IK) {
@@ -187,8 +187,8 @@ void X2FollowerState::during(void) {
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
 
         // update motor torques to required values 
-        spdlog::info("TORQUE  : {} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
-        spdlog::info("POSITION: {} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+        // spdlog::info("TORQUE  : {} {} {} {}", desiredJointTorques_[0], desiredJointTorques_[1], desiredJointTorques_[2], desiredJointTorques_[3]);
+        // spdlog::info("POSITION: {} {} {} {}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
 
         robot_->setTorque(desiredJointTorques_);
 
@@ -203,8 +203,10 @@ void X2FollowerState::exit(void) {
 
 void X2FollowerState::torqueLimiter(double limit) {
     for (int i = 0; i < desiredJointTorques_.size() ; i ++) {
-        if (abs(desiredJointTorques_[i]) > limit) {
-            desiredJointTorques_[i] = limit * desiredJointTorques_[i] / desiredJointTorques_[i];
+        if (desiredJointTorques_[i] > limit) {
+            desiredJointTorques_[i] = limit;
+        } else if (desiredJointTorques_[i] < -limit) {
+            desiredJointTorques_[i] = -limit;
         }
     }
     prevDesiredJointTorques_ = desiredJointTorques_;
