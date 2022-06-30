@@ -134,11 +134,10 @@ void X2FollowerState::during(void) {
         robot_->setTorque(desiredJointTorques_);
     } else if (mode == IK) {
 
-        trajTime = 0.05;
+        trajTime = 1;
         if (robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
         
         
-        Eigen::VectorXd destination = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
         timespec currTime;
         clock_gettime(CLOCK_MONOTONIC, &currTime);
 
@@ -152,7 +151,6 @@ void X2FollowerState::during(void) {
             //When you have finished this linear point, move on to the next stage
             currTrajProgress = 0;
             startJointPositions_ = robot_->getPosition();   
-            return;
         }
 
         //Interpolate the required changes to get to a location
