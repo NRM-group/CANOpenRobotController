@@ -17,6 +17,8 @@
 #include "X2Robot.h"
 #include "states/X2FollowerState.h"
 
+#include <array>
+
 using std::placeholders::_1;
 
 class X2MachineROS2 {

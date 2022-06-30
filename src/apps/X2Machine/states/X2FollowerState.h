@@ -40,6 +40,7 @@ public:
     Eigen::VectorXd& getDesiredJointTorquesISplit();
     Eigen::VectorXd& getDesiredJointTorquesDSplit();
     Eigen::VectorXd& getDesiredJointVelocities();
+    Eigen::VectorXd& getActualDesiredJointPositions();
 
     void entry(void);
     void during(void);
@@ -71,6 +72,7 @@ private:
     int mode;
     std::chrono::steady_clock::time_point time0;
     Eigen::VectorXd desiredJointPositions_;         // the desired joint positions
+    Eigen::VectorXd actualDesiredJointPositions_;
     Eigen::VectorXd prevDesiredJointPositions_;     // the previous desired joint position set by rate limiter
     Eigen::VectorXd desiredJointVelocities_;
     Eigen::VectorXd desiredJointTorques_;

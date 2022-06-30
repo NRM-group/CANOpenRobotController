@@ -14,7 +14,7 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
-    mode = GAIT;
+    mode = IK;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -24,6 +24,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     desiredJointTorquesP_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorquesI_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointTorquesD_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    actualDesiredJointPositions_= Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     startJointPositions_ = robot_->getPosition();
 
     refPos1 = 0;
@@ -138,48 +139,50 @@ void X2FollowerState::during(void) {
         if (robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
         
         
-        timespec currTime;
-        clock_gettime(CLOCK_MONOTONIC, &currTime);
+        // timespec currTime;
+        // clock_gettime(CLOCK_MONOTONIC, &currTime);
 
         
-        double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
-        prevTime = currTime;
-        currTrajProgress += timeElapsed; 
-        double progress = currTrajProgress / trajTime;
+        // double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
+        // prevTime = currTime;
+        // currTrajProgress += timeElapsed; 
+        // double progress = currTrajProgress / trajTime;
         
-        if(progress >= 1) {
-            //When you have finished this linear point, move on to the next stage
-            currTrajProgress = 0;
-            startJointPositions_ = robot_->getPosition();   
-        }
+        // if(progress >= 1) {
+        //     //When you have finished this linear point, move on to the next stage
+        //     currTrajProgress = 0;
+        //     startJointPositions_ = robot_->getPosition();   
+        // }
 
-        //Interpolate the required changes to get to a location
-        for(int j = 0; j < X2_NUM_JOINTS ; j ++) {
-            desiredJointPositions_[j] = startJointPositions_[j]  + progress * (desiredJointReferences_[j] - startJointPositions_[j]);
-            if (j == LEFT_HIP || j == RIGHT_HIP) {
-                // check hip bounds
-                if (desiredJointPositions_(j) > deg2rad(120)) {
-                    desiredJointPositions_(j) = deg2rad(120);
-                } else if (desiredJointPositions_(j) < -deg2rad(40)) {
-                    desiredJointPositions_(j) = -deg2rad(40);
-                }
-            } else if (j == LEFT_KNEE || j == RIGHT_KNEE) {
-                // check knee bounds
-                if (desiredJointPositions_(j) < -deg2rad(120)) {
-                    desiredJointPositions_(j) = -deg2rad(120);
-                } else if (desiredJointPositions_(j) > 0) {
-                    desiredJointPositions_(j) = 0;
-                }
-            }
-        }
+        // //Interpolate the required changes to get to a location
+        // for(int j = 0; j < X2_NUM_JOINTS ; j ++) {
+        //     desiredJointPositions_[j] = startJointPositions_[j]  + progress * (desiredJointReferences_[j] - startJointPositions_[j]);
+        //     if (j == LEFT_HIP || j == RIGHT_HIP) {
+        //         // check hip bounds
+        //         if (desiredJointPositions_(j) > deg2rad(120)) {
+        //             desiredJointPositions_(j) = deg2rad(120);
+        //         } else if (desiredJointPositions_(j) < -deg2rad(40)) {
+        //             desiredJointPositions_(j) = -deg2rad(40);
+        //         }
+        //     } else if (j == LEFT_KNEE || j == RIGHT_KNEE) {
+        //         // check knee bounds
+        //         if (desiredJointPositions_(j) < -deg2rad(120)) {
+        //             desiredJointPositions_(j) = -deg2rad(120);
+        //         } else if (desiredJointPositions_(j) > 0) {
+        //             desiredJointPositions_(j) = 0;
+        //         }
+        //     }
+        // }
+        desiredJointPositions_ = desiredJointReferences_;
         rateLimiter(deg2rad(rateLimit));
-        PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
-        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        for(auto &cnt : controllers) {
-            //Change to be the max torque if greater than
-            desiredJointTorques_ += cnt->output();
+        PDCntrl->loop(actualDesiredJointPositions_, robot_->getPosition());
+        // desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        // for(auto &cnt : controllers) {
+        //     //Change to be the max torque if greater than
+        //     desiredJointTorques_ += cnt->output();
 
-        }
+        // }
+        desiredJointTorques_ = PDCntrl->output();
         //Torque limiter function
         torqueLimiter(maxTorqueLimit);
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
@@ -226,7 +229,7 @@ void X2FollowerState::rateLimiter(double limit) {
                 newDesiredJointPosition = prevDesiredJointPositions_[i] - maxJointPositionDelta;
             }
 
-            desiredJointPositions_[i] = newDesiredJointPosition;
+            actualDesiredJointPositions_[i] = newDesiredJointPosition;
             prevDesiredJointPositions_[i] = newDesiredJointPosition;
         }
 
@@ -297,6 +300,10 @@ Eigen::VectorXd &X2FollowerState::getDesiredJointTorquesDSplit() {
 
 Eigen::VectorXd &X2FollowerState::getDesiredJointPositions() {
     return desiredJointPositions_;
+}
+
+Eigen::VectorXd &X2FollowerState::getActualDesiredJointPositions() {
+    return actualDesiredJointPositions_;
 }
 
 bool X2FollowerState::checkSafety() {

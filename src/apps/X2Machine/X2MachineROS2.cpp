@@ -17,7 +17,7 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
 #endif
 
     requestedTorquePublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_output", 10);
-    referenceJointPositionsPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_reference", 10);
+    referenceJointPositionsPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("actual_joint_references", 10);
 
     controllerOutputPublisher_ = node_->create_publisher<x2_msgs::msg::Output>("controller_outputs",10);
 
@@ -71,7 +71,11 @@ void X2MachineROS2::publishControullerOutputs(void){
     controllerOutputsMsg_.friction[1] = FricOut[1];
     controllerOutputsMsg_.friction[2] = FricOut[2];
     controllerOutputsMsg_.friction[3] = FricOut[3];
-
+    
+    controllerOutputsMsg_.total[0] = x2FollowerState_->getDesiredJointTorques()[0];
+    controllerOutputsMsg_.total[1] = x2FollowerState_->getDesiredJointTorques()[1];
+    controllerOutputsMsg_.total[2] = x2FollowerState_->getDesiredJointTorques()[2];
+    controllerOutputsMsg_.total[3] = x2FollowerState_->getDesiredJointTorques()[3];
 
     controllerOutputPublisher_->publish(controllerOutputsMsg_);
 }
