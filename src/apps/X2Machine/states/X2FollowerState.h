@@ -56,12 +56,12 @@ public:
 
     bool checkSafety(void);
     
+    LookupTable posReader;
 
 private:
     const int freq_;
     int t_count_;
 
-    LookupTable posReader;
     timespec prevTime;
     int gaitIndex;
     double trajTime;

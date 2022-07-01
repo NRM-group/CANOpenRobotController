@@ -204,4 +204,5 @@ void X2MachineROS2::enablerCallback(const x2_msgs::msg::Enable::SharedPtr enable
 void X2MachineROS2::corcParamCallback(const x2_msgs::msg::Corc::SharedPtr corcParams) {
     x2FollowerState_->rateLimit = corcParams->reference_limit;
     x2FollowerState_->maxTorqueLimit = corcParams->maximum_torque;
+    x2FollowerState_->posReader.updateTrajectoryTime(corcParams->trajectory_period);
 }

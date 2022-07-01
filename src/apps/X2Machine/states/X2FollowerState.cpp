@@ -14,7 +14,7 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
-    mode = IK;
+    mode = GAIT;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -31,7 +31,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     refPos2 = 0;
     refPosPeriod = 5;
     rateLimit = 0.0;
-    maxTorqueLimit = 0;
+    maxTorqueLimit = 0.0;
 
     PDCntrl = new PDController<double, X2_NUM_JOINTS>();
     ExtCntrl = new ExternalController<double, X2_NUM_JOINTS>();
@@ -42,7 +42,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
     // // Gravity to be implmented     
     controllers = {PDCntrl, ExtCntrl, FricCntrl};
-    posReader = LookupTable(X2_NUM_JOINTS);
+    posReader = LookupTable(X2_NUM_JOINTS,1, 1);
     
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
@@ -72,32 +72,10 @@ void X2FollowerState::during(void) {
             spdlog::info("Initalised Torque Control Mode");
         }
 
-        timespec currTime;
-        clock_gettime(CLOCK_MONOTONIC, &currTime);
-
-        double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
-        prevTime = currTime;
-        currTrajProgress += timeElapsed; 
-        double progress = currTrajProgress / trajTime;
-        trajTime = 0.05;
-
-        int trajIndexes = 1;
-        Eigen::VectorXd start(4);
-        Eigen::VectorXd end(4);
-
-        if(progress >= 1) {
-            //When you have finished this linear point, move on to the next stage
-            currTrajProgress = 0;
-            gaitIndex += trajIndexes;
-            return;
-        }
+        desiredJointPositions_ = posReader.getNextPos();
 
         for(int j = 0; j < X2_NUM_JOINTS; j++) {
             
-            start[j] = posReader.getPosition(j, gaitIndex);
-            end[j] = posReader.getPosition(j, gaitIndex + trajIndexes);
-            desiredJointPositions_[j] = (start[j] + progress * (end[j] - start[j]));
-
             if (j == LEFT_HIP || j == RIGHT_HIP) {
                 // check hip bounds
                 if (desiredJointPositions_[j] > deg2rad(120)) {
@@ -116,6 +94,7 @@ void X2FollowerState::during(void) {
         }
 
         // limit the desiredJointPositions_ delta from previous callback
+        actualDesiredJointPositions_ = desiredJointReferences_;
         rateLimiter(deg2rad(rateLimit));
         PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
         // desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -176,13 +155,12 @@ void X2FollowerState::during(void) {
         desiredJointPositions_ = desiredJointReferences_;
         rateLimiter(deg2rad(rateLimit));
         PDCntrl->loop(actualDesiredJointPositions_, robot_->getPosition());
-        // desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        // for(auto &cnt : controllers) {
-        //     //Change to be the max torque if greater than
-        //     desiredJointTorques_ += cnt->output();
+        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        for(auto &cnt : controllers) {
+            //Change to be the max torque if greater than
+            desiredJointTorques_ += cnt->output();
 
-        // }
-        desiredJointTorques_ = PDCntrl->output();
+        }
         //Torque limiter function
         torqueLimiter(maxTorqueLimit);
         // add debug torques and friction compensation torques to all joints based on the torque direction being applied
