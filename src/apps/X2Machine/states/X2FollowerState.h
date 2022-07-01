@@ -5,6 +5,7 @@
 #include "X2Robot.h"
 #include "controller.hpp"
 #include "LookupTable.h"
+#include "kinematics.hpp"
 #include <map>
 
 
@@ -42,6 +43,7 @@ public:
     Eigen::VectorXd& getDesiredJointVelocities();
     Eigen::VectorXd& getActualDesiredJointPositions();
 
+
     void entry(void);
     void during(void);
     void exit(void);
@@ -61,6 +63,7 @@ public:
 private:
     const int freq_;
     int t_count_;
+
 
     timespec prevTime;
     int gaitIndex;

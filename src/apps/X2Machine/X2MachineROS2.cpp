@@ -16,6 +16,7 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
     jointStatePublisher_ = node_->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
 #endif
 
+    ankleEndpointPublisher_ = node_->create_publisher<x2_msgs::msg::Endpoint>("ankle_endpoints", 10);
     requestedTorquePublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("actual_joint_references", 10);
 
@@ -85,7 +86,7 @@ void X2MachineROS2::publishJointStates(void) {
     Eigen::VectorXd jointPositions = robot_->getPosition();
     Eigen::VectorXd jointVelocities = robot_->getVelocity();
     Eigen::VectorXd jointTorques = robot_->getTorque();
-
+    Eigen::VectorXd ankleEndpoints = kinHandler.fow_kin(robot_->getPosition());
     jointStateMsg_.header.stamp = node_->now();
     jointStateMsg_.name[0] = "left_hip_joint";
     jointStateMsg_.name[1] = "left_knee_joint";
@@ -97,8 +98,14 @@ void X2MachineROS2::publishJointStates(void) {
         jointStateMsg_.position[id] = jointPositions[id];
         jointStateMsg_.velocity[id] = jointVelocities[id];
         jointStateMsg_.effort[id] = jointTorques[id];
-    }
 
+    }
+    ankleEndpoitsMsg_.left_x = ankleEndpoints(0);
+    ankleEndpoitsMsg_.left_y = ankleEndpoints(1);
+    ankleEndpoitsMsg_.right_x = ankleEndpoints(2);
+    ankleEndpoitsMsg_.right_y = ankleEndpoints(3);
+    
+    ankleEndpointPublisher_->publish(ankleEndpoitsMsg_);
     jointStateMsg_.position[4] = robot_->getBackPackAngleOnMedianPlane() - M_PI_2;
     jointStatePublisher_->publish(jointStateMsg_);
 }
@@ -179,27 +186,6 @@ void X2MachineROS2::enablerCallback(const x2_msgs::msg::Enable::SharedPtr enable
     //TODO
 }
 
-// void X2MachineROS2::updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques) {
-//     auto joint0_debug_torque = externalTorques->data[0];
-//     auto joint1_debug_torque = externalTorques->data[1];
-//     auto joint2_debug_torque = externalTorques->data[2];
-//     auto joint3_debug_torque = externalTorques->data[3];
-//     auto torqueLimit = externalTorques->data[4];
-//     auto refPos1 = externalTorques->data[5];
-//     auto refPos2 = externalTorques->data[6];
-//     auto refPosPeriod = floor(externalTorques->data[7]);
-//     auto rateLimit = externalTorques->data[8];
-
-//     x2FollowerState_->debugTorques[0] = joint0_debug_torque;
-//     x2FollowerState_->debugTorques[1] = joint1_debug_torque;
-//     x2FollowerState_->debugTorques[2] = joint2_debug_torque;
-//     x2FollowerState_->debugTorques[3] = joint3_debug_torque;
-//     x2FollowerState_->maxTorqueLimit = torqueLimit;
-//     x2FollowerState_->refPos1 = refPos1;
-//     x2FollowerState_->refPos2 = refPos2;
-//     x2FollowerState_->refPosPeriod = refPosPeriod;
-//     x2FollowerState_->rateLimit = rateLimit;
-// }
 
 void X2MachineROS2::corcParamCallback(const x2_msgs::msg::Corc::SharedPtr corcParams) {
     x2FollowerState_->rateLimit = corcParams->reference_limit;
