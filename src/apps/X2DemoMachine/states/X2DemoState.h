@@ -58,6 +58,7 @@ public:
 
     Eigen::VectorXd enableJoints;
 
+    void updateJointRef(Eigen::VectorXd joints);
 
 private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;

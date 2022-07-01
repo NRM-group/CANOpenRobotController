@@ -6,7 +6,7 @@ X2DemoMachine::X2DemoMachine(int argc, char *argv[]) {
 
     ros::init(argc, argv, "x2", ros::init_options::NoSigintHandler);
     ros::NodeHandle nodeHandle("~");
-
+    
     // Get robot name from the node name
     robotName_ = ros::this_node::getName();
     robotName_.erase(0,1); // erase the first character which is '/'
@@ -26,8 +26,10 @@ X2DemoMachine::X2DemoMachine(int argc, char *argv[]) {
      *
      */
 
-    // Create state objet
+    // Create   // Create a subscriber for the  state objet
     x2DemoState_ = new X2DemoState(this, robot_);
+    //Create subscriber using DemoState Callback Function
+    ros::Subscriber IKJointSub;
 
     // Create ros object
     x2DemoMachineRos_ = new X2DemoMachineROS(robot_, x2DemoState_, nodeHandle);
@@ -43,6 +45,8 @@ void X2DemoMachine::init() {
     spdlog::debug("X2DemoMachine::init()");
 
     // Create states with ROS features // This should be created after ros::init()
+    //Create a ROS subscriber for the joint_references topic (As per trajectory lib)
+    
     StateMachine::initialize(x2DemoState_);
 
     initialised = robot_->initialise();
@@ -127,3 +131,9 @@ bool X2DemoMachine::configureMasterPDOs() {
     spdlog::debug("X2DemoMachine::configureMasterPDOs()");
     return robot_->configureMasterPDOs();
 }
+
+void X2DemoMachine::jointRefCallback(const x2_msgs::X2Endpoint::ConstPtr& msg) {
+    //Recieve the data fromn the joint states and parse over to robot state
+    Eigen::VectorXd joints(4);
+    ROS_INFO("Recieved MSG");
+}   

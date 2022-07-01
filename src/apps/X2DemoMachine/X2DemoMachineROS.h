@@ -19,6 +19,7 @@
 #include <std_msgs/Int32MultiArray.h>
 #include <std_msgs/Int16.h>
 #include <std_srvs/Trigger.h>
+#include <geometry_msgs/Point.h>
 #include <CORC/X2Array.h>
 #include <CORC/X2Acceleration.h>
 #include <CORC/X2AccelerationMerge.h>
