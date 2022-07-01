@@ -19,6 +19,7 @@
 
 #define IK  0
 #define GAIT    1
+#define IK_GAIT 2
 
 class X2FollowerState : public State {
     X2Robot* robot_;
@@ -90,6 +91,8 @@ private:
     void torqueLimiter(double limit);
     void addDebugTorques(int joint);
     void addFrictionCompensationTorques(int joint);
+    
+    LegKinematics<double> kinHandler;
 };
 
 #endif
