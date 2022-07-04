@@ -16,25 +16,20 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     amplitude_ = 0.0;
     period_ = 5.0;
     offset_ = 0.0;
-    refPos1 = 0;
-    refPos2 = 0;
-    refPosPeriod = 5;
-    rateLimit = 0.0;
+    rateLimit = 30;
+    maxTorqueLimit = 80;
 
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     frictionCompensationTorques = Eigen::VectorXd::Zero(8);
 
-    posReader = LookupTable(X2_NUM_JOINTS);
-    posReader.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/src/apps/X2DemoMachine/gaits/GaitTrajectory_220602_1605.csv");
-    clock_gettime(CLOCK_MONOTONIC, &prevTime);
-    currTrajProgress = 0;
-    gaitIndex = 0;
-    trajTime = 2;
+    posReader_ = LookupTable(X2_NUM_JOINTS, 1, 0.05);
+    posReader_.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/lib/trajectorylib/gaits/walking.csv");
+    completed_cycles_ = 0;
 
-    Eigen::Matrix<double, 2, 2> p_gains;
-    Eigen::Matrix<double, 2, 2> d_gains;
-    Eigen::Matrix<double, 2, 1> lengths;
-    Eigen::Matrix<double, 10, 1> learning_rate; 
+    Eigen::Matrix<double, 2, 2> p_gains = Eigen::Matrix<double, 2, 2>::Zero();
+    Eigen::Matrix<double, 2, 2> d_gains = Eigen::Matrix<double, 2, 2>::Zero();
+    Eigen::Matrix<double, 2, 1> lengths = Eigen::Matrix<double, 2, 1>::Zero();
+    Eigen::Matrix<double, 10, 1> learning_rate = Eigen::Matrix<double, 10, 1>::Zero(); 
 
     // single length hip and shank lengths
     lengths << 0.39, 0.40;
@@ -54,8 +49,8 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     affc->set_criterions(2, 0.5);
 
     // unknown parameter logger
-    lambda_logger = spdlog::basic_logger_mt("lambda_logger", "logs/affc_lambdas.log");
-    tracking_error_logger = spdlog::basic_logger_mt("tracking_error_logger", "logs/affc_tracking_error.log");
+    lambda_logger = spdlog::basic_logger_mt("lambda_logger", "logs/affc_lambdas.log", true);
+    tracking_error_logger = spdlog::basic_logger_mt("tracking_error_logger", "logs/affc_tracking_error.log", true);
 }
 
 X2DemoState::~X2DemoState(void) {
@@ -87,33 +82,10 @@ void X2DemoState::during(void) {
             spdlog::info("Initalised Torque Control Mode");
         }
 
-        timespec currTime;
-        clock_gettime(CLOCK_MONOTONIC, &currTime);
-
-        double timeElapsed = currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec) / 1e9;
-        prevTime = currTime;
-        currTrajProgress += timeElapsed; 
-        double progress = currTrajProgress / trajTime;
-        trajTime = 0.01;
-
-        std::size_t trajIndexes = 1;
-        Eigen::VectorXd start(4);
-        Eigen::VectorXd end(4);
-
-        if (progress >= 1) {
-            // when you have finished this linear point, move onto the next stage
-            currTrajProgress = 0;
-            gaitIndex += trajIndexes;
-            return;
-        }
-
         // we only want to loop through one leg at a time 
+        desiredJointPositions_ = posReader_.getNextPos();
         for(int j = 0; j < X2_NUM_JOINTS / 2; j++) {
             
-            start[j] = posReader.getPosition(j, gaitIndex);
-            end[j] = posReader.getPosition(j, gaitIndex + trajIndexes);
-            desiredJointPositions_[j] = (start[j] + progress * (end[j] - start[j]));
-
             if (j == LEFT_HIP || j == RIGHT_HIP) {
                 // check hip bounds
                 if (desiredJointPositions_[j] > deg2rad(120)) {
@@ -140,10 +112,16 @@ void X2DemoState::during(void) {
             return;
         }
 
+        // current AFFC only works with one leg at a time
+        Eigen::Matrix<double, 2, 1> refPos, actualPos;
+        refPos << desiredJointPositions_[0], desiredJointPositions_[1];
+        actualPos << robot_->getPosition()[0], robot_->getPosition()[1];
+
         // iterate the AFFC algorithm once
-        if (posReader.isTrajectoryFinished(gaitIndex)) {
-            // a complete period of the trajectory has been completed
-            affc->loop(desiredJointPositions_, robot_->getPosition(), true);
+        if (posReader_.getCycles() != completed_cycles_) {
+            spdlog::info("AFFC cycle complete");
+            // a complete cycle of the trajectory has been completed
+            affc->loop(refPos, actualPos, true);
 
             // log unknown parameters and tracking error over iterations
             Eigen::Matrix<double, 10, 1> lamdas = affc->peek_learned_params();
@@ -161,15 +139,35 @@ void X2DemoState::during(void) {
                                 lamdas(9, 0)
             );
             tracking_error_logger->info("{}, {}", tracking_err(0, 0), tracking_err(1, 0));
+
+            spdlog::info("{},{},{},{},{},{},{},{},{},{}", 
+                                lamdas(0, 0),
+                                lamdas(1, 0),
+                                lamdas(2, 0),
+                                lamdas(3, 0),
+                                lamdas(4, 0),
+                                lamdas(5, 0),
+                                lamdas(6, 0),
+                                lamdas(7, 0),
+                                lamdas(8, 0),
+                                lamdas(9, 0)
+            );
+            spdlog::info("{}, {}", tracking_err(0, 0), tracking_err(1, 0));
+
+            // update the number of trajectory cycles that have been completed
+            completed_cycles_ = posReader_.getCycles();
         } else {
-            affc->loop(desiredJointPositions_, robot_->getPosition(), false);
+            affc->loop(refPos, actualPos, false);
         }
 
         // obtain required joint torques from AFFC control loop to reach desiredJointPositions_
-        desiredJointTorques_ = affc->output();
+        Eigen::Matrix<double, 2, 1> affc_out = affc->output();
+        desiredJointTorques_ << affc_out(0, 0), affc_out(1, 0), 0, 0;
 
         // limit torques
-        torque_limiter(-80.0, 80.0);
+        torque_limiter(80.0);
+
+        spdlog::info("{} {}", desiredJointTorques_[0], desiredJointTorques_[1]);
 
         // update motor torques to required values 
         robot_->setTorque(desiredJointTorques_);
@@ -232,13 +230,13 @@ void X2DemoState::vel_limiter(const double limit) {
     } 
 }
 
-void X2DemoState::torque_limiter(const double lower_limit, const double upper_limit) {
+void X2DemoState::torque_limiter(const double limit) {
     for (std::size_t i = 0; i < X2_NUM_JOINTS; i++) {
-        if (abs(desiredJointTorques_[i]) > maxTorqueLimit) {
+        if (abs(desiredJointTorques_[i]) > limit) {
             if (desiredJointTorques_[i] > 0) {
-                desiredJointTorques_[i] = upper_limit;
+                desiredJointTorques_[i] = limit;
             } else {
-                desiredJointTorques_[i] = lower_limit;
+                desiredJointTorques_[i] = -limit;
             }
         } 
     }

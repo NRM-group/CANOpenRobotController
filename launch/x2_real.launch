@@ -11,7 +11,7 @@
   <param name="x2/walking_gait" type="str" command = "realpath '$(find CORC)/lib/trajectorylib/gaits/walking.csv'"/>
 
   <!-- CORC -->
-  <node name="$(arg robot_name)" pkg="CORC" type="X2Machine_APP" output="screen" args="-can can0"/>
+  <node name="$(arg robot_name)" pkg="CORC" type="X2DemoMachine_APP" output="screen" args="-can can0"/>
 
   <!-- The robot_state_publisher reads the urdf from /robot_description parameter
        and listens to joint information on the /joint_states topic -->

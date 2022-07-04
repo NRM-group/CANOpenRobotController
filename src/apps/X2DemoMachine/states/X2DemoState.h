@@ -80,7 +80,7 @@ private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
     void vel_limiter(const double limit);
-    void torque_limiter(const double lower_limit, const double upper_limit);
+    void torque_limiter(const double limit);
     void addDebugTorques(int joint);
     void addFrictionCompensationTorques(int joint);
 
@@ -100,11 +100,8 @@ private:
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;
 
-    LookupTable posReader;
-    timespec prevTime;
-    int gaitIndex;
-    double trajTime;
-    double currTrajProgress;
+    LookupTable posReader_;
+    int completed_cycles_;
 };
 
 #endif
