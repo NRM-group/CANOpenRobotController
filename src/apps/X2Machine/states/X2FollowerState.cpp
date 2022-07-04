@@ -165,7 +165,7 @@ void X2FollowerState::during(void) {
         //Torque limiter function
         torqueLimiter(maxTorqueLimit);
         robot_->setTorque(desiredJointTorques_);
-
+        spdlog::info("Completed Cycles: {}", posReader.getCycles());
      
     }
 }
