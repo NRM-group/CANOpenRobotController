@@ -5,6 +5,7 @@
 #include "X2Robot.h"
 #include "controller.hpp"
 #include "LookupTable.h"
+#include "kinematics.hpp"
 #include <map>
 
 
@@ -18,6 +19,7 @@
 
 #define IK  0
 #define GAIT    1
+#define IK_GAIT 2
 
 class X2FollowerState : public State {
     X2Robot* robot_;
@@ -40,6 +42,8 @@ public:
     Eigen::VectorXd& getDesiredJointTorquesISplit();
     Eigen::VectorXd& getDesiredJointTorquesDSplit();
     Eigen::VectorXd& getDesiredJointVelocities();
+    Eigen::VectorXd& getActualDesiredJointPositions();
+
 
     void entry(void);
     void during(void);
@@ -55,12 +59,13 @@ public:
 
     bool checkSafety(void);
     
+    LookupTable posReader;
 
 private:
     const int freq_;
     int t_count_;
 
-    LookupTable posReader;
+
     timespec prevTime;
     int gaitIndex;
     double trajTime;
@@ -71,6 +76,7 @@ private:
     int mode;
     std::chrono::steady_clock::time_point time0;
     Eigen::VectorXd desiredJointPositions_;         // the desired joint positions
+    Eigen::VectorXd actualDesiredJointPositions_;
     Eigen::VectorXd prevDesiredJointPositions_;     // the previous desired joint position set by rate limiter
     Eigen::VectorXd desiredJointVelocities_;
     Eigen::VectorXd desiredJointTorques_;
@@ -85,6 +91,8 @@ private:
     void torqueLimiter(double limit);
     void addDebugTorques(int joint);
     void addFrictionCompensationTorques(int joint);
+    
+    LegKinematics<double> kinHandler;
 };
 
 #endif

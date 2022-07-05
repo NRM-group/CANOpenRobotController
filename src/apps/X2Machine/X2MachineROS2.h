@@ -13,9 +13,12 @@
 #include "x2_msgs/msg/output.hpp"
 
 
+
 #include "x2_ik_ros.hpp"
 #include "X2Robot.h"
 #include "states/X2FollowerState.h"
+
+#include <array>
 
 using std::placeholders::_1;
 
@@ -39,6 +42,8 @@ private:
     X2Robot* robot_;
     X2FollowerState* x2FollowerState_;
 
+    LegKinematics<double> kinHandler; //Ensure that the params file that sets the length is the same for x2_ik_ros.h
+
     std::shared_ptr<rclcpp::Node> node_;
 
     //Publishers
@@ -46,6 +51,8 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr requestedTorquePublisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr referenceJointPositionsPublisher_;
     rclcpp::Publisher<x2_msgs::msg::Output>::SharedPtr controllerOutputPublisher_;
+    rclcpp::Publisher<x2_msgs::msg::Endpoint>::SharedPtr ankleEndpointPublisher_;
+
     //Subscribers    
     // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr gainUpdateSubscriber_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr jointStateSubscriber_;
@@ -59,6 +66,7 @@ private:
     // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr jointCommandSubscriber_;
 
     sensor_msgs::msg::JointState jointStateMsg_;
+    x2_msgs::msg::Endpoint ankleEndpoitsMsg_;
     std_msgs::msg::Float64MultiArray requestedJointTorquesMsg_;
     std_msgs::msg::Float64MultiArray desiredJointReferencePositionsMsg_;
     x2_msgs::msg::Output controllerOutputsMsg_;
