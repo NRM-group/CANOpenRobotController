@@ -38,6 +38,7 @@ public:
     void publishInteractionForces(void);
     void publishGroundReactionForces(void);
     void publishRequestedJointTorques(void);
+    void publishRequestedJointTorquesSeperate(void);
     void publishJointReferencePositions(void);
     void initialize();
     void setNodeHandle(ros::NodeHandle& nodeHandle);
@@ -50,7 +51,14 @@ private:
     ros::Publisher interactionForcePublisher_;
     ros::Publisher groundReactionForcePublisher_[X2_NUM_GRF_SENSORS];
     ros::Publisher requestedTorquePublisher_;
-    ros::Publisher referenceJointPositionsPublisher_;
+    ros::Publisher requestedJoint1TorquePublisher_;
+    ros::Publisher requestedJoint2TorquePublisher_;
+    ros::Publisher requestedJoint3TorquePublisher_;
+    ros::Publisher requestedJoint4TorquePublisher_;
+    ros::Publisher referenceJoint1PositionsPublisher_;
+    ros::Publisher referenceJoint2PositionsPublisher_;
+    ros::Publisher referenceJoint3PositionsPublisher_;
+    ros::Publisher referenceJoint4PositionsPublisher_;
 
     ros::Subscriber gainUpdateSubscriber_;
     ros::Subscriber gainLimitUpdateSubscriber_;
@@ -65,7 +73,8 @@ private:
 
     sensor_msgs::JointState jointStateMsg_;
     std_msgs::Float64MultiArray requestedJointTorquesMsg_;
-    std_msgs::Float64MultiArray desiredJointReferencePositionsMsg_;
+    std_msgs::Float64 jointReferencePositionsMsg_;
+    std_msgs::Float64 requestedJointTorqueSeperateMsg_;
     CORC::X2Array interactionForceMsg_;
     geometry_msgs::WrenchStamped groundReactionForceMsgArray_[X2_NUM_GRF_SENSORS];
 

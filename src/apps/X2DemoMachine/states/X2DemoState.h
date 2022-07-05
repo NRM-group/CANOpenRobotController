@@ -71,8 +71,12 @@ public:
     double refPos2;
     int refPosPeriod;
     AdaptiveController<double, 2, 50>* affc;
+    std::shared_ptr<spdlog::logger> qref_logger; 
+    std::shared_ptr<spdlog::logger> qref_dot_logger; 
+    std::shared_ptr<spdlog::logger> qref_ddot_logger; 
     std::shared_ptr<spdlog::logger> lambda_logger;
     std::shared_ptr<spdlog::logger> tracking_error_logger;
+    std::shared_ptr<spdlog::logger> complete_logger;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
 
@@ -101,6 +105,8 @@ private:
     double amplitude_, period_, offset_;
 
     LookupTable posReader_;
+    LookupTable velReader_;
+    LookupTable accelReader_;
     int completed_cycles_;
 };
 

@@ -7,7 +7,6 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
 {
 
     requestedJointTorquesMsg_.data.resize(12);
-    desiredJointReferencePositionsMsg_.data.resize(4);
 
 #ifndef SIM  // if simulation, these will be published by Gazebo
     jointStatePublisher_ = nodeHandle_->advertise<sensor_msgs::JointState>("joint_states", 10);
@@ -24,9 +23,18 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     imuCalibrationService_ = nodeHandle_->advertiseService("calibrate_imu", &X2DemoMachineROS::calibrateIMUCallback, this);
     interactionForceCommand_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     requestedTorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_output", 10);
-    referenceJointPositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64MultiArray>("joint_reference", 10);
     frictionCompensationSubscriber_ = nodeHandle_->subscribe("joint_friction_compensation", 1, &X2DemoMachineROS::updateFrictionCompensationCallback, this);
     jointCommandSubscriber_ = nodeHandle_->subscribe("joint_parameters", 1, &X2DemoMachineROS::updateExternalTorquesCallback, this);
+
+    referenceJoint1PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_1_reference", 10);
+    referenceJoint2PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_2_reference", 10);
+    referenceJoint3PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_3_reference", 10);
+    referenceJoint4PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_4_reference", 10);
+
+    requestedJoint1TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_1_torque", 10);
+    requestedJoint2TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_2_torque", 10);
+    requestedJoint3TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_3_torque", 10);
+    requestedJoint4TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_4_torque", 10);
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -45,6 +53,7 @@ void X2DemoMachineROS::update() {
     publishGroundReactionForces();
 #endif
     publishRequestedJointTorques();
+    publishRequestedJointTorquesSeperate();
     publishJointReferencePositions();
 }
 
@@ -131,20 +140,34 @@ void X2DemoMachineROS::publishRequestedJointTorques() {
     requestedTorquePublisher_.publish(requestedJointTorquesMsg_);
 }
 
-void X2DemoMachineROS::publishJointReferencePositions() {
+void X2DemoMachineROS::publishRequestedJointTorquesSeperate() {
 
-    Eigen::VectorXd& desiredJointPositions = x2DemoState_->getDesiredJointPositions();
+    requestedJointTorqueSeperateMsg_.data = x2DemoState_->getDesiredJointTorques()[0];
+    requestedJoint1TorquePublisher_.publish(requestedJointTorqueSeperateMsg_);
 
-    desiredJointReferencePositionsMsg_.data[0] = desiredJointPositions[0];
-    desiredJointReferencePositionsMsg_.data[1] = desiredJointPositions[1];
-    desiredJointReferencePositionsMsg_.data[2] = desiredJointPositions[2];
-    desiredJointReferencePositionsMsg_.data[3] = desiredJointPositions[3];
+    requestedJointTorqueSeperateMsg_.data = x2DemoState_->getDesiredJointTorques()[1];
+    requestedJoint2TorquePublisher_.publish(requestedJointTorqueSeperateMsg_);
 
-    referenceJointPositionsPublisher_.publish(desiredJointReferencePositionsMsg_);
+    requestedJointTorqueSeperateMsg_.data = x2DemoState_->getDesiredJointTorques()[2];
+    requestedJoint3TorquePublisher_.publish(requestedJointTorqueSeperateMsg_);
+
+    requestedJointTorqueSeperateMsg_.data = x2DemoState_->getDesiredJointTorques()[3];
+    requestedJoint4TorquePublisher_.publish(requestedJointTorqueSeperateMsg_);
 }
 
-void X2DemoMachineROS::setNodeHandle(ros::NodeHandle &nodeHandle) {
-    nodeHandle_ = &nodeHandle;
+void X2DemoMachineROS::publishJointReferencePositions() {
+
+    jointReferencePositionsMsg_.data = x2DemoState_->getDesiredJointPositions()[0];
+    referenceJoint1PositionsPublisher_.publish(jointReferencePositionsMsg_);
+
+    jointReferencePositionsMsg_.data = x2DemoState_->getDesiredJointPositions()[1];
+    referenceJoint2PositionsPublisher_.publish(jointReferencePositionsMsg_);
+
+    jointReferencePositionsMsg_.data = x2DemoState_->getDesiredJointPositions()[2];
+    referenceJoint3PositionsPublisher_.publish(jointReferencePositionsMsg_);
+
+    jointReferencePositionsMsg_.data = x2DemoState_->getDesiredJointPositions()[3];
+    referenceJoint4PositionsPublisher_.publish(jointReferencePositionsMsg_);
 }
 
 ros::NodeHandle & X2DemoMachineROS::getNodeHandle() {
