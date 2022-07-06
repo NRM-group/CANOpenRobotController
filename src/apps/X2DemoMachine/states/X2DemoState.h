@@ -40,6 +40,8 @@
 #define RIGHT_HIP       2
 #define RIGHT_KNEE      3
 
+using namespace ctrl;
+
 /**
  * \brief Demo State for the X2DemoMachine
  *
@@ -77,6 +79,7 @@ public:
     std::shared_ptr<spdlog::logger> lambda_logger;
     std::shared_ptr<spdlog::logger> tracking_error_logger;
     std::shared_ptr<spdlog::logger> complete_logger;
+    std::shared_ptr<spdlog::logger> torque_logger;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
 
@@ -96,6 +99,7 @@ private:
     Eigen::VectorXd desiredJointPositions_;         // the desired joint positions
     Eigen::VectorXd prevDesiredJointPositions_;     // the previous desired joint position set by rate limiter
     Eigen::VectorXd desiredJointVelocities_;
+    Eigen::VectorXd desiredJointAccelerations_;
     Eigen::VectorXd desiredJointTorques_;
     Eigen::VectorXd desiredJointTorquesP_;
     Eigen::VectorXd desiredJointTorquesI_;
