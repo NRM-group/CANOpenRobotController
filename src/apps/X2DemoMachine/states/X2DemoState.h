@@ -33,7 +33,14 @@
 #define STEP_UP         1
 #define STEP_DOWN       0
 
-#define LIMIT_TORQUE    80 // [Nm]
+#define LIMIT_TORQuE    80 // [Nm]
+
+#define PERIOD          100 // [ms]
+
+#define JOINT_1         0
+#define JOINT_2         1
+#define JOINT_3         2
+#define JOINT_4         3
 
 #define LEFT_HIP        0
 #define LEFT_KNEE       1
@@ -99,8 +106,11 @@ private:
     LookupTable posReader;
     timespec prevTime;
     int gaitIndex;
+<<<<<<< Updated upstream
     double trajTime;
     double currTrajProgress;
+=======
+>>>>>>> Stashed changes
 };
 
 #endif

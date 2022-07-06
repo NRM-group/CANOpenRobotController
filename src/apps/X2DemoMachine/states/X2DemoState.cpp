@@ -24,6 +24,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     debugTorques = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     frictionCompensationTorques = Eigen::VectorXd::Zero(8);
 
+<<<<<<< Updated upstream
     jointControllers[0].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
     jointControllers[1].set_limit({-LIMIT_TORQUE, -LIMIT_TORQUE}, {LIMIT_TORQUE, LIMIT_TORQUE});
 
@@ -33,6 +34,18 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     currTrajProgress = 0;
     gaitIndex = 0;
     trajTime = 2;
+=======
+    jointControllers.set_limit(-LIMIT_TORQUE, LIMIT_TORQUE);
+    jointControllers[0].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[1].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[2].bind([](auto& Kp, auto& Ki, auto& Kd){});
+    jointControllers[3].bind([](auto& Kp, auto& Ki, auto& Kd){});
+
+    posReader = LookupTable(X2_NUM_JOINTS);
+    posReader.readCSV("");
+    clock_gettime(CLOCK_MONOTONIC, &prevTime);
+    gaitIndex = 0;
+>>>>>>> Stashed changes
 }
 
 void X2DemoState::entry(void) {
@@ -227,10 +240,16 @@ void X2DemoState::during(void) {
     desiredJointTorquesP_ = jointControllers.get_p();
     desiredJointTorquesD_ = jointControllers.get_d();
 
+<<<<<<< Updated upstream
     // add debug torques and friction compensation torques to all joints based on the torque direction being applied
     for (size_t i = 0; i < X2_NUM_JOINTS; i++) {
         addDebugTorques(i);
         addFrictionCompensationTorques(i);
+=======
+        robot_->setTorque(desiredJointTorques_);
+        t_count_++;
+    } else if (controller_mode_ == 5) {
+>>>>>>> Stashed changes
     }
 
     // update motor torques to required values 
