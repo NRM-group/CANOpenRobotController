@@ -62,6 +62,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     tracking_error_logger = spdlog::basic_logger_mt("tracking_error_logger", "logs/affc_tracking_error.log", true);
     complete_logger = spdlog::basic_logger_mt("complete_logger", "logs/affc_complete.log", true);
     torque_logger = spdlog::basic_logger_mt("torque_logger", "logs/affc_torques.log", true);
+    qact_logger = spdlog::basic_logger_mt("qact_logger", "logs/affc_qact.log", true);
     spdlog::flush_every(std::chrono::seconds(2));
 }
 
@@ -184,6 +185,7 @@ void X2DemoState::during(void) {
         desiredJointTorques_ << affc_out(0, 0), affc_out(1, 0), 0, 0;
 
         complete_logger->info("{},{},{},{}", refPos[0], refPos[1], desiredJointTorques_[0], desiredJointTorques_[1]);
+        qact_logger->info("{}, {}", robot_->getPosition()[0], robot_->getPosition()[1]);
 
         // limit torques
         torque_limiter(80.0);

@@ -80,6 +80,7 @@ public:
     std::shared_ptr<spdlog::logger> tracking_error_logger;
     std::shared_ptr<spdlog::logger> complete_logger;
     std::shared_ptr<spdlog::logger> torque_logger;
+    std::shared_ptr<spdlog::logger> qact_logger;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
 

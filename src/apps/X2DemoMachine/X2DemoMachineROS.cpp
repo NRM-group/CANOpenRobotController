@@ -31,10 +31,16 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     referenceJoint3PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_3_reference", 10);
     referenceJoint4PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_4_reference", 10);
 
+    actualJoint1PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_1_actual_pos", 10);
+    actualJoint2PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_2_actual_pos", 10);
+    actualJoint3PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_3_actual_pos", 10);
+    actualJoint4PositionsPublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_4_actual_pos", 10);
+
     requestedJoint1TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_1_torque", 10);
     requestedJoint2TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_2_torque", 10);
     requestedJoint3TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_3_torque", 10);
     requestedJoint4TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_4_torque", 10);
+
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -55,6 +61,7 @@ void X2DemoMachineROS::update() {
     publishRequestedJointTorques();
     publishRequestedJointTorquesSeperate();
     publishJointReferencePositions();
+    publishJointActualPositionsSeperate();
 }
 
 void X2DemoMachineROS::publishJointStates() {
@@ -116,7 +123,6 @@ void X2DemoMachineROS::publishGroundReactionForces() {
 }
 
 void X2DemoMachineROS::publishRequestedJointTorques() {
-
     Eigen::VectorXd desiredJointTorques = x2DemoState_->getDesiredJointTorques();
     Eigen::VectorXd pJointTorques = x2DemoState_->getDesiredJointTorquesPSplit();
     Eigen::VectorXd dJointTorques = x2DemoState_->getDesiredJointTorquesDSplit();
@@ -141,7 +147,6 @@ void X2DemoMachineROS::publishRequestedJointTorques() {
 }
 
 void X2DemoMachineROS::publishRequestedJointTorquesSeperate() {
-
     requestedJointTorqueSeperateMsg_.data = x2DemoState_->getDesiredJointTorques()[0];
     requestedJoint1TorquePublisher_.publish(requestedJointTorqueSeperateMsg_);
 
@@ -156,7 +161,6 @@ void X2DemoMachineROS::publishRequestedJointTorquesSeperate() {
 }
 
 void X2DemoMachineROS::publishJointReferencePositions() {
-
     jointReferencePositionsMsg_.data = x2DemoState_->getDesiredJointPositions()[0];
     referenceJoint1PositionsPublisher_.publish(jointReferencePositionsMsg_);
 
@@ -168,6 +172,20 @@ void X2DemoMachineROS::publishJointReferencePositions() {
 
     jointReferencePositionsMsg_.data = x2DemoState_->getDesiredJointPositions()[3];
     referenceJoint4PositionsPublisher_.publish(jointReferencePositionsMsg_);
+}
+
+void X2DemoMachineROS::publishJointActualPositionsSeperate() {
+   jointActualPositionsMsg_.data = robot_->getPosition()[0]; 
+   actualJoint1PositionsPublisher_.publish(jointActualPositionsMsg_);
+
+   jointActualPositionsMsg_.data = robot_->getPosition()[1]; 
+   actualJoint2PositionsPublisher_.publish(jointActualPositionsMsg_);
+
+   jointActualPositionsMsg_.data = robot_->getPosition()[2]; 
+   actualJoint3PositionsPublisher_.publish(jointActualPositionsMsg_);
+
+   jointActualPositionsMsg_.data = robot_->getPosition()[3]; 
+   actualJoint4PositionsPublisher_.publish(jointActualPositionsMsg_);
 }
 
 ros::NodeHandle & X2DemoMachineROS::getNodeHandle() {
