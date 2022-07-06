@@ -41,14 +41,6 @@
 #define JOINT_2         1
 #define JOINT_3         2
 #define JOINT_4         3
-<<<<<<< Updated upstream
-
-#define LEFT_HIP        0
-#define LEFT_KNEE       1
-#define RIGHT_HIP       2
-#define RIGHT_KNEE      3
-=======
->>>>>>> Stashed changes
 
 /**
  * \brief Demo State for the X2DemoMachine
@@ -109,14 +101,8 @@ private:
     LookupTable posReader;
     timespec prevTime;
     int gaitIndex;
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     double trajTime;
     double currTrajProgress;
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 };
 
 #endif
