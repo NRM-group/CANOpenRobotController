@@ -45,6 +45,9 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     posReader.readCSV("");
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     gaitIndex = 0;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 }
 
@@ -249,6 +252,9 @@ void X2DemoState::during(void) {
         robot_->setTorque(desiredJointTorques_);
         t_count_++;
     } else if (controller_mode_ == 5) {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 
