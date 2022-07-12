@@ -27,9 +27,13 @@ void X2DemoState::entry(void) {
     f = boost::bind(&X2DemoState::dynReconfCallback, this, _1, _2);
     server_.setCallback(f);
     //Simulation has a length of 360mm
-    legkin.update_lengths(360, 360);
+    legkin.update_lengths(360, 360, LEFT);
+    legkin.update_lengths(360, 360, RIGHT);
     desiredCartesianPosition(0) = 680;
     desiredCartesianPosition(1) = 0;
+    posReader = LookupTable<double, X2_NUM_JOINTS>();
+    posReader.readCSV("/home/fred-ross/catkin_ws/src/CANOpenRobotController/lib/trajectorylib/gaits/walking.csv");
+    posReader.startTrajectory(robot_->getPosition());
     time0 = std::chrono::steady_clock::now();
 
 }
@@ -60,7 +64,9 @@ void X2DemoState::during(void) {
         if (robot_->getControlMode()!=CM_POSITION_CONTROL) robot_->initPositionControl();
         double x = desiredCartesianPosition(0);
         double y = desiredCartesianPosition(1);
-        Eigen::Matrix<double, 2,1> angles = legkin.inv_kin(x, y);
+        Eigen::VectorXd legCoords(4);
+        legCoords << x,y,x,y;
+        Eigen::Matrix<double, 2,1> angles = legkin.inv_kin(legCoords);
         Eigen::VectorXd destination = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
         timespec currTime;
         clock_gettime(CLOCK_MONOTONIC, &currTime);
@@ -105,25 +111,11 @@ void X2DemoState::during(void) {
         //Increment the position of the legs to meet the deisired joint positions
 
 
-    } else if(controller_mode_ == 3){ //ROS2 Topic (With IK) Testing
-        //Listen on topicand update accordingly
-
-        //See if the callback has been called. 
+    } else if(controller_mode_ == 3){ //Follwer State
+        if(robot_->getControlMode() != CM_POSITION_CONTROL) robot_->initPositionControl();
+        desiredJointPositions_ = posReader.getNextPos();
+        robot_->setPosition(desiredJointPositions_);
         
-        
-        // // " a very simple (and not ideal) transparent controller"
-        // if(robot_->getControlMode()!=CM_TORQUE_CONTROL) robot_->initTorqueControl();
-
-        // std::cout<<"force: "<<robot_->getSmoothedInteractionForce()[2]<<std::endl;
-        // std::cout<<"multiplied: "<<kTransperancy_.asDiagonal()*robot_->getSmoothedInteractionForce()<<std::endl;
-        // desiredJointTorques_ = robot_->getPseudoInverseOfSelectionMatrixTranspose()*
-        //         (robot_->getFeedForwardTorque() + kTransperancy_.asDiagonal()*robot_->getSmoothedInteractionForce());
-
-
-        // for(int id = 0; id <X2_NUM_JOINTS; id++) desiredJointTorques_[id] *= enableJoints[id];
-
-        // robot_->setTorque(desiredJointTorques_);
-
     } else if(controller_mode_ == 4){ // sin vel
         if(robot_->getControlMode()!=CM_VELOCITY_CONTROL) robot_->initVelocityControl();
 

@@ -29,6 +29,7 @@
 #include <CORC/dynamic_paramsConfig.h>
 
 //Custom includes
+#include "LookupTable.hpp"
 #include "kinematics.hpp"
 
 #define JOINT_1 0
@@ -61,6 +62,7 @@ public:
     void updateJointRef(Eigen::VectorXd joints);
 
 private:
+    LookupTable<double, X2_NUM_JOINTS> posReader;
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
     void dynReconfCallback(CORC::dynamic_paramsConfig &config, uint32_t level);
 

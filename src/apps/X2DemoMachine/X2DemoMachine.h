@@ -55,7 +55,6 @@ public:
     void initRobot(X2Robot *rb);
     bool configureMasterPDOs();
 
-    void jointRefCallback(const sensor_msgs::JointState::ConstPtr& msg);
     /**
      * Pointers to the relevant states - initialised in init
      *

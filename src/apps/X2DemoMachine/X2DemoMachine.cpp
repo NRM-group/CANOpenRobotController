@@ -131,9 +131,3 @@ bool X2DemoMachine::configureMasterPDOs() {
     spdlog::debug("X2DemoMachine::configureMasterPDOs()");
     return robot_->configureMasterPDOs();
 }
-
-void X2DemoMachine::jointRefCallback(const x2_msgs::X2Endpoint::ConstPtr& msg) {
-    //Recieve the data fromn the joint states and parse over to robot state
-    Eigen::VectorXd joints(4);
-    ROS_INFO("Recieved MSG");
-}   
