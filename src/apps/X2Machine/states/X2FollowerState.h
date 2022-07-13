@@ -52,10 +52,10 @@ public:
     
 
     enum cntrl {PD, Ext, Fric, Grav};
-    PDController<double, X2_NUM_JOINTS>* PDCntrl;
-    ExternalController<double, X2_NUM_JOINTS>* ExtCntrl;
-    FrictionController<double, X2_NUM_JOINTS>* FricCntrl;
-    std::array<BaseController<double, X2_NUM_JOINTS>*, 3> controllers;
+    ctrl::PDController<double, X2_NUM_JOINTS>* PDCntrl;
+    ctrl::ExternalController<double, X2_NUM_JOINTS>* ExtCntrl;
+    ctrl::FrictionController<double, X2_NUM_JOINTS>* FricCntrl;
+    std::array<ctrl::BaseController<double, X2_NUM_JOINTS>*, 3> controllers;
 
     bool checkSafety(void);
     

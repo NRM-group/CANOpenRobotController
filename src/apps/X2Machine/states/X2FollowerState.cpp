@@ -33,9 +33,9 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     rateLimit = 0.0;
     maxTorqueLimit = 0.0;
 
-    PDCntrl = new PDController<double, X2_NUM_JOINTS>();
-    ExtCntrl = new ExternalController<double, X2_NUM_JOINTS>();
-    FricCntrl = new FrictionController<double, X2_NUM_JOINTS>();
+    PDCntrl = new ctrl::PDController<double, X2_NUM_JOINTS>();
+    ExtCntrl = new ctrl::ExternalController<double, X2_NUM_JOINTS>();
+    FricCntrl = new ctrl::FrictionController<double, X2_NUM_JOINTS>();
     
     // controllers.insert(std::pair<cntrl, PDController<double, X2_NUM_JOINTS>*>(PD, PDCntrl));
     // controllers.insert(std::pair<cntrl, ExternalController<double, X2_NUM_JOINTS>*>(Ext, ExtCntrl));

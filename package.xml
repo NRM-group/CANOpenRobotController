@@ -56,6 +56,7 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>controller_manager_msgs</depend>
+  <depend>exo_msgs</depend>
   <!--<depend>cob_gazebo_ros_control</depend>-->
   <depend>x2_description</depend>
   <!--<depend>dynamic_reconfigure</depend>-->
