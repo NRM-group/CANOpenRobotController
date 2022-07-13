@@ -10,18 +10,18 @@ X2Machine::X2Machine(int argc, char** argv, const float updateT) {
 
     // initalise ROS2 node
     rclcpp::init(argc, argv, rosInit);
-    node_ = rclcpp::Node::make_shared("x2");
+    auto node_ = rclcpp::Node::make_shared("x2");
 
     // get robot name from node name and remove '/'
     robotName_ = "x2";
-
-#ifdef SIM
-    robot_ = new X2Robot(node updateT, robotName_);
-#else
     std::string param_file;
     node_->declare_parameter("x2_params");
     node_->get_parameter("x2_params", param_file);
-    robot_ = new X2Robot(updateT, robotName_, param_file);
+ 
+#ifdef SIM
+    robot_ = new X2Robot(node_, updateT, robotName_, param_file);
+#else
+   robot_ = new X2Robot(updateT, robotName_, param_file);
 #endif
 
     // Create PRE-DESIGNED State Machine events and state objects
@@ -65,7 +65,7 @@ void X2Machine::end() {
 ///////////////////////////////////////////////////////////////
 bool X2Machine::StartExo::check(void) {
     if (OWNER->robot_->keyboard->getS() == true) {
-        spdlog::info("X2 Started");
+        spdlog::info("Start X2");
         return true;
     }
 
@@ -75,7 +75,7 @@ bool X2Machine::StartExo::check(void) {
 bool X2Machine::ExitSafe::check(void) {
     //TODO: Need a seperate Safety management program
     if (OWNER->x2FollowerState_->checkSafety()) {
-        spdlog::warn("Excessive Torque detected, transitioning to safe state");
+        spdlog::warn("Excessive change in torque detected, transitioning to safe state");
         return true;
     }
     return false;

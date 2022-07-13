@@ -132,7 +132,7 @@ void X2Robot::signalHandler(int signum) {
 
 #ifdef SIM
 void X2Robot::initialiseROS(std::shared_ptr<rclcpp::Node> &node) {
-    controllerSwitchClient_ = node->create_client<controller_manager_msgs::srv::SwitchController>("controller_manager/switch_controller");
+    // controllerSwitchClient_ = node->create_client<controller_manager_msgs::srv::SwitchController>("controller_manager/switch_controller");
 
     positionCommandPublisher_ = node->create_publisher<std_msgs::msg::Float64MultiArray>("position_controller/command", 10);
     velocityCommandPublisher_ = node->create_publisher<std_msgs::msg::Float64MultiArray>("velocity_controller/command", 10);

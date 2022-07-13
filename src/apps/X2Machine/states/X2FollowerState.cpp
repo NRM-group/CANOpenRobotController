@@ -280,9 +280,14 @@ Eigen::VectorXd &X2FollowerState::getActualDesiredJointPositions() {
     return actualDesiredJointPositions_;
 }
 
+/**
+ * @brief Checks that the torque does not change a significant amount (As this can cause unsafe jitter)
+ * 
+ * @return true 
+ * @return false 
+ * @todo Need to refine the actual value of this limit, it is currently chosen arbitrarily
+ */
 bool X2FollowerState::checkSafety() {
-    //Change to differences
-    //Check that the robot's torque has not exceeded the limits
 
     double jerkLim = abs(maxTorqueLimit * 0.25 / freq_);
     for(int i = 0; i < desiredJointTorques_.size(); i++) {
