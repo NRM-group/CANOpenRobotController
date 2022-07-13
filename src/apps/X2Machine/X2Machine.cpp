@@ -20,7 +20,7 @@ X2Machine::X2Machine(int argc, char** argv, const float updateT) {
 #else
     std::string param_file;
     node_->declare_parameter("x2_params");
-    node_->get_parameter("x2_params", param_file);
+    node_->get_parameter<std::string>("x2_params", param_file);
     robot_ = new X2Robot(updateT, robotName_, param_file);
 #endif
 
@@ -74,10 +74,10 @@ bool X2Machine::StartExo::check(void) {
 
 bool X2Machine::ExitSafe::check(void) {
     //TODO: Need a seperate Safety management program
-    if (OWNER->x2FollowerState_->checkSafety()) {
-        spdlog::warn("Excessive Torque detected, transitioning to safe state");
-        return true;
-    }
+    //if (OWNER->x2FollowerState_->checkSafety()) {
+    //    spdlog::warn("Excessive Torque detected, transitioning to safe state");
+    //    return true;
+    //}
     return false;
 }
 

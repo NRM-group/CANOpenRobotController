@@ -8,7 +8,8 @@
 #include "kinematics.hpp"
 #include <map>
 
-
+#define VAR_LOG(x)      spdlog::info("{} {} {} {}", x[0], x[1], x[2], x[3])
+#define CTRL_LOG(x)     spdlog::info("{} {} {} {}", x.output()[0], x.output()[1], x.output()[2], x.output()[3])
 
 #define LIMIT_TORQUE    80 // [Nm]
 
@@ -44,18 +45,18 @@ public:
     Eigen::VectorXd& getDesiredJointVelocities();
     Eigen::VectorXd& getActualDesiredJointPositions();
 
+    double strainGauge_[X2_NUM_JOINTS];
+    double filteredGauge_[X2_NUM_JOINTS];
+    ctrl::Butterworth<double, X2_NUM_JOINTS, 5> butter;
 
     void entry(void);
     void during(void);
     void exit(void);
     X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name = NULL);
     
-
-    enum cntrl {PD, Ext, Fric, Grav};
-    PDController<double, X2_NUM_JOINTS>* PDCntrl;
-    ExternalController<double, X2_NUM_JOINTS>* ExtCntrl;
-    FrictionController<double, X2_NUM_JOINTS>* FricCntrl;
-    std::array<BaseController<double, X2_NUM_JOINTS>*, 3> controllers;
+    ctrl::FrictionController<double, X2_NUM_JOINTS> friction;
+    ctrl::GravityController<double, X2_NUM_JOINTS> gravity;
+    ctrl::TorqueController<double, X2_NUM_JOINTS> torque;
 
     bool checkSafety(void);
     
@@ -85,6 +86,7 @@ private:
     Eigen::VectorXd desiredJointTorquesI_;
     Eigen::VectorXd desiredJointTorquesD_;
     Eigen::VectorXd startJointPositions_;
+
 
 
     void rateLimiter(double limit);

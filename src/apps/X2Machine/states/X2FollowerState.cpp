@@ -14,7 +14,7 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
-    mode = IK_GAIT;
+    mode = GAIT;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -33,21 +33,26 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     rateLimit = 0.0;
     maxTorqueLimit = 0.0;
 
-    PDCntrl = new PDController<double, X2_NUM_JOINTS>();
-    ExtCntrl = new ExternalController<double, X2_NUM_JOINTS>();
-    FricCntrl = new FrictionController<double, X2_NUM_JOINTS>();
-    
-    // controllers.insert(std::pair<cntrl, PDController<double, X2_NUM_JOINTS>*>(PD, PDCntrl));
-    // controllers.insert(std::pair<cntrl, ExternalController<double, X2_NUM_JOINTS>*>(Ext, ExtCntrl));
-    // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
-    // // Gravity to be implmented     
-    controllers = {PDCntrl, ExtCntrl, FricCntrl};
-    posReader = LookupTable(X2_NUM_JOINTS,1, 1);
+    //posReader = LookupTable(X2_NUM_JOINTS,1, 1);
     
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     gaitIndex = 0;
     trajTime = 2;
+
+    // 5th order 333Hz, 10Hz
+    //butter.set_coeff_a({ 1, 5, 10, 10, 5, 1 });
+    //butter.set_coeff_b({ 178998.296,
+    //                     785742.8,
+    //                     -1385588.208,
+    //                     1226437.946,
+    //                     -544718.184,
+    //                     97091.942
+    //});
+
+    // 2nd order 333Hz 10Hz
+    butter.set_coeff_a({ 1, 2, 1});
+    butter.set_coeff_b({ 127.634, 221.376, -97.742 });
 }
 
 void X2FollowerState::entry(void) {
@@ -55,13 +60,46 @@ void X2FollowerState::entry(void) {
     posReader.readCSV(csvFileName);
     safetyFlag = false; //Initialise with no safetyfkag
     time0 = std::chrono::steady_clock::now();
+    robot_->initTorqueControl();
 }
 
 void X2FollowerState::during(void) {
 
+    Eigen::Vector4d strain = robot_->getJointTorquesViaStrainGauges();
+    strain[0] += 7.2;
+    strain[1] += 6.28;
+    strain[2] += 7.2;
+    strain[3] += 6.28;
+    memcpy(strainGauge_, strain.data(), sizeof(double) * X2_NUM_JOINTS);
+    butter.filter(strain);
+    memcpy(filteredGauge_, butter.output().data(), sizeof(double) * X2_NUM_JOINTS);
+
+    Eigen::Vector4d angle_offset;
+    angle_offset << M_PI_2, M_PI_2, M_PI_2, M_PI_2;
+
+    friction.loop(robot_->getVelocity());
+    gravity.loop(robot_->getPosition() - angle_offset);
+    torque.loop(butter.output());
+
+    //desiredJointTorques_ = friction.output() + gravity.output() + torque.output();
+    //desiredJointTorques_ = friction.output() + gravity.output();
+    desiredJointTorques_ = gravity.output();
+
+    for (int j = 0; j < X2_NUM_JOINTS; j++)
+    {
+        if (desiredJointTorques_[j] > maxTorqueLimit)
+            desiredJointTorques_[j] = maxTorqueLimit;
+
+        else if (desiredJointTorques_[j] < -maxTorqueLimit)
+            desiredJointTorques_[j] = -maxTorqueLimit;
+    }
+
+    robot_->setTorque(desiredJointTorques_);
+
     // set maximum joint torque limits
     // TODO
     //Do not run if the safety flag is triggered
+    /*
     if (safetyFlag) {
         return;
     }
@@ -72,7 +110,12 @@ void X2FollowerState::during(void) {
             spdlog::info("Initalised Torque Control Mode");
         }
 
-        desiredJointPositions_ = posReader.getNextPos();
+        //desiredJointPositions_ = posReader.getJointPositions(i++);
+        for (int j = 0; j < X2_NUM_JOINTS; j++)
+        {
+            desiredJointPositions_[j] = posReader.getPosition(j, i);
+        }
+        i++;
 
         for(int j = 0; j < X2_NUM_JOINTS; j++) {
             
@@ -130,11 +173,11 @@ void X2FollowerState::during(void) {
             spdlog::info("Initialised Torque Control");
         }
         Eigen::VectorXd computedState = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        computedState = posReader.getNextPos();
+        //computedState = posReader.getNextPos();
          
         Eigen::VectorXd FKcoords = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        FKcoords = kinHandler.fow_kin(computedState);
-        desiredJointPositions_ = kinHandler.inv_kin(FKcoords);
+        //FKcoords = kinHandler.fow_kin(computedState);
+        //desiredJointPositions_ = kinHandler.inv_kin(FKcoords);
         for(int j = 0; j < X2_NUM_JOINTS; j++) {
             
             if (j == LEFT_HIP || j == RIGHT_HIP) {
@@ -166,9 +209,10 @@ void X2FollowerState::during(void) {
         //Torque limiter function
         torqueLimiter(maxTorqueLimit);
         robot_->setTorque(desiredJointTorques_);
-        spdlog::info("Completed Cycles: {}", posReader.getCycles());
+        //spdlog::info("Completed Cycles: {}", posReader.getCycles());
      
     }
+    */
 }
 
 void X2FollowerState::exit(void) {

@@ -24,8 +24,8 @@ using std::placeholders::_1;
 
 class X2MachineROS2 {
 
-using Tv = BaseController<double, X2_NUM_JOINTS>::_Tv_;
-using Tm = BaseController<double, X2_NUM_JOINTS>::_Tm_;
+using Tv = ctrl::BaseController<double, X2_NUM_JOINTS>::_Tv_;
+using Tm = ctrl::BaseController<double, X2_NUM_JOINTS>::_Tm_;
 
 public:
     X2MachineROS2(X2Robot* robot, X2FollowerState* x2State, std::shared_ptr<rclcpp::Node>& node);
@@ -52,6 +52,9 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr referenceJointPositionsPublisher_;
     rclcpp::Publisher<x2_msgs::msg::Output>::SharedPtr controllerOutputPublisher_;
     rclcpp::Publisher<x2_msgs::msg::Endpoint>::SharedPtr ankleEndpointPublisher_;
+
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr strainGaugePublisher_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr filteredGaugePublisher_;
 
     //Subscribers    
     // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr gainUpdateSubscriber_;
