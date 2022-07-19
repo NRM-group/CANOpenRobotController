@@ -24,13 +24,12 @@ def generate_launch_description():
 	x2_node = Node(
 		package="CORC",
 		executable="X2Machine_APP",
-		arguments=["-can", "can0"],
+		arguments=["-can", "vcan0"],
 		name="x2",
 		output="screen",
         parameters=[
             { "walking_gait" : gait_file },
-            { "x2_params"    : x2_file   },
-			x2_file
+            { "x2_params"    : x2_file   }
 		]
 	)
 	x2_ik_node = Node(
@@ -51,9 +50,8 @@ def generate_launch_description():
 		arguments=["-d", rviz_config],
 		name="rviz2"
 	)
-
 	ld.add_action(x2_node)
-	ld.add_action(x2_ik_node)
-	ld.add_action(robot_state_node)
-	ld.add_action(rviz_node)
+	# ld.add_action(x2_ik_node)
+	# ld.add_action(robot_state_node)
+	# ld.add_action(rviz_node)
 	return ld

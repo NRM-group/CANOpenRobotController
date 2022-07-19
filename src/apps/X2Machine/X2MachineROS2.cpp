@@ -11,10 +11,7 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
     jointStateMsg_.position.resize(X2_NUM_JOINTS + 1);
     jointStateMsg_.velocity.resize(X2_NUM_JOINTS + 1);
     jointStateMsg_.effort.resize(X2_NUM_JOINTS + 1);
-
-#ifndef SIM  // if simulation, these will be published by Gazebo
     jointStatePublisher_ = node_->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
-#endif
 
     ankleEndpointPublisher_ = node_->create_publisher<exo_msgs::msg::Endpoint>("ankle_endpoints", 10);
     requestedTorquePublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_output", 10);
@@ -44,40 +41,16 @@ void X2MachineROS2::initalise() {
 }
 
 void X2MachineROS2::update() {
-#ifndef SIM  // if simulation, these will be published by Gazebo
     publishJointStates();
-#endif
-    publishRequestedJointTorques();
-    publishJointReferencePositions();
+    // publishRequestedJointTorques();
+    // publishJointReferencePositions();
     publishControullerOutputs();
 }
 
 void X2MachineROS2::publishControullerOutputs(void){ 
     //TODO Gravity
-    Eigen::VectorXd  PDout = x2FollowerState_->PDCntrl->output();
-    Eigen::VectorXd  ExtOut = x2FollowerState_->ExtCntrl->output();
-    Eigen::VectorXd  FricOut = x2FollowerState_->FricCntrl->output();
-
-    controllerOutputsMsg_.pd[0] = PDout[0];
-    controllerOutputsMsg_.pd[1] = PDout[1];
-    controllerOutputsMsg_.pd[2] = PDout[2];
-    controllerOutputsMsg_.pd[3] = PDout[3];
-
-    controllerOutputsMsg_.external[0] = ExtOut[0];
-    controllerOutputsMsg_.external[1] = ExtOut[1];
-    controllerOutputsMsg_.external[2] = ExtOut[2];
-    controllerOutputsMsg_.external[3] = ExtOut[3];
-
-    controllerOutputsMsg_.friction[0] = FricOut[0];
-    controllerOutputsMsg_.friction[1] = FricOut[1];
-    controllerOutputsMsg_.friction[2] = FricOut[2];
-    controllerOutputsMsg_.friction[3] = FricOut[3];
-    
-    controllerOutputsMsg_.total[0] = x2FollowerState_->getDesiredJointTorques()[0];
-    controllerOutputsMsg_.total[1] = x2FollowerState_->getDesiredJointTorques()[1];
-    controllerOutputsMsg_.total[2] = x2FollowerState_->getDesiredJointTorques()[2];
-    controllerOutputsMsg_.total[3] = x2FollowerState_->getDesiredJointTorques()[3];
-
+    memcpy(controllerOutputsMsg_.friction.data(), x2FollowerState_->FricCntrl->output().data(), sizeof(double) * X2_NUM_JOINTS);
+    memcpy(controllerOutputsMsg_.total.data(), x2FollowerState_->getDesiredJointTorques().data(), sizeof(double) * X2_NUM_JOINTS);
     controllerOutputPublisher_->publish(controllerOutputsMsg_);
 }
 

@@ -16,8 +16,7 @@ add_definitions(-DFP_STARTTPDO=0x3E1)
 
 if(NO_ROBOT)
 	add_definitions(-DSIM)
-	add_definitions(-DNOROBOT)
-	set(SIM ON)
+ 	add_definitions(-DNOROBOT)
 endif()
 
 # CMAKE
@@ -51,9 +50,9 @@ endif()
 file(GLOB_RECURSE SOURCES
 	"src/core/*.cpp" "src/core/*.c" "src/hardware/*.cpp" "src/hardware/*.c"
 	"src/apps/${STATE_MACHINE_NAME}/*.c" "src/apps/${STATE_MACHINE_NAME}/*.cpp"
-	"lib/FLNL/src/*.cpp" "lib/spdlog/src/*.cpp" "lib/trajectorylib/src/LookupTable.cpp"
+	"lib/FLNL/src/*.cpp" "lib/spdlog/src/*.cpp" 
 )
-file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h")
+file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h" "lib/trajectorylib/*.hpp")
 
 set(INCLUDE_DIRS "")
 foreach(_headerFile ${HEADERS})
@@ -81,12 +80,12 @@ find_package(geometry_msgs REQUIRED)
 find_package(exo_msgs REQUIRED)
 find_package(Threads REQUIRED)
 
-#Optional Simulation Setup
-if(SIM)
-	find_package(controller_manager_msgs REQUIRED)
-	# find_package(cob_gazebo_ros_control REQUIRED)
-	find_package(x2_description REQUIRED) #May not be needed 
-endif()
+# #Optional Simulation Setup
+# if(SIM)
+#  	find_package(controller_manager_msgs REQUIRED)
+#  	# find_package(cob_gazebo_ros_control REQUIRED)
+# 	find_package(x2_description REQUIRED) #May not be needed 
+# endif()
 
 set(APP_NAME ${STATE_MACHINE_NAME}_APP)
 add_executable(${APP_NAME} ${SOURCES})

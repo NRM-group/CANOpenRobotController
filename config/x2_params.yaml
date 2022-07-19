@@ -1,4 +1,5 @@
 x2: # That ends with 0.9999 are not investigated yet
+ ros__parameters:
   m: [0.7, 2.14, 0.64, 0.47, 1.25, 10.3] # masses of upper thigh, lower thigh, upper shank, lower shank, foot, backpack [kg]  todo 9.9
   l: [0.39, 0.4, 0.39, 0.4] # length of left thigh, left shank, right thigh, right shank [kg]
   s: [0.0811, 0.05564, 0.09080, 0.0562, 0.08834, 0.25, 0.1] # hip to upper thigh COM, knee to lower thigh COM,  # todo calculate and fix last 2 parameters [m]
@@ -15,7 +16,7 @@ x2: # That ends with 0.9999 are not investigated yet
   max_torque: 100 # maximum allowable torque [Nm] If exceeds, robot will be disabled
   #  max_power: 95
   max_velocity: 4.5 # maximum allowable speed [rad/s] If exceeds, robot will be disabled
-  imu_distance: [1, 0.37, 0.29, 0.37] # distance of contact IMUs along the link from the previous joint # NOT USED
+  imu_distance: [1.0, 0.37, 0.29, 0.37] # distance of contact IMUs along the link from the previous joint # NOT USED
   joint_position_limits: # [deg]
     hip_max: 120
     hip_min: -40

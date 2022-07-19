@@ -4,7 +4,7 @@
 #include "State.h"
 #include "X2Robot.h"
 #include "controller.hpp"
-#include "LookupTable.h"
+#include "LookupTable.hpp"
 #include "kinematics.hpp"
 #include <map>
 
@@ -20,6 +20,7 @@
 #define IK  0
 #define GAIT    1
 #define IK_GAIT 2
+#define IDLE 3
 
 class X2FollowerState : public State {
     X2Robot* robot_;
@@ -59,7 +60,7 @@ public:
 
     bool checkSafety(void);
     
-    LookupTable posReader;
+    LookupTable<double, X2_NUM_JOINTS> posReader;
 
 private:
     const int freq_;

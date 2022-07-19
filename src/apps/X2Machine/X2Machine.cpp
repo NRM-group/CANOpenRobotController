@@ -10,18 +10,19 @@ X2Machine::X2Machine(int argc, char** argv, const float updateT) {
 
     // initalise ROS2 node
     rclcpp::init(argc, argv, rosInit);
-    auto node_ = rclcpp::Node::make_shared("x2");
+    node_ = rclcpp::Node::make_shared("x2");
 
     // get robot name from node name and remove '/'
     robotName_ = "x2";
     std::string param_file;
     node_->declare_parameter("x2_params");
-    node_->get_parameter("x2_params", param_file);
- 
+    node_->get_parameter<std::string>("x2_params", param_file);
+    
+
 #ifdef SIM
     robot_ = new X2Robot(node_, updateT, robotName_, param_file);
 #else
-   robot_ = new X2Robot(updateT, robotName_, param_file);
+    robot_ = new X2Robot(updateT, robotName_, param_file);
 #endif
 
     // Create PRE-DESIGNED State Machine events and state objects
@@ -37,13 +38,15 @@ X2Machine::X2Machine(int argc, char** argv, const float updateT) {
     //Transition Events
     NewTransition(x2FollowerState_, exitSafe, x2SafetyState_);
     NewTransition(x2SafetyState_, startExo, x2FollowerState_);
+    node_->declare_parameter("walking_gait");
+    node_->get_parameter<std::string>("walking_gait", x2FollowerState_->csvFileName);
+    spdlog::info("Succesfully constructed {}", x2FollowerState_->csvFileName);
 }
 
 void X2Machine::init() {
     spdlog::info("X2 Initalised");
 
     // create states with ROS features
-    x2FollowerState_->csvFileName = getGaitCycle();
     StateMachine::initialize(x2FollowerState_);
     initialised = robot_->initialise();
     time0 = std::chrono::steady_clock::now();

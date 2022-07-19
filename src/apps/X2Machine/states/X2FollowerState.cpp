@@ -14,7 +14,7 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
-    mode = IK_GAIT;
+    mode = IDLE;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -42,7 +42,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
     // // Gravity to be implmented     
     controllers = {PDCntrl, ExtCntrl, FricCntrl};
-    posReader = LookupTable(X2_NUM_JOINTS,1, 1);
+    posReader = LookupTable<double, X2_NUM_JOINTS>(1, 1);
     
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
@@ -53,6 +53,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
 void X2FollowerState::entry(void) {
     spdlog::info("Entered Follower State");
     posReader.readCSV(csvFileName);
+    posReader.startTrajectory(robot_->getPosition(), 4);
     safetyFlag = false; //Initialise with no safetyfkag
     time0 = std::chrono::steady_clock::now();
 }
@@ -65,7 +66,15 @@ void X2FollowerState::during(void) {
     if (safetyFlag) {
         return;
     }
-    if (mode == GAIT){
+    if (mode == IDLE) {
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
+        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        robot_->setTorque(desiredJointTorques_);
+
+    } else if (mode == GAIT){
         // switch motor control mode to torque control
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
             robot_->initTorqueControl();
@@ -73,7 +82,7 @@ void X2FollowerState::during(void) {
         }
 
         desiredJointPositions_ = posReader.getNextPos();
-
+        return;
         for(int j = 0; j < X2_NUM_JOINTS; j++) {
             
             if (j == LEFT_HIP || j == RIGHT_HIP) {

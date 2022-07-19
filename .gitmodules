@@ -13,5 +13,5 @@
 	branch = master 
 [submodule "lib/trajectorylib"]
 	path = lib/trajectorylib
-	url = git@github.com:NRM-group/trajectorylib.git
+	url = https://github.com/NRM-group/trajectorylib.git
 	branch = master

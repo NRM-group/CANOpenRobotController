@@ -33,7 +33,7 @@ JointDrivePairs kneeJDP{
 static volatile sig_atomic_t exitLoop = 0;
 
 #ifdef SIM
-X2Robot::X2Robot(std::shared_ptr<rclcpp::Node> &node, const float updateT, std::string robot_name, std::string yaml_config_file)
+X2Robot::X2Robot(std::shared_ptr<rclcpp::Node> &node, const float updateT, std::string robot_name, std::string yaml_config_file):Robot(robot_name,yaml_config_file)
 #else
 X2Robot::X2Robot(const float updateT, std::string robot_name, std::string yaml_config_file):Robot(robot_name, yaml_config_file)
 #endif
@@ -666,15 +666,16 @@ bool X2Robot::initialiseInputs() {
 
 bool X2Robot::loadParametersFromYAML(YAML::Node params) {
 
+    auto p = params[robotName]["ros__parameters"];
     // todo only make corresponding parameter 0, if not found
-    if(params[robotName]["m"].size() != X2_NUM_JOINTS+2 || params[robotName]["l"].size() != X2_NUM_JOINTS ||
-       params[robotName]["s"].size() != X2_NUM_JOINTS+3 || params[robotName]["I"].size() != X2_NUM_JOINTS+2 ||
-       params[robotName]["G"].size() != X2_NUM_JOINTS || params[robotName]["c0"].size() != X2_NUM_JOINTS ||
-       params[robotName]["c1"].size() != X2_NUM_JOINTS || params[robotName]["c2"].size() != X2_NUM_JOINTS ||
-       params[robotName]["cuff_weights"].size() != X2_NUM_FORCE_SENSORS ||
-       params[robotName]["force_sensor_scale_factor"].size() != X2_NUM_FORCE_SENSORS ||
-       params[robotName]["grf_sensor_scale_factor"].size() != X2_NUM_GRF_SENSORS ||
-       params[robotName]["grf_sensor_threshold"].size() != X2_NUM_GRF_SENSORS)
+    if(p["m"].size() != X2_NUM_JOINTS+2 || p["l"].size() != X2_NUM_JOINTS ||
+       p["s"].size() != X2_NUM_JOINTS+3 || p["I"].size() != X2_NUM_JOINTS+2 ||
+       p["G"].size() != X2_NUM_JOINTS || p["c0"].size() != X2_NUM_JOINTS ||
+       p["c1"].size() != X2_NUM_JOINTS || p["c2"].size() != X2_NUM_JOINTS ||
+       p["cuff_weights"].size() != X2_NUM_FORCE_SENSORS ||
+       p["force_sensor_scale_factor"].size() != X2_NUM_FORCE_SENSORS ||
+       p["grf_sensor_scale_factor"].size() != X2_NUM_GRF_SENSORS ||
+       p["grf_sensor_threshold"].size() != X2_NUM_GRF_SENSORS)
     {
         spdlog::error("Parameter sizes are not correct");
         spdlog::error("All parameters are zero !");
@@ -683,49 +684,49 @@ bool X2Robot::loadParametersFromYAML(YAML::Node params) {
     }
     // getting the parameters from the yaml file
     for(int i = 0; i<X2_NUM_JOINTS; i++){
-        x2Parameters.l[i] = params[robotName]["l"][i].as<double>();
-        x2Parameters.G[i] = params[robotName]["G"][i].as<double>();
-        x2Parameters.c0[i] = params[robotName]["c0"][i].as<double>();
-        x2Parameters.c1[i] = params[robotName]["c1"][i].as<double>();
-        x2Parameters.c2[i] = params[robotName]["c2"][i].as<double>();
-        x2Parameters.imuDistance[i] = params[robotName]["imu_distance"][i].as<double>();
+        x2Parameters.l[i] = p["l"][i].as<double>();
+        x2Parameters.G[i] = p["G"][i].as<double>();
+        x2Parameters.c0[i] = p["c0"][i].as<double>();
+        x2Parameters.c1[i] = p["c1"][i].as<double>();
+        x2Parameters.c2[i] = p["c2"][i].as<double>();
+        x2Parameters.imuDistance[i] = p["imu_distance"][i].as<double>();
     }
 
     for(int i = 0; i<X2_NUM_JOINTS+2; i++){
-        x2Parameters.m[i] = params[robotName]["m"][i].as<double>();
-        x2Parameters.I[i] = params[robotName]["I"][i].as<double>();
+        x2Parameters.m[i] = p["m"][i].as<double>();
+        x2Parameters.I[i] = p["I"][i].as<double>();
     }
 
     for(int i = 0; i<X2_NUM_JOINTS+3; i++){
-        x2Parameters.s[i] = params[robotName]["s"][i].as<double>();
+        x2Parameters.s[i] = p["s"][i].as<double>();
     }
 
     for(int i = 0; i<X2_NUM_FORCE_SENSORS; i++) {
-        x2Parameters.cuffWeights[i] = params[robotName]["cuff_weights"][i].as<double>();
-        x2Parameters.forceSensorScaleFactor[i] = params[robotName]["force_sensor_scale_factor"][i].as<double>();
+        x2Parameters.cuffWeights[i] = p["cuff_weights"][i].as<double>();
+        x2Parameters.forceSensorScaleFactor[i] = p["force_sensor_scale_factor"][i].as<double>();
     }
     for(int i = 0; i<X2_NUM_GRF_SENSORS; i++) {
-        x2Parameters.grfSensorScaleFactor[i] = params[robotName]["grf_sensor_scale_factor"][i].as<double>();
-        x2Parameters.grfSensorThreshold[i] = params[robotName]["grf_sensor_threshold"][i].as<double>();
+        x2Parameters.grfSensorScaleFactor[i] = p["grf_sensor_scale_factor"][i].as<double>();
+        x2Parameters.grfSensorThreshold[i] = p["grf_sensor_threshold"][i].as<double>();
     }
-    if(!params[robotName]["technaid_imu"]){
+    if(!p["technaid_imu"]){
         spdlog::warn("IMU parameters couldn't be found!");
         x2Parameters.imuParameters.useIMU = false;
     } else{ // there is imu params
-        if(params[robotName]["technaid_imu"]["network_id"].size() != params[robotName]["technaid_imu"]["serial_no"].size()||
-           params[robotName]["technaid_imu"]["location"].size() != params[robotName]["technaid_imu"]["serial_no"].size()){
+        if(p["technaid_imu"]["network_id"].size() != p["technaid_imu"]["serial_no"].size()||
+           p["technaid_imu"]["location"].size() != p["technaid_imu"]["serial_no"].size()){
             spdlog::error("IMU parameter sizes are not consistent!");
             x2Parameters.imuParameters.useIMU = false;
         }else{ // imu parameters have consistent size
 
-            numberOfIMUs_ = params[robotName]["technaid_imu"]["serial_no"].size();
+            numberOfIMUs_ = p["technaid_imu"]["serial_no"].size();
             int numberOfContactIMUs = 0;
             int numberOfBackpackIMUs = 0;
 
             for(int i = 0; i<numberOfIMUs_; i++) {
-                x2Parameters.imuParameters.serialNo.push_back(params[robotName]["technaid_imu"]["serial_no"][i].as<int>());
-                x2Parameters.imuParameters.networkId.push_back(params[robotName]["technaid_imu"]["network_id"][i].as<int>());
-                x2Parameters.imuParameters.location.push_back(params[robotName]["technaid_imu"]["location"][i].as<char>());
+                x2Parameters.imuParameters.serialNo.push_back(p["technaid_imu"]["serial_no"][i].as<int>());
+                x2Parameters.imuParameters.networkId.push_back(p["technaid_imu"]["network_id"][i].as<int>());
+                x2Parameters.imuParameters.location.push_back(p["technaid_imu"]["location"][i].as<char>());
                 if(x2Parameters.imuParameters.location[i] == 'c') numberOfContactIMUs++;
                 else if(x2Parameters.imuParameters.location[i] == 'b') numberOfBackpackIMUs++;
             }
@@ -736,7 +737,7 @@ bool X2Robot::loadParametersFromYAML(YAML::Node params) {
             } else{
                 spdlog::info("IMU parameters are succefully parsed");
                 x2Parameters.imuParameters.useIMU = true;
-                x2Parameters.imuParameters.canChannel = params[robotName]["technaid_imu"]["can_channel"].as<std::string>();
+                x2Parameters.imuParameters.canChannel = p["technaid_imu"]["can_channel"].as<std::string>();
 
 //                contactAccelerations_ = Eigen::MatrixXd::Zero(3, numberOfContactIMUs);
 //                contactQuaternions_ = Eigen::MatrixXd::Zero(4, numberOfContactIMUs);
@@ -744,13 +745,13 @@ bool X2Robot::loadParametersFromYAML(YAML::Node params) {
         }
     }
 
-    x2Parameters.maxTorque = params[robotName]["max_torque"].as<double>();
-//    x2Parameters.maxPower = params[robotName]["max_power"].as<double>();
-    x2Parameters.maxVelocity = params[robotName]["max_velocity"].as<double>();
-    x2Parameters.jointPositionLimits.hipMax = deg2rad(params[robotName]["joint_position_limits"]["hip_max"].as<double>());
-    x2Parameters.jointPositionLimits.hipMin = deg2rad(params[robotName]["joint_position_limits"]["hip_min"].as<double>());
-    x2Parameters.jointPositionLimits.kneeMax = deg2rad(params[robotName]["joint_position_limits"]["knee_max"].as<double>());
-    x2Parameters.jointPositionLimits.kneeMin = deg2rad(params[robotName]["joint_position_limits"]["knee_min"].as<double>());
+    x2Parameters.maxTorque = p["max_torque"].as<double>();
+//    x2Parameters.maxPower = p["max_power"].as<double>();
+    x2Parameters.maxVelocity = p["max_velocity"].as<double>();
+    x2Parameters.jointPositionLimits.hipMax = deg2rad(p["joint_position_limits"]["hip_max"].as<double>());
+    x2Parameters.jointPositionLimits.hipMin = deg2rad(p["joint_position_limits"]["hip_min"].as<double>());
+    x2Parameters.jointPositionLimits.kneeMax = deg2rad(p["joint_position_limits"]["knee_max"].as<double>());
+    x2Parameters.jointPositionLimits.kneeMin = deg2rad(p["joint_position_limits"]["knee_min"].as<double>());
 
     x2Parameters.sThighLeft = (x2Parameters.m[0]*x2Parameters.s[0] + x2Parameters.m[1]*(x2Parameters.l[0] - x2Parameters.s[1]))
                               / (x2Parameters.m[0] + x2Parameters.m[1]); // COM of left thigh from hip
