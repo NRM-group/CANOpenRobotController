@@ -14,7 +14,7 @@
 #include "State.h"
 #include "X2Robot.h"
 #include "controller.hpp"
-#include "LookupTable.h"
+#include "LookupTable.hpp"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -81,8 +81,12 @@ public:
     std::shared_ptr<spdlog::logger> complete_logger;
     std::shared_ptr<spdlog::logger> torque_logger;
     std::shared_ptr<spdlog::logger> qact_logger;
+    std::shared_ptr<spdlog::logger> qerr_logger;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
+
+    PDController<double, X2_NUM_JOINTS> pdController;
+    Butterworth<double, X2_NUM_JOINTS, 2> lowPass;
 
 private:
     dynamic_reconfigure::Server<CORC::dynamic_paramsConfig> server_;
@@ -109,9 +113,9 @@ private:
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;
 
-    LookupTable posReader_;
-    LookupTable velReader_;
-    LookupTable accelReader_;
+    LookupTable<double, X2_NUM_JOINTS> posReader_;
+    LookupTable<double, X2_NUM_JOINTS> velReader_;
+    LookupTable<double, X2_NUM_JOINTS> accelReader_;
     int completed_cycles_;
 };
 
