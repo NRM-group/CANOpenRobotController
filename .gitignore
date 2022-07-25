@@ -1,4 +1,3 @@
-
 *.iml
 CANopenSocket/canopend/X2_log.txt
 *.o
@@ -8,6 +7,5 @@ CANopenSocket/canopend/X2_log.txt
 /.devcontainer/devcontainer.json
 /build/*
 logs/
+log/
 bbbxc
-EXO_APP_2020
-cmake-build-debug/

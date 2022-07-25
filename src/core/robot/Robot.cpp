@@ -2,14 +2,16 @@
 
 short int sign(double val) { return (val > 0) ? 1 : ((val < 0) ? -1 : 0); }
 
-Robot::Robot(std::string robot_name, std::string yaml_config_file): robotName(robot_name) {
-    spdlog::debug("Robot ({}) object created", robotName);
-}
-
 Robot::~Robot() {
     spdlog::debug("Robot object deleted");
 }
 
+void Robot::init(std::size_t size)
+{
+    jointPositions_ = Eigen::VectorXd::Zero(size);
+    jointVelocities_ = Eigen::VectorXd::Zero(size);
+    jointTorques_ = Eigen::VectorXd::Zero(size);
+}
 
 bool Robot::initialiseFromYAML(std::string yaml_config_file) {
     if(yaml_config_file.size()>0) {
@@ -26,7 +28,6 @@ bool Robot::initialiseFromYAML(std::string yaml_config_file) {
                 return false;
             }
             else {
-                spdlog::info("Loading robot parameters from {}.", yaml_config_file);
                 //Attempt to load parameters from YAML file (delegated to each custom robot implementation)
                 return loadParametersFromYAML(params);
             }
@@ -43,18 +44,14 @@ bool Robot::initialiseFromYAML(std::string yaml_config_file) {
 }
 
 bool Robot::initialise() {
-    if (initialiseNetwork()) {
-        return true;
-    }
-    return false;
+    return initialiseNetwork();
 }
 
-
 bool Robot::disable() {
-    spdlog::info("Disabling robot...");
     for (auto p : joints) {
         p->disable();
     }
+    spdlog::info("X2Robot: Disabled robot");
     return true;
 }
 
@@ -63,71 +60,27 @@ void Robot::updateRobot() {
     //Retrieve latest values from hardware
     for (auto joint : joints)
         joint->updateValue();
-    for (auto input : inputs ){
+    for (auto input : inputs)
         input->updateInput();
-    }
 
     //Update local copies of joint values
-    if((unsigned int)jointPositions_.size()!=joints.size()) {
-        jointPositions_ = Eigen::VectorXd::Zero(joints.size());
-    }
-    if((unsigned int)jointVelocities_.size()!=joints.size()) {
-        jointVelocities_ = Eigen::VectorXd::Zero(joints.size());
-    }
-    if((unsigned int)jointTorques_.size()!=joints.size()) {
-        jointTorques_ = Eigen::VectorXd::Zero(joints.size());
-    }
-    unsigned int i = 0;
-    for (auto joint : joints) {
-        jointPositions_[i] = joint->getPosition();
-        jointVelocities_[i] = joint->getVelocity();
-        jointTorques_[i] = joint->getTorque();
-        i++;
+    for (std::size_t i = 0; i < joints.size(); i++)
+    {
+        jointPositions_[i] = joints[i]->getPosition();
+        jointVelocities_[i] = joints[i]->getVelocity();
+        jointTorques_[i] = joints[i]->getTorque();
     }
 }
 
-Eigen::VectorXd& Robot::getPosition() {
-    //Initialise vector if not already done
-    if((unsigned int)jointPositions_.size()!=joints.size()) {
-        jointPositions_ = Eigen::VectorXd::Zero(joints.size());
-    }
-
-    //Update values
-    unsigned int i = 0;
-    for (auto j : joints) {
-        jointPositions_[i] = j->getPosition();
-        i++;
-    }
+const Eigen::VectorXd& Robot::getPosition() {
     return jointPositions_;
 }
 
-Eigen::VectorXd& Robot::getVelocity() {
-    //Initialise vector if not already done
-    if((unsigned int)jointVelocities_.size()!=joints.size()) {
-        jointVelocities_ = Eigen::VectorXd::Zero(joints.size());
-    }
-
-    //Update values
-    unsigned int i = 0;
-    for (auto j : joints) {
-        jointVelocities_[i] = j->getVelocity();
-        i++;
-    }
+const Eigen::VectorXd& Robot::getVelocity() {
     return jointVelocities_;
 }
 
-Eigen::VectorXd& Robot::getTorque() {
-    //Initialise vector if not already done
-    if((unsigned int)jointTorques_.size()!=joints.size()) {
-        jointTorques_ = Eigen::VectorXd::Zero(joints.size());
-    }
-
-    //Update values
-    unsigned int i = 0;
-    for (auto j : joints) {
-        jointTorques_[i] = j->getTorque();
-        i++;
-    }
+const Eigen::VectorXd& Robot::getTorque() {
     return jointTorques_;
 }
 

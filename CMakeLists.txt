@@ -3,7 +3,7 @@ project(CORC)
 
 
 # STATE MACHINE (APP)
-set(STATE_MACHINE_NAME "X2Machine")
+set(STATE_MACHINE_NAME "ExoApp")
 set(CORC_LOGGING_LEVEL INFO)
 
 
@@ -26,18 +26,18 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+#set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-	# add_compile_options(-Wall -Wextra -Wpedantic)
+	add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
 if(NOT STATE_MACHINE_NAME)
 	message(FATAL_ERROR "NO STATE MACHINE (APP) SELECTED")
 else()
 	add_definitions(-DSTATE_MACHINE_TYPE=${STATE_MACHINE_NAME})
-	add_definitions(-DSTATE_MACHINE_INCLUDE="${STATE_MACHINE_NAME}.h")
+	add_definitions(-DSTATE_MACHINE_INCLUDE="${STATE_MACHINE_NAME}.hpp")
 	add_definitions(-DBASE_DIRECTORY=${CMAKE_SOURCE_DIR})
 endif()
 
@@ -45,10 +45,10 @@ endif()
 # FILES
 file(GLOB_RECURSE SOURCES
 	"src/core/*.cpp" "src/core/*.c" "src/hardware/*.cpp" "src/hardware/*.c"
-	"src/apps/${STATE_MACHINE_NAME}/*.c" "src/apps/${STATE_MACHINE_NAME}/*.cpp"
-	"lib/FLNL/src/*.cpp" "lib/spdlog/src/*.cpp" "lib/trajectorylib/src/LookupTable.cpp"
+	"src/apps/${STATE_MACHINE_NAME}/src/*.cpp" "lib/FLNL/src/*.cpp"
+	"lib/spdlog/src/*.cpp"
 )
-file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/*.h")
+file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/include/*.hpp")
 
 set(INCLUDE_DIRS "")
 foreach(_headerFile ${HEADERS})
@@ -73,24 +73,23 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(x2_msgs REQUIRED)
+find_package(exo_msgs REQUIRED)
 find_package(Threads REQUIRED)
 
-set(APP_NAME ${STATE_MACHINE_NAME}_APP)
+set(APP_NAME ${STATE_MACHINE_NAME})
 add_executable(${APP_NAME} ${SOURCES})
 target_link_libraries(${APP_NAME} ${CMAKE_THREAD_LIBS_INIT} yaml-cpp)
 target_include_directories(${APP_NAME} PUBLIC ${INCLUDE_DIRS})
 include_directories(${INCLUDE_DIRS})
 
+ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs)
+ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs)
 
-ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs x2_msgs)
-ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs x2_msgs)
+#add_executable(x2_ik lib/trajectorylib/src/main.cpp)
+#target_include_directories(x2_ik PUBLIC lib/trajectorylib/src)
+#ament_target_dependencies(x2_ik rclcpp sensor_msgs exo_msgs)
 
-add_executable(x2_ik lib/trajectorylib/src/main.cpp)
-target_include_directories(x2_ik PUBLIC lib/trajectorylib/src)
-ament_target_dependencies(x2_ik rclcpp sensor_msgs x2_msgs)
-
-install(TARGETS ${APP_NAME} x2_ik DESTINATION lib/${PROJECT_NAME})
+install(TARGETS ${APP_NAME} DESTINATION lib/${PROJECT_NAME})
 install(PROGRAMS script/initCAN0.sh DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY lib/trajectorylib/gaits DESTINATION share/${PROJECT_NAME})

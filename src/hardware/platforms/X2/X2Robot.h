@@ -38,12 +38,6 @@
 #define XSTR(x) STR(x)
 #define STR(x) #x
 
-#ifdef SIM
-#include "controller_manager_msgs/srv/switch_controller.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "sensor_msgs/msg/joint_state.hpp"
-#include "std_msgs/msg/float64_multi_array.hpp"
-#endif
 /**
      * \todo Load in paramaters and dictionary entries from JSON file.
      *
@@ -132,7 +126,7 @@ enum GaitState {
  *
  */
 class X2Robot : public Robot {
-private:
+public:
     /**
      * \brief motor drive position control profile paramaters, user defined.
      *
@@ -242,47 +236,14 @@ private:
        */
     void updateFeedforwardTorque();
 
-
-#ifdef SIM
-    std::shared_ptr<rclcpp::Node> node;
-
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr positionCommandPublisher_;
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr velocityCommandPublisher_;
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torqueCommandPublisher_;
-    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr jointStateSubscriber_;
-    rclcpp::Client<controller_manager_msgs::srv::SwitchController>::SharedPtr controllerSwitchClient_;
-
-    std_msgs::msg::Float64MultiArray positionCommandMsg_;
-    std_msgs::msg::Float64MultiArray velocityCommandMsg_;
-    std_msgs::msg::Float64MultiArray torqueCommandMsg_;
-    std::shared_ptr<controller_manager_msgs::srv::SwitchController::Request> controllerSwitchMsg_;
-
-    void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg);
-#endif
-#ifdef NOROBOT
-    Eigen::VectorXd simJointPositions_;
-    Eigen::VectorXd simJointVelocities_;
-    Eigen::VectorXd simJointTorques_;
-    Eigen::VectorXd simJointTorquesViaStrainGauges_;
-    Eigen::VectorXd simInteractionForces_;
-    Eigen::VectorXd simGroundReactionForces_;
-    double simBackPackAngleOnMedianPlane_;
-    double simBackPackAngularVelocityOnMedianPlane_;
-    Eigen::VectorXd simContactAnglesOnMedianPlane_;
-#endif
-
 public:
     /**
       * \brief Default <code>ExoRobot</code> constructor.
       * Initialize memory for the Exoskelton <code>Joint</code> + sensors.
       * Load in exoskeleton paramaters to  <code>TrajectoryGenerator.</code>.
       */
-
-#ifdef SIM
-    X2Robot(std::shared_ptr<rclcpp::Node> &node, const float updateT, std::string robotName = XSTR(X2_NAME_DEFAULT), std::string yaml_config_file="x2_params.yaml");
-#else
-    X2Robot(const float updateT, std::string robotName = XSTR(X2_NAME_DEFAULT), std::string yaml_config_file="x2_params.yaml");
-#endif
+    X2Robot() = default;
+    void init(const float period, const std::string &name, const std::string &config_path);
     ~X2Robot();
     Keyboard* keyboard;
     std::vector<Drive*> motorDrives;
@@ -359,26 +320,26 @@ public:
     setMovementReturnCode_t setTorque(Eigen::VectorXd torques);
 
 
-    /**
-    * \brief Get the latest joints position
-    *
-    * \return Eigen::VectorXd a reference to the vector of actual joint positions
-    */
-    Eigen::VectorXd& getPosition();
+    ///**
+    //* \brief Get the latest joints position
+    //*
+    //* \return Eigen::VectorXd a reference to the vector of actual joint positions
+    //*/
+    //Eigen::VectorXd& getPosition();
 
-    /**
-    * \brief Get the latest joints velocity
-    *
-    * \return Eigen::VectorXd a reference to the vector of actual joint positions
-    */
-    Eigen::VectorXd& getVelocity();
+    ///**
+    //* \brief Get the latest joints velocity
+    //*
+    //* \return Eigen::VectorXd a reference to the vector of actual joint positions
+    //*/
+    //Eigen::VectorXd& getVelocity();
 
-    /**
-    * \brief Get the latest joints torque
-    *
-    * \return Eigen::VectorXd a reference to the vector of actual joint positions
-    */
-    Eigen::VectorXd& getTorque();
+    ///**
+    //* \brief Get the latest joints torque
+    //*
+    //* \return Eigen::VectorXd a reference to the vector of actual joint positions
+    //*/
+    //Eigen::VectorXd& getTorque();
 
     /**
     * \brief Get the latest
@@ -535,8 +496,8 @@ public:
     * \param maxTime maximum time to complete the homing [s]
     * \return bool success of homing
     */
-    bool homing(std::vector<int> homingDirection = std::vector<int>(X2_NUM_JOINTS, 1), float thresholdTorque = 50.0,
-                float delayTime = 0.2, float homingSpeed = 5 * M_PI / 180.0, float maxTime = 30.0);
+    //bool homing(std::vector<int> homingDirection = std::vector<int>(X2_NUM_JOINTS, 1), float thresholdTorque = 50.0,
+    //            float delayTime = 0.2, float homingSpeed = 5 * M_PI / 180.0, float maxTime = 30.0);
 
 
     /**
@@ -579,7 +540,7 @@ public:
        * Overloaded Method from the Robot Class.
        * Example. for a keyboard input this would poll the keyboard for any button presses at this moment in time.
        */
-    void updateRobot(bool duringHoming = false);
+    //void updateRobot(bool duringHoming = false);
 
     /**
        * \brief Changes the mode of
@@ -647,16 +608,5 @@ public:
        * \brief get the robot name
        */
     std::string& getRobotName();
-
-#ifdef SIM
-    /**
-       * \brief method to pass the nodeHandle. Only available in SIM mode
-       */
-    void setNodeHandle(std::shared_ptr<rclcpp::Node> &node);
-    /**
-       * \brief Initialize ROS services, publisher ans subscribers
-      */
-    void initialiseROS(std::shared_ptr<rclcpp::Node> &node);
-#endif
 };
 #endif /*EXOROBOT_H*/

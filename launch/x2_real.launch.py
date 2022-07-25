@@ -23,7 +23,7 @@ def generate_launch_description():
 	# Nodes
 	x2_node = Node(
 		package="CORC",
-		executable="X2Machine_APP",
+		executable="ExoApp",
 		arguments=["-can", "can0"],
 		name="x2",
 		output="screen",

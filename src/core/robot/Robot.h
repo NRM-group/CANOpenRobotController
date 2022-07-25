@@ -64,12 +64,15 @@ class Robot {
     //@{
     /**
     * \brief Default Robot constructor.
-    * \param robot_name a name of the robot. If a yaml_config_file is also provided, the name will be used to seek parameters in this file (and so should match robot name in the YAML file).
-    * \param yaml_config_file the name of a valide YAML file describing kinematic and dynamic parameters of the M3. If absent or incomplete default parameters are used instead.
+    * \param name a name of the robot. If a yaml_config_file is also provided, the name will be used to seek parameters in this file (and so should match robot name in the YAML file).
+    * \param config_path the name of a valide YAML file describing kinematic and dynamic parameters of the M3. If absent or incomplete default parameters are used instead.
     */
-    Robot(std::string robot_name="", std::string yaml_config_file="");
+    //Robot(const std::string &name);
+    Robot() = default;
     virtual ~Robot();
     //@}
+
+    void init(std::size_t size);
 
     /** @name Initialisation Methods */
     //@{
@@ -156,21 +159,21 @@ class Robot {
     *
     * \return Eigen::VectorXd a reference to the vector of actual joint positions
     */
-    Eigen::VectorXd& getPosition();
+    const Eigen::VectorXd& getPosition();
 
     /**
     * \brief Get the latest joints velocity
     *
     * \return Eigen::VectorXd a reference to the vector of actual joint positions
     */
-    Eigen::VectorXd& getVelocity();
+    const Eigen::VectorXd& getVelocity();
 
     /**
     * \brief Get the latest joints torque
     *
     * \return Eigen::VectorXd a reference to the vector of actual joint positions
     */
-    Eigen::VectorXd& getTorque();
+    const Eigen::VectorXd& getTorque();
 
     /**
     * \brief print out status of robot and all of its joints

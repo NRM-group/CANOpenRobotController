@@ -35,13 +35,11 @@ void app_communicationReset(int argc, char *argv[], const float updateT) {
 
 /******************** Runs at the Start of rt_control_thread********************/
 void app_programStart(void) {
-    spdlog::info("CORC Start application");
-
 #ifdef NOROBOT
     spdlog::info("Running in NOROBOT (virtual) mode.");
 #endif  // NOROBOT
     stateMachine->init();
-    stateMachine->activate();
+    spdlog::info("CORC: Program started");
 }
 
 /******************** Runs in low priority thread ********************/
@@ -63,7 +61,7 @@ void app_programControlLoop(void) {
 void app_programEnd(void) {
     stateMachine->end();
     delete stateMachine;
-    spdlog::info("CORC End application");
+    spdlog::info("CORC: Program ended");
 #ifdef TIMING_LOG
     loopTimer.end();
 #endif
