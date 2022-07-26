@@ -8,12 +8,13 @@
 //State machine constructors
 StateMachine::StateMachine(void) {
     currentState = NULL;
-};
+}
 
 void StateMachine::initialize(State *i) {
     currentState = i;
     spdlog::debug("StateMachine::initialize()");
     initialised = true;
+    currentState->entry();
 }
 
 State *StateMachine::getCurState(void) {

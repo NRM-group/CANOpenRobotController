@@ -68,13 +68,11 @@ private: // ROS methods
     void external_callback(const External::SharedPtr msg);
     void friction_callback(const Friction::SharedPtr msg);
     void pd_callback(const PD::SharedPtr msg);
-    void strain_gauge_callback(const FloatArray::SharedPtr msg);
 
 private: // Local parameters
-    std::shared_ptr<X2Robot> _Robot;
-    Eigen::Vector4d _TorqueOutput; double _TorqueLimit;
-    Eigen::Vector4d _StrainGaugeOffset;
-    Eigen::Vector4d _StrainGaugeScalePos, _StrainGaugeScaleNeg;
+    Eigen::Vector4d _TorqueOutput;
+    double _TorqueLimit;
+    std::array<double, X2_NUM_JOINTS> _StrainGaugeOffset;
 
 private: // Controllers
     ctrl::PDController<double, X2_NUM_JOINTS> _CtrlPD;
@@ -84,17 +82,21 @@ private: // Controllers
     ctrl::TorqueController<double, X2_NUM_JOINTS> _CtrlTorque;
     ctrl::Butterworth<double, X2_NUM_JOINTS, FILTER_ORDER> _CtrlButterStrainGauge;
 
-private: // ROS publishers
+private: // ROS publishers / subscribers
+    std::shared_ptr<X2Robot> _Robot;
     rclcpp::Publisher<JointState>::SharedPtr _PubJointState;
     rclcpp::Publisher<Output>::SharedPtr _PubOutput;
-    rclcpp::Publisher<FloatArray>::SharedPtr _PubStrainGauge;
-
-private: // ROS subscribers
     rclcpp::Subscription<Corc>::SharedPtr _SubCorc;
     rclcpp::Subscription<External>::SharedPtr _SubExternal;
     rclcpp::Subscription<Friction>::SharedPtr _SubFriction;
     rclcpp::Subscription<PD>::SharedPtr _SubPD;
+
+private: // FIXME: temporary
+    rclcpp::Publisher<FloatArray>::SharedPtr _PubStrainGauge;
     rclcpp::Subscription<FloatArray>::SharedPtr _SubStrainGauge;
+    void strain_gauge_callback(const FloatArray::SharedPtr msg);
+    double scale[8];
+    double sg[4];
 };
 
 ///////////////////////////////////////////////////////////////////////////////
