@@ -1,7 +1,8 @@
 x2: # That ends with 0.9999 are not investigated yet
   ros__parameters:
-    m: [0.7, 2.14, 0.64, 0.47, 0.0, 10.3] # masses of upper thigh, lower thigh, upper shank, lower shank, foot, backpack [kg]  todo 9.9
-    l: [0.35, 0.4, 0.35, 0.4] # length of left thigh, left shank, right thigh, right shank [kg]
+    #m: [0.7, 2.14, 0.64, 0.47, 0.0, 10.3] # masses of upper thigh, lower thigh, upper shank, lower shank, foot, backpack [kg]  todo 9.9
+    m: [0.9, 2.14, 0.64, 0.47, 0.0, 10.3] # masses of upper thigh, lower thigh, upper shank, lower shank, foot, backpack [kg]  todo 9.9
+    l: [0.4, 0.35, 0.4, 0.35] # length of left thigh, left shank, right thigh, right shank [kg]
     s: [0.0811, 0.05564, 0.09080, 0.0562, 0.0, 0.25, 0.1] # hip to upper thigh COM, knee to lower thigh COM,  # todo calculate and fix last 2 parameters [m]
     # knee to upper shank COM, ankle to lower shank COM, ankle to foot COM, backpack COM to hip parallel to backpack link, backpack COM to hip vertical to backpack link [m]
     I: [0.002197, 0.005901, 0.002346, 0.0007941, 0.0, 0.2] # mass moment of inertia of upper thigh, lower thigh, upper shank, lower shank, foot, backpack [kg.m^2] #todo calculate and fix backpack inertia
