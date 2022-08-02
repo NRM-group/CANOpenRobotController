@@ -42,7 +42,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
     // // Gravity to be implmented     
     controllers = {PDCntrl, ExtCntrl, FricCntrl};
-    posReader = LookupTable<double, X2_NUM_JOINTS>(1, 1);
+    posReader = LookupTable<double, X2_NUM_JOINTS>(1,0.1);
     
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
@@ -67,22 +67,25 @@ void X2FollowerState::during(void) {
         return;
     }
     if (mode == IDLE) {
-        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
-            robot_->initTorqueControl();
-            spdlog::info("Initalised Torque Control Mode");
+        //IMPORTANT: CHANGE THIS BACK TO ZERO TORQUE WHEN SIMULATION WORKING
+        if (robot_->getControlMode() != CM_POSITION_CONTROL) {
+            robot_->initPositionControl();
+            spdlog::info("Initalised POSITION Control Mode");
         }
         desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        robot_->setTorque(desiredJointTorques_);
+        desiredJointPositions_ = posReader.getNextPos();
+        // std::cout << desiredJointPositions_ << std::endl;
+        robot_->setPosition(desiredJointPositions_);
 
     } else if (mode == GAIT){
         // switch motor control mode to torque control
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
             robot_->initTorqueControl();
             spdlog::info("Initalised Torque Control Mode");
+            spdlog::info("Current Operation: GAIT");
         }
 
         desiredJointPositions_ = posReader.getNextPos();
-        return;
         for(int j = 0; j < X2_NUM_JOINTS; j++) {
             
             if (j == LEFT_HIP || j == RIGHT_HIP) {
@@ -104,16 +107,20 @@ void X2FollowerState::during(void) {
 
         // limit the desiredJointPositions_ delta from previous callback
         actualDesiredJointPositions_ = desiredJointReferences_;
-        rateLimiter(deg2rad(rateLimit));
+
+
+
+        // rateLimiter(deg2rad(rateLimit));
         PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
+
+        desiredJointTorques_ = desiredJointPositions_ - robot_->getPosition();
         // desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
         desiredJointTorques_ = PDCntrl->output();
         // for(auto &cnt : controllers) {
         //     desiredJointTorques_ += cnt->output();
 
         // }
-        torqueLimiter(maxTorqueLimit);
-
+        // torqueLimiter(maxTorqueLimit);
         robot_->setTorque(desiredJointTorques_);
     } else if (mode == IK) {
 
@@ -176,6 +183,12 @@ void X2FollowerState::during(void) {
         robot_->setTorque(desiredJointTorques_);
         spdlog::info("Completed Cycles: {}", posReader.getCycles());
      
+    } else if(mode == SIM_TEST) {
+        if (robot_->getControlMode() != CM_POSITION_CONTROL) {
+            robot_->initPositionControl();
+            spdlog::info("Initialised Position Control");
+        }
+        robot_->setPosition(posReader.getNextPos());
     }
 }
 

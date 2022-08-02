@@ -15,6 +15,7 @@ joint_trajectory_controller:
       - right_hip_joint
       - left_knee_joint
       - right_knee_joint
+      - world_to_backpack
     interface_name: position
     command_interfaces:
       - position

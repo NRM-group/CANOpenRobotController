@@ -5,7 +5,7 @@ project(CORC)
 # STATE MACHINE (APP)
 set(STATE_MACHINE_NAME "X2Machine")
 set(CORC_LOGGING_LEVEL INFO)
-set(NO_ROBOT OFF)
+set(NO_ROBOT ON)
 
 # DEFINITIONS
 add_definitions(-DUSEROS)
@@ -78,6 +78,8 @@ find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(exo_msgs REQUIRED)
+find_package(control_msgs REQUIRED)
+find_package(rclcpp_action REQUIRED)
 find_package(Threads REQUIRED)
 
 # #Optional Simulation Setup
@@ -94,8 +96,8 @@ target_include_directories(${APP_NAME} PUBLIC ${INCLUDE_DIRS})
 include_directories(${INCLUDE_DIRS})
 
 
-ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs)
-ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs)
+ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs control_msgs rclcpp_action)
+ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs control_msgs rclcpp_action)
 
 add_executable(x2_ik lib/trajectorylib/src/main.cpp)
 target_include_directories(x2_ik PUBLIC lib/trajectorylib/src)

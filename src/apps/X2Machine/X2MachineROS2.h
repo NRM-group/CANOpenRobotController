@@ -36,7 +36,7 @@ public:
     void publishJointStates(void);
     void publishRequestedJointTorques(void);
     void publishJointReferencePositions(void);
-    void publishControullerOutputs(void);
+    void publishControllerOutputs(void);
 
 private:
     X2Robot* robot_;

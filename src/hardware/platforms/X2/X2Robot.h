@@ -19,6 +19,7 @@
 #include <map>
 #include <thread>
 #include <csignal>
+#include <vector>
 
 #include "CopleyDrive.h"
 #include "Keyboard.h"
@@ -39,8 +40,10 @@
 #define STR(x) #x
 
 #ifdef SIM
+#include "control_msgs/action/follow_joint_trajectory.hpp" //Position Control
 #include "controller_manager_msgs/srv/switch_controller.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #endif
@@ -184,6 +187,13 @@ private:
 
     std::chrono::steady_clock::time_point time0;
 
+   #ifdef SIM
+
+    trajectory_msgs::msg::JointTrajectoryPoint positionCommandMessage_;
+    rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr action_client;
+    std::vector<std::string> joint_names;
+
+   #endif
     bool loadParametersFromYAML(YAML::Node params);
 
     static void signalHandler(int signum);

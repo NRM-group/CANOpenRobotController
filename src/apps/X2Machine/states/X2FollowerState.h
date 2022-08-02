@@ -21,6 +21,7 @@
 #define GAIT    1
 #define IK_GAIT 2
 #define IDLE 3
+#define SIM_TEST 4
 
 class X2FollowerState : public State {
     X2Robot* robot_;

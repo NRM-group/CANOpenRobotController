@@ -132,16 +132,26 @@ void X2Robot::signalHandler(int signum) {
 
 #ifdef SIM
 void X2Robot::initialiseROS(std::shared_ptr<rclcpp::Node> &node) {
-    // controllerSwitchClient_ = node->create_client<controller_manager_msgs::srv::SwitchController>("controller_manager/switch_controller");
-
-    positionCommandPublisher_ = node->create_publisher<std_msgs::msg::Float64MultiArray>("position_controller/command", 10);
-    velocityCommandPublisher_ = node->create_publisher<std_msgs::msg::Float64MultiArray>("velocity_controller/command", 10);
-    torqueCommandPublisher_ = node->create_publisher<std_msgs::msg::Float64MultiArray>("torque_controller/command", 10);
+    joint_names = {"left_hip_joint", "left_knee_joint", "right_hip_joint" ,"right_knee_joint", "world_to_backpack" };
+    // Intialise the action client
+    action_client = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
+    node->get_node_base_interface(),
+    node->get_node_graph_interface(),
+    node->get_node_logging_interface(),
+    node->get_node_waitables_interface(),
+    "/joint_trajectory_controller/follow_joint_trajectory");
+    bool response =
+    action_client->wait_for_action_server(std::chrono::seconds(10));
+    if (!response) {
+        throw std::runtime_error("could not get action server");
+    }
 
     jointStateSubscriber_ = node->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1, std::bind(&X2Robot::jointStateCallback, this, _1));
+
+    // controllerSwitchMsg_ = std::make_shared<controller_manager_msgs::srv::SwitchController::Request>();
+    spdlog::info("Initialised ROS Successfully");
 }
 
-    //controllerSwitchMsg_ = std::make_shared<controller_manager_msgs::srv::SwitchController::Request>();
 #endif
 
 void X2Robot::resetErrors() {
@@ -172,20 +182,6 @@ bool X2Robot::initPositionControl() {
     }
 
 #ifdef SIM
-    controllerSwitchMsg_->start_controllers = {"position_controller"};
-    controllerSwitchMsg_->stop_controllers = {"velocity_controller", "torque_controller"};
-    controllerSwitchMsg_->strictness = 1;
-    controllerSwitchMsg_->start_asap = true;
-    controllerSwitchMsg_->timeout.sec = 0.0;
-
-    auto result = controllerSwitchClient_->async_send_request(controllerSwitchMsg_);
-    if (rclcpp::spin_until_future_complete(node, result) ==
-        rclcpp::FutureReturnCode::SUCCESS) {
-        spdlog::info("Switched to position controller");
-    } else {
-        spdlog::error("Failed switching to position controller");
-        returnValue = false;
-    }
 #endif
 
     if(returnValue) controlMode = ControlMode::CM_POSITION_CONTROL;
@@ -254,20 +250,20 @@ bool X2Robot::initTorqueControl() {
     }
 
 #ifdef SIM
-    controllerSwitchMsg_->start_controllers = {"torque_controller"};
-    controllerSwitchMsg_->stop_controllers = {"position_controller", "velocity_controller"};
-    controllerSwitchMsg_->strictness = 1;
-    controllerSwitchMsg_->start_asap = true;
-    controllerSwitchMsg_->timeout.sec = 0.0;
+    // controllerSwitchMsg_->start_controllers = {"torque_controller"};
+    // controllerSwitchMsg_->stop_controllers = {"position_controller", "velocity_controller"};
+    // controllerSwitchMsg_->strictness = 1;
+    // controllerSwitchMsg_->start_asap = true;
+    // controllerSwitchMsg_->timeout.sec = 0.0;
 
-    auto result = controllerSwitchClient_->async_send_request(controllerSwitchMsg_);
-    if (rclcpp::spin_until_future_complete(node, result) ==
-        rclcpp::FutureReturnCode::SUCCESS) {
-        spdlog::info("Switched to torque controller");
-    } else {
-        spdlog::error("Failed switching to torque controller");
-        returnValue = false;
-    }
+    // auto result = controllerSwitchClient_->async_send_request(controllerSwitchMsg_);
+    // if (rclcpp::spin_until_future_complete(this->node, result) ==
+    //     rclcpp::FutureReturnCode::SUCCESS) {
+    //     spdlog::info("Switched to torque controller");
+    // } else {
+    //     spdlog::info("Failed switching to torque controller");
+    //     returnValue = false;
+    // }
 #endif
 
     if(returnValue) controlMode = ControlMode::CM_TORQUE_CONTROL;
@@ -291,17 +287,32 @@ setMovementReturnCode_t X2Robot::setPosition(Eigen::VectorXd positions) {
         }
         i++;
     }
-
+    spdlog::info("Recieved Position Request");
 #ifdef SIM
-    std::vector<double> positionVector(X2_NUM_JOINTS);
-
-    for (int i = 0; i < X2_NUM_JOINTS; i++) {
-        positionVector[i] = positions[i];
+    std::vector<trajectory_msgs::msg::JointTrajectoryPoint> trajectory;
+    trajectory_msgs::msg::JointTrajectoryPoint jointPos;
+    jointPos.time_from_start = rclcpp::Duration::from_seconds(0.0);
+    jointPos.positions.resize(joint_names.size());
+    for(int i = 0; i < X2_NUM_JOINTS; i++) {
+        jointPos.positions[i] = positions[i];
     }
+    jointPos.positions[X2_NUM_JOINTS] = 0;
+    trajectory.push_back(jointPos);
 
-    positionCommandMsg_.data = positionVector;
-    positionCommandPublisher_->publish(positionCommandMsg_);
-#elif NOROBOT
+    control_msgs::action::FollowJointTrajectory_Goal goal_msg;
+    goal_msg.goal_time_tolerance = rclcpp::Duration::from_seconds(1.0);
+    std::cout << joint_names[0] << std::endl;
+    goal_msg.trajectory.joint_names = joint_names;
+    goal_msg.trajectory.points = trajectory;
+    auto goal_handle_future = action_client->async_send_goal(goal_msg);
+    // spdlog::info("Sent Goal");
+    // rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::SharedPtr
+    //  goal_handle = goal_handle_future.get();
+
+    // auto result_future = action_client->async_get_result(goal_handle);
+    
+    spdlog::info("End");
+
     simJointPositions_ = positions;
 #endif
 
@@ -325,14 +336,14 @@ setMovementReturnCode_t X2Robot::setVelocity(Eigen::VectorXd velocities) {
     }
 
 #ifdef SIM
-    std::vector<double> velocityVector(X2_NUM_JOINTS);
+    // std::vector<double> velocityVector(X2_NUM_JOINTS);
 
-    for (int i = 0; i < X2_NUM_JOINTS; i++) {
-        velocityVector[i] = velocities[i];
-    }
+    // for (int i = 0; i < X2_NUM_JOINTS; i++) {
+    //     velocityVector[i] = velocities[i];
+    // }
 
-    velocityCommandMsg_.data = velocityVector;
-    velocityCommandPublisher_->publish(velocityCommandMsg_);
+    // velocityCommandMsg_.data = velocityVector;
+    // velocityCommandPublisher_->publish(velocityCommandMsg_);
 #endif
 
     return returnValue;
@@ -355,14 +366,15 @@ setMovementReturnCode_t X2Robot::setTorque(Eigen::VectorXd torques) {
     }
 
 #ifdef SIM
-    std::vector<double> torqueVector(X2_NUM_JOINTS);
+    // std::vector<double> torqueVector(X2_NUM_JOINTS);
 
-    for (int i = 0; i < X2_NUM_JOINTS; i++) {
-        torqueVector[i] = torques[i];
-    }
+    // for (int i = 0; i < X2_NUM_JOINTS; i++) {
+    //     torqueVector[i] = torques[i];
+    // }
 
-    torqueCommandMsg_.data = torqueVector;
-    torqueCommandPublisher_->publish(torqueCommandMsg_);
+    // torqueCommandMsg_.data = torqueVector;
+    // torqueCommandPublisher_->publish(torqueCommandMsg_);
+    // simJointTorques_ = torques;
 #endif
 
     return returnValue;

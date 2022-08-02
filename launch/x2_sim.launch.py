@@ -3,6 +3,7 @@ import os
 from xacro import process_file
 from launch import LaunchDescription
 from launch_ros.actions import Node
+# from launch_ros.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
@@ -17,7 +18,7 @@ def generate_launch_description():
 	gait_file = os.path.join(corc_path, "gaits", "walking.csv")
 	rviz_config = os.path.join(x2_description_path, "rviz", "x2.rviz")
 	urdf_file = process_file(
-		os.path.join(x2_description_path, "urdf", "x2_fixed_base.urdf.xacro")
+		os.path.join(x2_description_path, "urdf", "x2_ros2_control.urdf.xacro")
 	)
 
 	# Nodes
@@ -50,8 +51,23 @@ def generate_launch_description():
 		arguments=["-d", rviz_config],
 		name="rviz2"
 	)
+
+	##################### GAZEBO STUFF ###################
+	# spawn_entity = Node(
+	# 	package="gazebo_ros",
+	# 	executable="spawn_entity.py",
+	# 	name="urdf_spawner",
+	# 	output="screen",
+	# 	arguments=["-topic", "/robot_description", "-entity", "x2"]
+	# )
+
+	# gazebo = IncludeLaunchDescription(
+	# 		PythonLaunchDescriptionSource([os.path.join(
+	# 			get_package_share_directory('gazebo_ros'), 'launch'), '/gazebo.launch.py']),
+	# 		)
+	
 	ld.add_action(x2_node)
-	# ld.add_action(x2_ik_node)
-	# ld.add_action(robot_state_node)
-	# ld.add_action(rviz_node)
+	ld.add_action(x2_ik_node)
+	ld.add_action(robot_state_node)
+	ld.add_action(rviz_node)
 	return ld
