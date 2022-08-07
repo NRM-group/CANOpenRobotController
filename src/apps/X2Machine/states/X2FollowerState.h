@@ -56,7 +56,8 @@ public:
     ctrl::PDController<double, X2_NUM_JOINTS>* PDCntrl;
     ctrl::ExternalController<double, X2_NUM_JOINTS>* ExtCntrl;
     ctrl::FrictionController<double, X2_NUM_JOINTS>* FricCntrl;
-    std::array<ctrl::BaseController<double, X2_NUM_JOINTS>*, 3> controllers;
+    ctrl::GravityController<double, X2_NUM_JOINTS>* GravCntrl;
+    std::array<ctrl::BaseController<double, X2_NUM_JOINTS>*, 4> controllers;
 
     bool checkSafety(void);
     

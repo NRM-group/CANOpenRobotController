@@ -14,7 +14,7 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
-    mode = IDLE;
+    mode = GAIT;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -36,17 +36,17 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     PDCntrl = new ctrl::PDController<double, X2_NUM_JOINTS>();
     ExtCntrl = new ctrl::ExternalController<double, X2_NUM_JOINTS>();
     FricCntrl = new ctrl::FrictionController<double, X2_NUM_JOINTS>();
+    GravCntrl = new ctrl::GravityController<double, X2_NUM_JOINTS>();
     
     // controllers.insert(std::pair<cntrl, PDController<double, X2_NUM_JOINTS>*>(PD, PDCntrl));
     // controllers.insert(std::pair<cntrl, ExternalController<double, X2_NUM_JOINTS>*>(Ext, ExtCntrl));
     // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
     // // Gravity to be implmented     
-    controllers = {PDCntrl, ExtCntrl, FricCntrl};
+    controllers = {PDCntrl, ExtCntrl, FricCntrl, GravCntrl};
     posReader = LookupTable<double, X2_NUM_JOINTS>(1, 1);
     
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
-    gaitIndex = 0;
     trajTime = 2;
 }
 
@@ -82,7 +82,6 @@ void X2FollowerState::during(void) {
         }
 
         desiredJointPositions_ = posReader.getNextPos();
-        return;
         for(int j = 0; j < X2_NUM_JOINTS; j++) {
             
             if (j == LEFT_HIP || j == RIGHT_HIP) {
@@ -106,12 +105,12 @@ void X2FollowerState::during(void) {
         actualDesiredJointPositions_ = desiredJointReferences_;
         rateLimiter(deg2rad(rateLimit));
         PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
-        // desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-        desiredJointTorques_ = PDCntrl->output();
-        // for(auto &cnt : controllers) {
-        //     desiredJointTorques_ += cnt->output();
+        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        // desiredJointTorques_ = PDCntrl->output();
+        for(auto &cnt : controllers) {
+            desiredJointTorques_ += cnt->output();
 
-        // }
+        }
         torqueLimiter(maxTorqueLimit);
 
         robot_->setTorque(desiredJointTorques_);
