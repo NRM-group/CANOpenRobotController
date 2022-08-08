@@ -39,6 +39,7 @@ void ExoApp::init()
     running = _Robot->initialise();
     if (running)
     {
+        hwStateUpdate();
         spdlog::info("ExoApp: Call to init() successful");
     }
     else
@@ -65,7 +66,6 @@ void ExoApp::update()
 void ExoApp::hwStateUpdate()
 {
     _Robot->updateRobot();
-    _Robot->updateForceMeasurements();
 }
 
 bool ExoApp::configureMasterPDOs()

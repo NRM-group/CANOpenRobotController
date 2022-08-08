@@ -49,6 +49,9 @@ RunState::RunState(StateMachine *state_machine,
     Eigen::Vector4d com { com_thigh, com_shank, com_thigh, com_shank };
     _CtrlGravity.set_parameters(mass, { l[0], l[1], l[2], l[3] }, com);
 
+    spdlog::info("mass {} {} {} {}", mass[0], mass[1], mass[2], mass[3]);
+    spdlog::info("com {} {} {} {}", com[0], com[1], com[2], com[3]);
+    spdlog::info("l {} {} {} {}", l[0], l[1], l[2], l[3]);
     spdlog::info("RunState: Ready");
 }
 
@@ -61,14 +64,6 @@ void RunState::entry()
 {
     _Robot->initTorqueControl();
     spdlog::info("RunState: Call to entry()");
-}
-
-void RunState::during()
-{
-    static bool once = true;
-    if (once)
-    {
-
     spdlog::info("Calibrating strain gauges...");
     sleep(1);
     std::copy(
@@ -82,27 +77,40 @@ void RunState::during()
         _StrainGaugeOffset[2],
         _StrainGaugeOffset[3]
     );
+}
+
+void RunState::during()
+{
+    static bool once = true;
+    if (once)
+    {
+
     once = false;
     }
 
-    _Robot->initTorqueControl();
+    //_Robot->initTorqueControl();
 
     sg[0] = _Robot->getJointTorquesViaStrainGauges()[0] - _StrainGaugeOffset[0];
     sg[1] = _Robot->getJointTorquesViaStrainGauges()[1] - _StrainGaugeOffset[1]; 
     sg[2] = _Robot->getJointTorquesViaStrainGauges()[2] - _StrainGaugeOffset[2]; 
     sg[3] = _Robot->getJointTorquesViaStrainGauges()[3] - _StrainGaugeOffset[3]; 
 
-    for (unsigned i = 0; i < 4; i++)
-    {
-        if (sg[i] > 0)
-        {
-            sg[i] *= scale[i * 2];
-        }
-        else
-        {
-            sg[i] *= scale[i * 2 + 1];
-        }
-    }
+    sg[0] *= -0.019193478;
+    sg[1] *= -0.016627119;
+    sg[2] *= 0.015766071;
+    sg[3] *= 0.01308;
+
+    //for (unsigned i = 0; i < 4; i++)
+    //{
+    //    if (sg[i] > 0)
+    //    {
+    //        sg[i] *= scale[i * 2];
+    //    }
+    //    else
+    //    {
+    //        sg[i] *= scale[i * 2 + 1];
+    //    }
+    //}
 
 
     _CtrlButterStrainGauge.filter(Eigen::Vector4d(sg));
@@ -129,8 +137,9 @@ void RunState::exit()
 void RunState::calculate_torque()
 {
     //_CtrlButter.filter(_CtrlGravity.output());
+    //_TorqueOutput =  _CtrlGravity.output();
+    //_TorqueOutput << 20,0,20,0;
     _TorqueOutput = _CtrlFriction.output() + _CtrlGravity.output() + _CtrlTorque.output();
-    //_TorqueOutput = _CtrlFriction.output() + _CtrlButter.output() + _CtrlTorque.output();
     for (unsigned i = 0; i < X2_NUM_JOINTS; i++)
     {
         if (_TorqueOutput[i] > _TorqueLimit)
@@ -211,6 +220,7 @@ void RunState::corc_callback(const Corc::SharedPtr msg)
 
 void RunState::external_callback(const External::SharedPtr msg)
 {
+    
 }
 
 void RunState::friction_callback(const Friction::SharedPtr msg)
@@ -225,5 +235,5 @@ void RunState::pd_callback(const PD::SharedPtr msg)
 
 void RunState::strain_gauge_callback(const FloatArray::SharedPtr msg)
 {
-    std::copy(msg->data.begin(), msg->data.end(), scale);
+    std::copy(msg->data.begin(), msg->data.begin() + 8, scale);
 }
