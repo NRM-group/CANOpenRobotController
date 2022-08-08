@@ -11,7 +11,10 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
     jointStateMsg_.position.resize(X2_NUM_JOINTS + 1);
     jointStateMsg_.velocity.resize(X2_NUM_JOINTS + 1);
     jointStateMsg_.effort.resize(X2_NUM_JOINTS + 1);
+
+#ifndef SIM
     jointStatePublisher_ = node_->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
+#endif
 
     ankleEndpointPublisher_ = node_->create_publisher<exo_msgs::msg::Endpoint>("ankle_endpoints", 10);
     requestedTorquePublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_output", 10);
@@ -20,8 +23,6 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
     controllerOutputPublisher_ = node_->create_publisher<exo_msgs::msg::Output>("controller_outputs",10);
 
     gainUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::PD>("pd_params", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
-    // frictionCompensationSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_friction_compensation", 1, std::bind(&X2MachineROS2::updateFrictionCompensationCallback, this, _1));
-    // jointCommandSubscriber_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>("joint_parameters", 1, std::bind(&X2MachineROS2::updateExternalTorquesCallback, this, _1));
     jointStateSubscriber_ = node_->create_subscription<sensor_msgs::msg::JointState>("joint_references", 1, std::bind(&X2MachineROS2::jointRefCallback, this, _1));
     corcParamsSubscriber_ = node_->create_subscription<exo_msgs::msg::Corc>("corc_params",1, std::bind(&X2MachineROS2::corcParamCallback, this, _1));
 
@@ -41,13 +42,14 @@ void X2MachineROS2::initalise() {
 }
 
 void X2MachineROS2::update() {
+
+#ifndef SIM
     publishJointStates();
-    // publishRequestedJointTorques();
-    // publishJointReferencePositions();
-    publishControullerOutputs();
+#endif
+    publishControllerOutputs();
 }
 
-void X2MachineROS2::publishControullerOutputs(void){ 
+void X2MachineROS2::publishControllerOutputs(void){ 
     //TODO Gravity
     memcpy(controllerOutputsMsg_.friction.data(), x2FollowerState_->FricCntrl->output().data(), sizeof(double) * X2_NUM_JOINTS);
     memcpy(controllerOutputsMsg_.total.data(), x2FollowerState_->getDesiredJointTorques().data(), sizeof(double) * X2_NUM_JOINTS);
