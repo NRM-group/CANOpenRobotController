@@ -49,9 +49,10 @@ RunState::RunState(StateMachine *state_machine,
     Eigen::Vector4d com { com_thigh, com_shank, com_thigh, com_shank };
     _CtrlGravity.set_parameters(mass, { l[0], l[1], l[2], l[3] }, com);
 
-    spdlog::info("mass {} {} {} {}", mass[0], mass[1], mass[2], mass[3]);
-    spdlog::info("com {} {} {} {}", com[0], com[1], com[2], com[3]);
-    spdlog::info("l {} {} {} {}", l[0], l[1], l[2], l[3]);
+
+    //Retrieve walk cycle csv
+    declare_parameter("walking_gait");
+    get_parameter("waklking_gait", walkCSV);
     spdlog::info("RunState: Ready");
 }
 
@@ -77,6 +78,8 @@ void RunState::entry()
         _StrainGaugeOffset[2],
         _StrainGaugeOffset[3]
     );
+    posReader.readCSV(walkCSV);
+    posReader.startTrajectory(_Robot->getPosition(), 0.1);
 }
 
 void RunState::during()
@@ -111,9 +114,10 @@ void RunState::during()
     //        sg[i] *= scale[i * 2 + 1];
     //    }
     //}
-
+    _DesiredPositions = posReader.getNextPos();
 
     _CtrlButterStrainGauge.filter(Eigen::Vector4d(sg));
+    _CtrlPD.loop(_DesiredPositions - _Robot->getPosition());
     _CtrlFriction.loop(_Robot->getVelocity());
     _CtrlGravity.loop(_Robot->getPosition());
     _CtrlTorque.loop(_CtrlButterStrainGauge.output());
@@ -139,7 +143,7 @@ void RunState::calculate_torque()
     //_CtrlButter.filter(_CtrlGravity.output());
     //_TorqueOutput =  _CtrlGravity.output();
     //_TorqueOutput << 20,0,20,0;
-    _TorqueOutput = _CtrlFriction.output() + _CtrlGravity.output() + _CtrlTorque.output();
+    _TorqueOutput = _CtrlFriction.output() + _CtrlGravity.output() + _CtrlTorque.output() + _CtrlPD.output();
     for (unsigned i = 0; i < X2_NUM_JOINTS; i++)
     {
         if (_TorqueOutput[i] > _TorqueLimit)

@@ -29,7 +29,7 @@
 /* ROS2 client library C++ */
 #include "rclcpp/rclcpp.hpp"
 /* Libraries */
-//#include "LookupTable.hpp"
+#include "LookupTable.hpp"
 #include "controller.hpp"
 /* ROS interface aliases */
 using Float = std_msgs::msg::Float64;
@@ -71,6 +71,7 @@ private: // ROS methods
 
 private: // Local parameters
     Eigen::Vector4d _TorqueOutput;
+    Eigen::Vector4d _DesiredPositions;
     double _TorqueLimit;
     std::array<double, X2_NUM_JOINTS> _StrainGaugeOffset;
 
@@ -97,6 +98,9 @@ private: // FIXME: temporary
     void strain_gauge_callback(const FloatArray::SharedPtr msg);
     double scale[8];
     double sg[4];
+private: //Lookup Table Used in Run state
+    LookupTable<double, X2_NUM_JOINTS> posReader;
+    std::string walkCSV;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
