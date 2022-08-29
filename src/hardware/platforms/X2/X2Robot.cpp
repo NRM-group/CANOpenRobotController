@@ -147,6 +147,8 @@ void X2Robot::initialiseROS(std::shared_ptr<rclcpp::Node> &node) {
     }
 
     jointStateSubscriber_ = node->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1, std::bind(&X2Robot::jointStateCallback, this, _1));
+    torqueCommandPublisher_ = node->create_publisher<std_msgs::msg::Float64MultiArray>("/effort_controllers/commands", 10);
+    torqueCommandMsg_.data.resize(X2_NUM_JOINTS);
 
     // controllerSwitchMsg_ = std::make_shared<controller_manager_msgs::srv::SwitchController::Request>();
     spdlog::info("Initialised ROS Successfully");
@@ -366,6 +368,16 @@ setMovementReturnCode_t X2Robot::setTorque(Eigen::VectorXd torques) {
     }
 
 #ifdef SIM
+    // Implement this with gazebo ros2
+    // std::cout << "About to parse Torque" <<std::endl;
+    // std::cout << torques[3] << std::endl;
+    
+    for (i = 0; i< X2_NUM_JOINTS; i ++){
+        torqueCommandMsg_.data[i] = torques[i];
+    }
+    // std::cout << "About to publish Torque" <<std::endl;
+    torqueCommandPublisher_->publish(torqueCommandMsg_);
+    
     // std::vector<double> torqueVector(X2_NUM_JOINTS);
 
     // for (int i = 0; i < X2_NUM_JOINTS; i++) {

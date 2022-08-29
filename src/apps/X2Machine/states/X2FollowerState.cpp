@@ -14,7 +14,7 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
-    mode = IDLE;
+    mode = GAIT;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -43,7 +43,6 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     // // Gravity to be implmented     
     controllers = {PDCntrl, ExtCntrl, FricCntrl};
     posReader = LookupTable<double, X2_NUM_JOINTS>(1,0.1);
-    
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     gaitIndex = 0;
@@ -106,22 +105,27 @@ void X2FollowerState::during(void) {
         }
 
         // limit the desiredJointPositions_ delta from previous callback
-        actualDesiredJointPositions_ = desiredJointReferences_;
+        // actualDesiredJointPositions_ = desiredJointReferences_;
 
 
 
         // rateLimiter(deg2rad(rateLimit));
         PDCntrl->loop(desiredJointPositions_, robot_->getPosition());
 
-        desiredJointTorques_ = desiredJointPositions_ - robot_->getPosition();
-        // desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+        // desiredJointTorques_ = desiredJointPositions_ - robot_->getPosition();
+        desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
         desiredJointTorques_ = PDCntrl->output();
         // for(auto &cnt : controllers) {
         //     desiredJointTorques_ += cnt->output();
 
         // }
         // torqueLimiter(maxTorqueLimit);
+        // std::cout << "About to send torque" <<std::endl;
+        std::cout<<desiredJointTorques_ << std::endl << std::endl;
+        // std::cout << desiredJointPositions_ - robot_->getPosition() << std::endl;
+
         robot_->setTorque(desiredJointTorques_);
+        
     } else if (mode == IK) {
 
         trajTime = 1;

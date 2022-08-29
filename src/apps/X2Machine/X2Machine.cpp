@@ -79,7 +79,7 @@ bool X2Machine::ExitSafe::check(void) {
     //TODO: Need a seperate Safety management program
     if (OWNER->x2FollowerState_->checkSafety()) {
         spdlog::warn("Excessive change in torque detected, transitioning to safe state");
-        return true;
+        return false;
     }
     return false;
 }
