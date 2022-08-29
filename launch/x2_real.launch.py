@@ -28,7 +28,7 @@ def generate_launch_description():
 		name="x2",
 		output="screen",
         parameters=[
-            { "walking_gait" : gait_file },
+            { "gait_file" : gait_file },
             { "x2_params"    : x2_file   }, # non-ROS compatibility
 			x2_file
 		]

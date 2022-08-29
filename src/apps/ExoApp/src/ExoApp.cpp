@@ -22,7 +22,6 @@ ExoApp::ExoApp(int argc, char **argv, const float period) : running(false)
     _RunState->get_parameter("x2_params", x2_params);
     spdlog::info("ExoApp: Initialised ROS parameters (3/3)");
     // State machine start
-    _Robot->init(period, _RunState->get_name(), x2_params);
     spdlog::info("ExoApp: Ready");
 }
 
@@ -66,6 +65,7 @@ void ExoApp::update()
 void ExoApp::hwStateUpdate()
 {
     _Robot->updateRobot();
+    _Robot->updateForceMeasurements();
 }
 
 bool ExoApp::configureMasterPDOs()

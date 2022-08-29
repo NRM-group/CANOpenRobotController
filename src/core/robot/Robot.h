@@ -68,11 +68,9 @@ class Robot {
     * \param config_path the name of a valide YAML file describing kinematic and dynamic parameters of the M3. If absent or incomplete default parameters are used instead.
     */
     //Robot(const std::string &name);
-    Robot() = default;
+    Robot(std::size_t size);
     virtual ~Robot();
     //@}
-
-    void init(std::size_t size);
 
     /** @name Initialisation Methods */
     //@{

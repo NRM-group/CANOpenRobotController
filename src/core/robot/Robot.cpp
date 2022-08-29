@@ -2,15 +2,15 @@
 
 short int sign(double val) { return (val > 0) ? 1 : ((val < 0) ? -1 : 0); }
 
-Robot::~Robot() {
-    spdlog::debug("Robot object deleted");
-}
-
-void Robot::init(std::size_t size)
+Robot::Robot(std::size_t size)
 {
     jointPositions_ = Eigen::VectorXd::Zero(size);
     jointVelocities_ = Eigen::VectorXd::Zero(size);
     jointTorques_ = Eigen::VectorXd::Zero(size);
+}
+
+Robot::~Robot() {
+    spdlog::debug("Robot object deleted");
 }
 
 bool Robot::initialiseFromYAML(std::string yaml_config_file) {
