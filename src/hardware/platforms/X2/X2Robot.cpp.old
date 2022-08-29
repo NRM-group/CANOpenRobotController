@@ -1,0 +1,751 @@
+#include "X2Robot.h"
+
+/**
+ * An enum type.
+ * Joint Index for the 4 joints (note, CANopen NODEID = this + 1)
+ */
+enum X2Joints {
+    X2_LEFT_HIP = 0,   /**< Left Hip*/
+    X2_LEFT_KNEE = 1,  /**< Left Knee*/
+    X2_RIGHT_HIP = 2,  /**< Right Hip*/
+    X2_RIGHT_KNEE = 3, /**< Right Knee*/
+};
+
+/**
+ * Paramater definitions: Hip motor reading and corresponding angle. Used for mapping between degree and motor values.
+ */
+JointDrivePairs hipJDP{
+        250880,       // drivePosA
+        0,            // drivePosB
+        deg2rad(90),  //jointPosA
+        deg2rad(0)    //jointPosB
+};
+/**
+ * Paramater definitions: Knee motor reading and corresponding angle. Used for mapping between degree and motor values.
+ */
+JointDrivePairs kneeJDP{
+        0,       // drivePosA
+        250880,            //drivePosB
+        deg2rad(0),  //jointPosA
+        deg2rad(-90)    //jointPosB
+};
+
+static volatile sig_atomic_t exitLoop = 0;
+
+void X2Robot::init(const float period,
+                   const std::string &name,
+                   const std::string &config_path)
+{
+    this->robotName = name;
+    dt_ = period;
+    controlMode = ControlMode::CM_UNCONFIGURED;
+
+    // Initializing the parameters to zero
+    x2Parameters.m = Eigen::VectorXd::Zero(X2_NUM_JOINTS+2);
+    x2Parameters.l = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    x2Parameters.s = Eigen::VectorXd::Zero(X2_NUM_JOINTS+3);
+    x2Parameters.I = Eigen::VectorXd::Zero(X2_NUM_JOINTS+2);
+    x2Parameters.G = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    x2Parameters.c0 = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    x2Parameters.c1 = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    x2Parameters.maxVelocity = 3.0;
+    x2Parameters.maxTorque = 70.0;
+
+    strainGauges_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+
+    interactionForces_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    smoothedInteractionForces_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    previousSmoothedInteractionForces_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+
+    groundReactionForces_ = Eigen::VectorXd::Zero(X2_NUM_GRF_SENSORS);
+    backpackQuaternions_ = Eigen::VectorXd::Zero(4);
+    backpackGyroData_ = Eigen::VectorXd::Zero(3);
+    backPackAngleOnMedianPlane_ = 0.0;
+    backPackAngularVelocityOnMedianPlane_ = 0.0;
+    contactAnglesOnMedianPlane_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+
+    gaitState_ = GaitState::FLYING;
+
+    generalizedAccByDerivative_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    filteredGeneralizedAccByDerivative_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    previousFilteredGeneralizedAccByDerivative_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    previousJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+
+    feedForwardTorque_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    massMatrix_ = Eigen::MatrixXd::Zero(X2_NUM_GENERALIZED_COORDINATES,X2_NUM_GENERALIZED_COORDINATES);
+
+    gravitationTorque_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+
+    corriolisTorque_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    frictionTorque_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    estimatedGeneralizedAcceleration_ = Eigen::VectorXd::Zero(X2_NUM_GENERALIZED_COORDINATES);
+    selectionMatrix_ = Eigen::MatrixXd::Zero(X2_NUM_JOINTS, X2_NUM_GENERALIZED_COORDINATES);
+    selectionMatrix_ << Eigen::MatrixXd::Zero(X2_NUM_JOINTS, 1) , Eigen::MatrixXd::Identity(X2_NUM_JOINTS,X2_NUM_JOINTS);
+    pseudoInverseOfSelectionMatrixTranspose_ = selectionMatrix_.transpose().completeOrthogonalDecomposition().pseudoInverse(); // calculated beforehand because it is a computationally expensive operation
+
+    jointVelDerivativeCutOffFreq_ = 0.0; // updated from from slider
+    backpackVelDerivativeCutOffFreq_ = 0.0;
+
+    //Check if YAML file exists and contain robot parameters
+    if (!initialiseFromYAML(config_path))
+        spdlog::error("X2Robot: Error with config file");
+
+    initialiseJoints();
+    initialiseInputs();
+    Robot::init(X2_NUM_JOINTS);
+    spdlog::info("X2Robot: Ready");
+}
+
+X2Robot::~X2Robot() {
+    freeMemory();
+    spdlog::debug("X2Robot deleted");
+}
+
+void X2Robot::signalHandler(int signum) {
+    exitLoop = 1;
+    std::raise(SIGTERM); //Clean exit
+}
+
+void X2Robot::resetErrors() {
+    spdlog::debug("Clearing errors on all motor drives ");
+    for (auto p : joints) {
+        // Put into ReadyToSwitchOn()
+        p->resetErrors();
+    }
+}
+
+bool X2Robot::initPositionControl() {
+    spdlog::debug("Initialising Position Control on all joints ");
+    bool returnValue = true;
+    for (auto p : joints) {
+        if (p->setMode(CM_POSITION_CONTROL, posControlMotorProfile) != CM_POSITION_CONTROL) {
+            // Something back happened if were are here
+            spdlog::error("Something bad happened");
+            returnValue = false;
+        }
+        // Put into ReadyToSwitchOn()
+        p->readyToSwitchOn();
+    }
+
+    // Pause for a bit to let commands go
+    usleep(2000);
+    for (auto p : joints) {
+        p->enable();
+    }
+
+    if(returnValue) controlMode = ControlMode::CM_POSITION_CONTROL;
+
+    return returnValue;
+}
+
+bool X2Robot::initVelocityControl() {
+    spdlog::debug("Initialising Velocity Control on all joints ");
+    bool returnValue = true;
+    for (auto p : joints) {
+        if (p->setMode(CM_VELOCITY_CONTROL, velControlMotorProfile) != CM_VELOCITY_CONTROL) {
+            // Something back happened if were are here
+            spdlog::error("Something bad happened");
+            returnValue = false;
+        }
+        // Put into ReadyToSwitchOn()
+        p->readyToSwitchOn();
+    }
+
+    // Pause for a bit to let commands go
+    usleep(10000);
+    for (auto p : joints) {
+        p->enable();
+    }
+
+    if(returnValue) controlMode = ControlMode::CM_VELOCITY_CONTROL;
+
+    return returnValue;
+}
+
+bool X2Robot::initTorqueControl() {
+    spdlog::debug("Initialising Torque Control on all joints ");
+    bool returnValue = true;
+    for (auto p : joints) {
+        if (p->setMode(CM_TORQUE_CONTROL) != CM_TORQUE_CONTROL) {
+            // Something back happened if were are here
+            spdlog::error("Something bad happened");
+            returnValue = false;
+        }
+        // Put into ReadyToSwitchOn()
+        p->readyToSwitchOn();
+    }
+
+    // Pause for a bit to let commands go
+    usleep(2000);
+    for (auto p : joints) {
+        p->enable();
+    }
+
+    if(returnValue) controlMode = ControlMode::CM_TORQUE_CONTROL;
+
+    return returnValue;
+}
+
+setMovementReturnCode_t X2Robot::setPosition(Eigen::VectorXd positions) {
+    int i = 0;
+    setMovementReturnCode_t returnValue = SUCCESS;
+    for (auto p : joints) {
+        spdlog::debug("Joint {}, Target {}, Current {}", i, positions[i], ((X2Joint *)p)->getPosition());
+        setMovementReturnCode_t setPosCode = ((X2Joint *)p)->setPosition(positions[i]);
+        if (setPosCode == INCORRECT_MODE) {
+            spdlog::error("Joint {} is not in Position Control ", p->getId());
+            returnValue = INCORRECT_MODE;
+        } else if (setPosCode != SUCCESS) {
+            // Something bad happened
+            spdlog::error("Joint {} Unknown Error", p->getId());
+            returnValue = UNKNOWN_ERROR;
+        }
+        i++;
+    }
+
+    return returnValue;
+}
+
+setMovementReturnCode_t X2Robot::setVelocity(Eigen::VectorXd velocities) {
+    int i = 0;
+    setMovementReturnCode_t returnValue = SUCCESS;
+    for (auto p : joints) {
+        setMovementReturnCode_t setPosCode = ((X2Joint *)p)->setVelocity(velocities[i]);
+        if (setPosCode == INCORRECT_MODE) {
+            spdlog::error("Joint {} is not in Velocity Control", p->getId());
+            returnValue = INCORRECT_MODE;
+        } else if (setPosCode != SUCCESS) {
+            // Something bad happened
+            spdlog::error("Joint {} Unknown Error", p->getId());
+            returnValue = UNKNOWN_ERROR;
+        }
+        i++;
+    }
+
+    return returnValue;
+}
+
+setMovementReturnCode_t X2Robot::setTorque(Eigen::VectorXd torques) {
+    int i = 0;
+    setMovementReturnCode_t returnValue = SUCCESS;
+    for (auto p : joints) {
+        setMovementReturnCode_t setPosCode = ((X2Joint *)p)->setTorque(torques[i]);
+        if (setPosCode == INCORRECT_MODE) {
+            spdlog::error("Joint {} is not in Torque Control", p->getId());
+            returnValue = INCORRECT_MODE;
+        } else if (setPosCode != SUCCESS) {
+            // Something bad happened
+            spdlog::error("Joint {} Unknown Error", p->getId());
+            returnValue = UNKNOWN_ERROR;
+        }
+        i++;
+    }
+
+    return returnValue;
+}
+
+Eigen::VectorXd X2Robot::getBackpackQuaternions() {
+
+    for(int imuIndex = 0; imuIndex<numberOfIMUs_; imuIndex++){
+        if(x2Parameters.imuParameters.location[imuIndex] == 'b'){
+            backpackQuaternions_ = technaidIMUs->getQuaternion().col(imuIndex);
+        }
+    }
+    return backpackQuaternions_;
+}
+
+Eigen::VectorXd X2Robot::getBackpackGyroData() {
+
+    for(int imuIndex = 0; imuIndex<numberOfIMUs_; imuIndex++){
+        if(x2Parameters.imuParameters.location[imuIndex] == 'b'){
+            backpackGyroData_ = technaidIMUs->getAngularVelocity().col(imuIndex);
+        }
+    }
+    return backpackGyroData_;
+}
+
+void X2Robot::updateBackpackAndContactAnglesOnMedianPlane() {
+
+    if(!x2Parameters.imuParameters.useIMU){ // if IMU not used set backpack angle to zero
+        backPackAngleOnMedianPlane_ = M_PI_2;
+        return;
+    }
+
+    Eigen::Quaterniond q;
+    Eigen::MatrixXd quatEigen = getBackpackQuaternions();
+    q.x() = quatEigen(0,0);
+    q.y() = quatEigen(1,0);
+    q.z() = quatEigen(2,0);
+    q.w() = quatEigen(3,0);
+
+    Eigen::Matrix3d R_AD = q.toRotationMatrix();
+    double thetaBase = std::asin(R_AD(2,2));
+
+    double BASE_OFFSET = deg2rad(0.0); //TODO: GET THIS offset from COMPARISON OF BACKPACK ANGLE AND CONTACT ANGLE FROM IMUS
+    backPackAngleOnMedianPlane_ = -thetaBase - BASE_OFFSET + M_PI/2.0;
+
+    contactAnglesOnMedianPlane_[0] = backPackAngleOnMedianPlane_ + jointPositions_[0];
+    contactAnglesOnMedianPlane_[1] = backPackAngleOnMedianPlane_ + jointPositions_[0] + jointPositions_[1];
+    contactAnglesOnMedianPlane_[2] = backPackAngleOnMedianPlane_ + jointPositions_[2];
+    contactAnglesOnMedianPlane_[3] = backPackAngleOnMedianPlane_ + jointPositions_[2] + jointPositions_[3];
+}
+
+void X2Robot::updateBackpackAngularVelocity() {
+
+    if(!x2Parameters.imuParameters.useIMU){ // if IMU not used set backpack angle to zero
+        backPackAngularVelocityOnMedianPlane_ = 0.0;
+        return;
+    }
+
+    // see notebook and TrialMatlabScripts/backpackAngleCalculation.m
+    Eigen::Quaterniond q;
+    Eigen::MatrixXd quatEigen = getBackpackQuaternions();
+    q.x() = quatEigen(0,0);
+    q.y() = quatEigen(1,0);
+    q.z() = quatEigen(2,0);
+    q.w() = quatEigen(3,0);
+
+    Eigen::Matrix3d R_AD = q.toRotationMatrix();
+
+    double alphaBase = std::atan2(-R_AD(0,2), R_AD(1,2));
+
+    Eigen::MatrixXd R_AB(3,3);
+    R_AB << 0, cos(alphaBase), -sin(alphaBase),
+            0, sin(alphaBase), cos(alphaBase),
+            -1, 0, 0;
+
+    Eigen::Vector3d backpackAngularVelocity = R_AB.transpose()*R_AD*getBackpackGyroData();
+
+    backPackAngularVelocityOnMedianPlane_ = -backpackAngularVelocity.y();
+}
+
+void X2Robot::updateForceMeasurements() {
+
+    for (int i = 0; i < X2_NUM_FORCE_SENSORS; i++) {
+        strainGauges_[i] = forceSensors[i]->getForce();
+    }
+}
+
+void X2Robot::updateGeneralizedAcceleration() {
+
+    double alphaJoint = (2*M_PI*dt_*jointVelDerivativeCutOffFreq_)/(2*M_PI*dt_*jointVelDerivativeCutOffFreq_ + 1);
+    double alphaBackpack = (2*M_PI*dt_*backpackVelDerivativeCutOffFreq_)/(2*M_PI*dt_*backpackVelDerivativeCutOffFreq_ + 1);
+
+    generalizedAccByDerivative_[0] = (backPackAngularVelocityOnMedianPlane_ - previousBackPackAngularVelocityOnMedianPlane_)/dt_;
+    generalizedAccByDerivative_.tail(X2_NUM_JOINTS) = (jointVelocities_ - previousJointVelocities_)/dt_;
+
+    filteredGeneralizedAccByDerivative_[0] = alphaBackpack*generalizedAccByDerivative_[0] +
+                                             (1.0 - alphaBackpack)*previousFilteredGeneralizedAccByDerivative_[0];
+
+    filteredGeneralizedAccByDerivative_.tail(X2_NUM_JOINTS) = alphaJoint*generalizedAccByDerivative_.tail(X2_NUM_JOINTS) +
+                                                              (1.0 - alphaJoint)*previousFilteredGeneralizedAccByDerivative_.tail(X2_NUM_JOINTS);
+
+    previousFilteredGeneralizedAccByDerivative_ = filteredGeneralizedAccByDerivative_;
+    previousJointVelocities_ = jointVelocities_;
+    previousBackPackAngularVelocityOnMedianPlane_ = backPackAngularVelocityOnMedianPlane_;
+
+    estimatedGeneralizedAcceleration_ = filteredGeneralizedAccByDerivative_;
+}
+
+//bool X2Robot::homing(std::vector<int> homingDirection, float thresholdTorque, float delayTime,
+//                     float homingSpeed, float maxTime) {
+//    std::vector<bool> success(X2_NUM_JOINTS, false);
+//    std::chrono::steady_clock::time_point time0;
+//    signal(SIGINT, signalHandler); // check if ctrl + c is pressed
+//
+//    for (int i = 0; i < X2_NUM_JOINTS; i++) {
+//        if (homingDirection[i] == 0) continue;  // skip the joint if it is not asked to do homing
+//
+//        this->initVelocityControl();
+//        Eigen::VectorXd desiredVelocity;
+//        desiredVelocity = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+//        std::chrono::steady_clock::time_point firstTimeHighTorque;  // time at the first time joint exceed thresholdTorque
+//        bool highTorqueReached = false;
+//
+//        desiredVelocity[i] = homingSpeed * homingDirection[i] / std::abs(homingDirection[i]);  // setting the desired velocity by using the direction
+//        time0 = std::chrono::steady_clock::now();
+//
+//        spdlog::debug("Homing Joint {} ...", i);
+//
+//        while (success[i] == false &&
+//               exitLoop == 0 &&
+//               std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count() < maxTime * 1000) {
+//            this->updateRobot(true);  // because this function has its own loops, updateRobot needs to be called
+//            this->setVelocity(desiredVelocity);
+//            usleep(10000);
+//
+//            if (std::abs(this->getTorque()[i]) >= thresholdTorque) {  // if high torque is reached
+//                highTorqueReached = true;
+//                firstTimeHighTorque = std::chrono::steady_clock::now();
+//                while (std::chrono::duration_cast<std::chrono::milliseconds>  // high torque should be measured for delayTime
+//                               (std::chrono::steady_clock::now() - firstTimeHighTorque).count() < delayTime * 1000 &&
+//                       exitLoop == 0) {
+//                    this->updateRobot(true);
+//                    usleep(10000);
+//
+//                    if (std::abs(this->getTorque()[i]) < thresholdTorque) {  // if torque value reach below thresholdTorque, goes back
+//                        spdlog::debug("Torque drop", this->getTorque()[i]);
+//                        highTorqueReached = false;
+//                        break;
+//                    }
+//                }
+//            }
+//            success[i] = highTorqueReached;
+//        }
+//
+//        if (success[i]) {
+//            spdlog::info("Homing Succeeded for Joint {} .", i);
+//            usleep(10000);
+//            if (i == X2_LEFT_HIP || i == X2_RIGHT_HIP) {  // if it is a hip joint
+//
+//                // zeroing is done depending on the limits on the homing direction
+//                if (homingDirection[i] > 0)
+//                    ((X2Joint *)this->joints[i])->setPositionOffset(x2Parameters.jointPositionLimits.hipMax);
+//                else
+//                    ((X2Joint *)this->joints[i])->setPositionOffset(x2Parameters.jointPositionLimits.hipMin);
+//            } else if (i == X2_LEFT_KNEE || i == X2_RIGHT_KNEE) {  // if it is a knee joint
+//
+//                // zeroing is done depending on the limits on the homing direction
+//                if (homingDirection[i] > 0)
+//                    ((X2Joint *)this->joints[i])->setPositionOffset(x2Parameters.jointPositionLimits.kneeMax);
+//                else
+//                    ((X2Joint *)this->joints[i])->setPositionOffset(x2Parameters.jointPositionLimits.kneeMin);
+//            }
+//            // fell joint down from the limit
+//            initTorqueControl();
+//            sleep(2);
+//
+//        } else {
+//            spdlog::error("Homing Failed for Joint {} .", i);
+//        }
+//    }
+//    // Checking if all commanded joint successfully homed
+//    for (int i = 0; i < X2_NUM_JOINTS; i++) {
+//        if (homingDirection[i] == 0) continue;  // skip the joint if it is not asked to do homing
+//        if (success[i] == false) return false;
+//    }
+//    return true;  // will come here if all joints successfully homed
+//}
+
+bool X2Robot::setBackpackIMUMode(IMUOutputMode imuOutputMode) {
+
+    if(!x2Parameters.imuParameters.useIMU) return false;
+
+    for(int i = 0; i<numberOfIMUs_; i++){
+        if(x2Parameters.imuParameters.location[i] == 'b'){
+            if(!technaidIMUs->setOutputMode(i, imuOutputMode)){
+                return false;
+            } else return true;
+        }
+    }
+}
+
+bool X2Robot::setContactIMUMode(IMUOutputMode imuOutputMode) {
+
+    for(int i = 0; i<technaidIMUs->getNumberOfIMUs_(); i++){
+        if(x2Parameters.imuParameters.location[i] == 'c'){
+            if(!technaidIMUs->setOutputMode(i, imuOutputMode)){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool X2Robot::initialiseJoints() {
+    for (int id = 0; id < X2_NUM_JOINTS; id++) {
+        motorDrives.push_back(new CopleyDrive(id + 1));
+        // The X2 has 2 Hips and 2 Knees, by default configured as 2 hips, then 2 legs int jointID, double jointMin, double jointMax, JointDrivePairs jdp, Drive *drive
+        if (id == X2_LEFT_HIP || id == X2_RIGHT_HIP) {
+            joints.push_back(new X2Joint(id, x2Parameters.jointPositionLimits.hipMin, x2Parameters.jointPositionLimits.hipMax, hipJDP, motorDrives[id]));
+        } else if (id == X2_LEFT_KNEE || id == X2_RIGHT_KNEE) {
+            joints.push_back(new X2Joint(id, x2Parameters.jointPositionLimits.kneeMin, x2Parameters.jointPositionLimits.kneeMax, kneeJDP, motorDrives[id]));
+        }
+        spdlog::debug("X2Robot::initialiseJoints() loop");
+    }
+
+    return true;
+}
+
+bool X2Robot::initialiseNetwork() {
+    spdlog::debug("X2Robot::initialiseNetwork()");
+
+    bool status;
+    for (auto joint : joints) {
+        status = joint->initNetwork();
+        if (!status)
+            return false;
+    }
+
+    return true;
+}
+
+bool X2Robot::initialiseInputs() {
+    inputs.push_back(keyboard = new Keyboard());
+
+    for (int id = 0; id < X2_NUM_FORCE_SENSORS; id++) {
+        forceSensors.push_back(new FourierForceSensor(id + 17, x2Parameters.forceSensorScaleFactor[id]));
+        inputs.push_back(forceSensors[id]);
+    }
+
+    buttons = new FourierHandle(9);
+    inputs.push_back(buttons);
+    return true;
+}
+
+bool X2Robot::loadParametersFromYAML(YAML::Node params) {
+
+    auto p = params[robotName]["ros__parameters"];
+    // todo only make corresponding parameter 0, if not found
+    if(p["m"].size() != X2_NUM_JOINTS+2 || p["l"].size() != X2_NUM_JOINTS ||
+       p["s"].size() != X2_NUM_JOINTS+3 || p["I"].size() != X2_NUM_JOINTS+2 ||
+       p["G"].size() != X2_NUM_JOINTS || p["c0"].size() != X2_NUM_JOINTS ||
+       p["c1"].size() != X2_NUM_JOINTS)
+    {
+        spdlog::error("Parameter sizes are not correct");
+        spdlog::error("All parameters are zero !");
+
+        return false;
+    }
+    // getting the parameters from the yaml file
+    for(int i = 0; i<X2_NUM_JOINTS; i++){
+        x2Parameters.l[i] = p["l"][i].as<double>();
+        x2Parameters.G[i] = p["G"][i].as<double>();
+        x2Parameters.c0[i] = p["c0"][i].as<double>();
+        x2Parameters.c1[i] = p["c1"][i].as<double>();
+    }
+
+    for(int i = 0; i<X2_NUM_JOINTS+2; i++){
+        x2Parameters.m[i] = p["m"][i].as<double>();
+        x2Parameters.I[i] = p["I"][i].as<double>();
+    }
+
+    for(int i = 0; i<X2_NUM_JOINTS+3; i++){
+        x2Parameters.s[i] = p["s"][i].as<double>();
+    }
+
+    x2Parameters.maxTorque = p["max_torque"].as<double>();
+    x2Parameters.maxVelocity = p["max_velocity"].as<double>();
+    x2Parameters.jointPositionLimits.hipMax = deg2rad(p["joint_position_limits"]["hip_max"].as<double>());
+    x2Parameters.jointPositionLimits.hipMin = deg2rad(p["joint_position_limits"]["hip_min"].as<double>());
+    x2Parameters.jointPositionLimits.kneeMax = deg2rad(p["joint_position_limits"]["knee_max"].as<double>());
+    x2Parameters.jointPositionLimits.kneeMin = deg2rad(p["joint_position_limits"]["knee_min"].as<double>());
+
+    x2Parameters.sThighLeft = (x2Parameters.m[0]*x2Parameters.s[0] + x2Parameters.m[1]*(x2Parameters.l[0] - x2Parameters.s[1]))
+                              / (x2Parameters.m[0] + x2Parameters.m[1]); // COM of left thigh from hip
+    x2Parameters.sThighRight = (x2Parameters.m[0]*x2Parameters.s[0] + x2Parameters.m[1]*(x2Parameters.l[2] - x2Parameters.s[1]))
+                               / (x2Parameters.m[0] + x2Parameters.m[1]); // COM of right thigh from hip
+    x2Parameters.mThigh = x2Parameters.m[0] + x2Parameters.m[1]; // mass of thigh
+
+    // mass moment of inertia of left thigh at COM
+    x2Parameters.LThighLeft = x2Parameters.I[0] + x2Parameters.m[0]*(-x2Parameters.s[0] + x2Parameters.sThighLeft)*(-x2Parameters.s[0] + x2Parameters.sThighLeft) +
+                              x2Parameters.I[1] + x2Parameters.m[1]*(x2Parameters.sThighLeft - x2Parameters.l[0] + x2Parameters.s[1])*(x2Parameters.sThighLeft - x2Parameters.l[0] + x2Parameters.s[1]);
+
+    // mass moment of inertia of right thigh at COM
+    x2Parameters.LThighRight = x2Parameters.I[0] + x2Parameters.m[0]*(-x2Parameters.s[0] + x2Parameters.sThighRight)*(-x2Parameters.s[0] + x2Parameters.sThighRight) +
+                               x2Parameters.I[1] + x2Parameters.m[1]*(x2Parameters.sThighRight - x2Parameters.l[2] + x2Parameters.s[1])*(x2Parameters.sThighRight - x2Parameters.l[2] + x2Parameters.s[1]);
+
+    x2Parameters.sShankLeft = (x2Parameters.m[2]*x2Parameters.s[2] + x2Parameters.m[3]*(x2Parameters.l[1] - x2Parameters.s[3])
+                               + x2Parameters.m[4]*(x2Parameters.l[1] +  x2Parameters.s[4]))
+                              / (x2Parameters.m[2] + x2Parameters.m[3] + x2Parameters.m[4]); // COM of left shank from knee
+
+    x2Parameters.sShankRight = (x2Parameters.m[2]*x2Parameters.s[2] + x2Parameters.m[3]*(x2Parameters.l[3] - x2Parameters.s[3])
+                                + x2Parameters.m[4]*(x2Parameters.l[3] +  x2Parameters.s[4]))
+                               / (x2Parameters.m[2] + x2Parameters.m[3] + x2Parameters.m[4]); // COM of right shank from knee
+
+    x2Parameters.mShank = x2Parameters.m[2] + x2Parameters.m[3] + x2Parameters.m[4]; // mass of shank
+
+    // mass moment of inertia of left shank at COM
+    x2Parameters.LShankLeft = x2Parameters.I[2] + x2Parameters.m[2]*(-x2Parameters.s[2] + x2Parameters.sShankLeft)*(-x2Parameters.s[2] + x2Parameters.sShankLeft) +
+                              x2Parameters.I[3] + x2Parameters.m[3]*(x2Parameters.sShankLeft - x2Parameters.l[1] + x2Parameters.s[3])*(x2Parameters.sShankLeft - x2Parameters.l[1] + x2Parameters.s[3]) +
+                              x2Parameters.I[4] + x2Parameters.m[4]*(x2Parameters.sShankLeft - x2Parameters.l[1] - x2Parameters.s[4])*(x2Parameters.sShankLeft - x2Parameters.l[1] - x2Parameters.s[4]);
+
+    // mass moment of inertia of left shank at COM
+    x2Parameters.LShankRight = x2Parameters.I[2] + x2Parameters.m[2]*(-x2Parameters.s[2] + x2Parameters.sShankRight)*(-x2Parameters.s[2] + x2Parameters.sShankRight) +
+                               x2Parameters.I[3] + x2Parameters.m[3]*(x2Parameters.sShankRight - x2Parameters.l[3] + x2Parameters.s[3])*(x2Parameters.sShankRight - x2Parameters.l[3] + x2Parameters.s[3]) +
+                               x2Parameters.I[4] + x2Parameters.m[4]*(x2Parameters.sShankRight - x2Parameters.l[3] - x2Parameters.s[4])*(x2Parameters.sShankRight - x2Parameters.l[3] - x2Parameters.s[4]);
+
+    // mass of the backpack
+    x2Parameters.mBackpack = x2Parameters.m[5];
+
+    // mass moment of inertia of backpack at COM
+    x2Parameters.LBackpack = x2Parameters.I[5];
+    return true;
+}
+
+void X2Robot::freeMemory() {
+    for (auto p : joints) {
+        spdlog::debug("Delete Joint ID: {}", p->getId());
+        delete p;
+    }
+    for (auto p : motorDrives) {
+        spdlog::debug("Delete Drive Node: {}", p->getNodeID());
+        delete p;
+    }
+    for (auto p : inputs) {
+        spdlog::debug("Deleting Input");
+        delete p;
+    }
+}
+
+bool X2Robot::safetyCheck(bool duringHoming) {
+
+    if(getButtonValue(ButtonColor::RED) == 1){
+        spdlog::critical("Emergency button is pressed!");
+        return false;
+    }
+
+    for (int jointId = 0; jointId<X2_NUM_JOINTS; jointId++){
+        if(abs(getVelocity()[jointId]) >= x2Parameters.maxVelocity){
+            spdlog::critical("Maximim velocity limit is achieved for joint {}", jointId);
+            return false;
+        }
+        if(duringHoming) continue; // do not check torque limit during homing
+        if(abs(getTorque()[jointId]) >= x2Parameters.maxTorque){
+            spdlog::critical("Maximim torque limit is achieved for joint {}", jointId);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool X2Robot::setPosControlContinuousProfile(bool continuous){
+    bool returnValue = true;
+    for (auto p : joints) {
+        if(!(p->setPosControlContinuousProfile(continuous))){
+            returnValue = false;
+        }
+    }
+    return returnValue;
+}
+
+void X2Robot::updateFrictionTorque(Eigen::VectorXd motionIntend) {
+    const float velTreshold = 1.0*M_PI/180.0; // [rad/s]
+
+    for(int i = 0; i<X2_NUM_JOINTS; i++){
+        if(abs(getVelocity()[i]) > velTreshold){ // if in motion
+            frictionTorque_[i + 1] = x2Parameters.c1[i]*getVelocity()[i]/abs(getVelocity()[i]) +
+                                     x2Parameters.c0[i]*getVelocity()[i];
+        }else { // if static
+            frictionTorque_[i + 1] = x2Parameters.c1[i]*motionIntend[i+1]/abs(motionIntend[i+1]);
+        }
+    }
+}
+
+Eigen::VectorXd &X2Robot::getStrainGauges() {
+    return strainGauges_;
+}
+
+Eigen::VectorXd &X2Robot::getInteractionForce() {
+    return interactionForces_;
+}
+
+Eigen::VectorXd & X2Robot::getSmoothedInteractionForce() {
+    return smoothedInteractionForces_;
+}
+
+Eigen::VectorXd &X2Robot::getGroundReactionForces() {
+    return groundReactionForces_;
+
+}
+
+Eigen::VectorXd & X2Robot::getEstimatedGeneralizedAcceleration() {
+    return estimatedGeneralizedAcceleration_;
+}
+
+double & X2Robot::getBackPackAngleOnMedianPlane() {
+    return backPackAngleOnMedianPlane_;
+}
+
+double & X2Robot::getBackPackAngularVelocityOnMedianPlane() {
+    return backPackAngularVelocityOnMedianPlane_;
+
+}
+
+Eigen::VectorXd & X2Robot::getContactAnglesOnMedianPlane() {
+    return contactAnglesOnMedianPlane_;
+
+}
+
+Eigen::MatrixXd & X2Robot::getMassMatrix() {
+    return massMatrix_;
+}
+
+Eigen::MatrixXd & X2Robot::getSelectionMatrix() {
+    return selectionMatrix_;
+}
+
+Eigen::VectorXd & X2Robot::getGravitationTorque() {
+    return gravitationTorque_;
+}
+
+Eigen::VectorXd & X2Robot::getCorriolisTorque() {
+    return corriolisTorque_;
+}
+
+Eigen::VectorXd & X2Robot::getFrictionTorque() {
+    return frictionTorque_;
+}
+
+Eigen::VectorXd & X2Robot::getFeedForwardTorque() {
+    return  feedForwardTorque_;
+}
+
+double & X2Robot::getButtonValue(ButtonColor buttonColor) {
+    return buttons->getButtonValues()[buttonColor];
+}
+
+Eigen::MatrixXd X2Robot::getPseudoInverseOfSelectionMatrixTranspose() {
+    return pseudoInverseOfSelectionMatrixTranspose_;
+}
+
+ControlMode & X2Robot::getControlMode() {
+    return controlMode;
+}
+
+void X2Robot::setRobotName(std::string robotName) {
+    robotName = robotName;
+}
+
+std::string & X2Robot::getRobotName() {
+    return robotName;
+}
+
+RobotParameters& X2Robot::getRobotParameters() {
+    return x2Parameters;
+}
+
+Eigen::VectorXd & X2Robot::getGRFSensorThresholds() {
+    return x2Parameters.grfSensorThreshold;
+}
+
+double & X2Robot::getJointVelDerivativeCutOffFrequency() {
+    return jointVelDerivativeCutOffFreq_;
+}
+
+double & X2Robot::getBackpackVelDerivativeCutOffFrequency() {
+    return backpackVelDerivativeCutOffFreq_;
+}
+
+double & X2Robot::getDynamicParametersCutOffFrequency() {
+    return dynamicParametersCutOffFreq_;
+}
+
+void X2Robot::setJointVelDerivativeCutOffFrequency(double cutOffFrequency) {
+    jointVelDerivativeCutOffFreq_ = cutOffFrequency;
+}
+
+void X2Robot::setBackpackVelDerivativeCutOffFrequency(double cutOffFrequency) {
+    backpackVelDerivativeCutOffFreq_ = cutOffFrequency;
+}
+
+void X2Robot::setDynamicParametersCutOffFrequency(double cutOffFrequency) {
+    dynamicParametersCutOffFreq_ = cutOffFrequency;
+}
+
+void X2Robot::setGRFSensorsThreshold(Eigen::VectorXd thresholds) {
+
+    //TODO: ADD A FOR LOOP
+    x2Parameters.grfSensorThreshold[0] = thresholds[0];
+    x2Parameters.grfSensorThreshold[1] = thresholds[1];
+}

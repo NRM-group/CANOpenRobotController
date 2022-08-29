@@ -73,6 +73,7 @@ private: // ROS subscribe methods
     void user_command_callback(const UserCommand::SharedPtr msg);
 
 private: // Local parameters
+    Eigen::Vector4d _DesiredPositions;
     double _TorqueLimit;
     Eigen::Vector4d _TorqueOutput;
     Eigen::Vector4d _StrainGauge;

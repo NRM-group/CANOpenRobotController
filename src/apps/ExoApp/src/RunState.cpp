@@ -98,6 +98,8 @@ RunState::RunState(StateMachine *state_machine,
     Eigen::Vector4d com { com_thigh, com_shank, com_thigh, com_shank };
     _CtrlGravity.set_parameters(mass, { l[0], l[1], l[2], l[3] }, com);
 
+    //Retrieve walk cycle csv
+    declare_parameter("walking_gait");
     spdlog::info("RunState: Ready");
 }
 
@@ -118,42 +120,32 @@ void RunState::entry()
     // );
     _LookupTable.startTrajectory(_Robot->getPosition(), 4);
     spdlog::info("RunState: Call to entry()");
+    spdlog::info("Calibrating strain gauges...");
+    sleep(1);
+    spdlog::info("Strain gauge offset [{}, {}, {}, {}]",
+        _StrainGaugeOffset[0],
+        _StrainGaugeOffset[1],
+        _StrainGaugeOffset[2],
+        _StrainGaugeOffset[3]
+    );
 }
 
 void RunState::during()
 {
-    // static bool calib = true;
-    // if (calib)
-    // {
-    //     spdlog::info("RunState: Calibrating strain gauges...");
-    //     sleep(1);
-    //     _StrainGaugeOffset = _Robot->get_strain_gauge();
-    //     spdlog::info("RunState: Strain gauge offset [{}, {}, {}, {}]",
-    //         _StrainGaugeOffset[0], _StrainGaugeOffset[1],
-    //         _StrainGaugeOffset[2], _StrainGaugeOffset[3]
-    //     );
-    //     calib = false;
-    // }
-    spdlog::info("RunState: Strain gauge offset [{}, {}, {}, {}]",
-        _Robot->get_strain_gauge()[0], _Robot->get_strain_gauge()[1],
-        _Robot->get_strain_gauge()[2], _Robot->get_strain_gauge()[3]
-    );
-
-
     // _TorqueOutput = Eigen::Vector4d::Zero();
     // _StrainGauge = _StrainGaugeScale.cwiseProduct(
         // _Robot->get_strain_gauge() - _StrainGaugeOffset
     // );
-// 
+//
     // if (_UserCommand.toggle_walk) {
         // _LookupTable.next();
-// 
+//
         // if (_DevToggle.pd) {
             // _CtrlPD.loop(_LookupTable.getJointPositions() - _Robot->getPosition());
             // _TorqueOutput += _CtrlPD.output();
         // }
     // }
-// 
+//
     // if (_DevToggle.external) {
         // _TorqueOutput += _CtrlExternal.output();
         // static bool start = true;
@@ -174,7 +166,7 @@ void RunState::during()
             // static Eigen::Vector4d sum{};
             // sum += _StrainGauge;
             // if (++counter % 1000 == 0)
-            // {   
+            // {
                 // if (_TorqueOutput[0] == 30)
                 // {
                     // spdlog::info("FINISHED");
@@ -205,7 +197,7 @@ void RunState::during()
         // _CtrlTorque.loop(_CtrlButterStrainGauge.output());
         // _TorqueOutput += _CtrlTorque.output();
     // }
-// 
+//
     // this->limit_torque();
     // _Robot->setTorque(_TorqueOutput);
 
@@ -218,7 +210,6 @@ void RunState::during()
 void RunState::exit()
 {
     _Robot->initTorqueControl();
-    _Robot->setTorque(Eigen::VectorXd::Zero(X2_NUM_JOINTS));
     spdlog::info("RunState: Call to exit()");
 }
 
