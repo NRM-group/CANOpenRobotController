@@ -132,8 +132,8 @@ void X2MachineROS2::updateGainCallback(const exo_msgs::msg::PD::SharedPtr gains)
     
     kd << gains->left_kd[0], gains->left_kd[1], 0 , 0,
                 gains->left_kd[2], gains->left_kd[3], 0, 0,
-                0, 0, gains->right_kp[0], gains->right_kp[1],
-                0, 0, gains->right_kp[2], gains->right_kp[3];
+                0, 0, gains->right_kd[0], gains->right_kd[1],
+                0, 0, gains->right_kd[2], gains->right_kd[3];
     x2FollowerState_->PDCntrl->set_gains(kp,kd);
     x2FollowerState_->PDCntrl->set_alphas(alphaMin, alphaMax);
 }
