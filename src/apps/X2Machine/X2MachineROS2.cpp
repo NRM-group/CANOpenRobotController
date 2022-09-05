@@ -47,6 +47,8 @@ void X2MachineROS2::update() {
     publishJointStates();
 #endif
     // publishControllerOutputs();
+    publishRequestedJointTorques();
+    publishJointReferencePositions();
 }
 
 // void X2MachineROS2::publishControllerOutputs(void){ 

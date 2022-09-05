@@ -14,7 +14,8 @@
 X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name) :
         State(m, name), robot_(exo), freq_(1 / updateT) 
 {
-    mode = GAIT;
+    mode = TUNE;
+    state_ = STEP_UP;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -175,6 +176,41 @@ void X2FollowerState::during(void) {
         robot_->setTorque(desiredJointTorques_);
         spdlog::info("Completed Cycles: {}", posReader.getCycles());
      
+    } else if (mode == TUNE) {
+        // Mode for tuning PD controller for joint motors
+        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+            robot_->initTorqueControl();
+            spdlog::info("Initalised Torque Control Mode");
+        }
+
+        // switch between two set joint positions
+        switch(state_) {
+            case STEP_UP:
+                desiredJointPositions_[LEFT_HIP] = deg2rad(0);
+                desiredJointPositions_[LEFT_KNEE] = deg2rad(0);
+                desiredJointPositions_[RIGHT_HIP] = deg2rad(0);
+                desiredJointPositions_[RIGHT_KNEE] = deg2rad(0);
+
+                if (!(t_count_ % (refPosPeriod * freq_))) {
+                    state_ = STEP_DOWN;
+                    t_count_ = 0;
+                }
+                break;
+            case STEP_DOWN:
+                desiredJointPositions_[LEFT_HIP] = deg2rad(-10);
+                desiredJointPositions_[LEFT_KNEE] = deg2rad(-10);
+                desiredJointPositions_[RIGHT_HIP] = deg2rad(-10);
+                desiredJointPositions_[RIGHT_KNEE] = deg2rad(-10);
+
+                if (!(t_count_ % (refPosPeriod * freq_))) {
+                    state_ = STEP_DOWN;
+                    t_count_ = 0;
+                }
+                break;
+        }
+
+        // increment callback counter
+        t_count_++;
     }
 }
 

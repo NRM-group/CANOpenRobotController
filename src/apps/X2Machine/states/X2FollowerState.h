@@ -17,10 +17,14 @@
 #define RIGHT_HIP       2
 #define RIGHT_KNEE      3
 
-#define IK  0
-#define GAIT    1
-#define IK_GAIT 2
-#define IDLE 3
+#define IK              0
+#define GAIT            1
+#define IK_GAIT         2
+#define IDLE            3
+#define TUNE            4
+
+#define STEP_UP         0
+#define STEP_DOWN       1
 
 class X2FollowerState : public State {
     X2Robot* robot_;
@@ -28,8 +32,6 @@ class X2FollowerState : public State {
 public:
     double maxTorqueLimit;
     double rateLimit;
-    double refPos1;
-    double refPos2;
     int refPosPeriod;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
@@ -66,6 +68,7 @@ public:
 private:
     const int freq_;
     int t_count_;
+    int state_;
 
 
     timespec prevTime;
