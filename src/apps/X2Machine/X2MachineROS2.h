@@ -5,12 +5,12 @@
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "exo_msgs/msg/pd.hpp"
-#include "exo_msgs/msg/external.hpp"
-#include "exo_msgs/msg/friction.hpp"
-#include "exo_msgs/msg/enable.hpp"
-#include "exo_msgs/msg/corc.hpp"
-#include "exo_msgs/msg/output.hpp"
+#include "exo_msgs/msg/pd_parameter.hpp"
+#include "exo_msgs/msg/external_parameter.hpp"
+#include "exo_msgs/msg/friction_parameter.hpp"
+#include "exo_msgs/msg/dev_toggle.hpp"
+// #include "exo_msgs/msg/corc.hpp" //Deprecated?
+// #include "exo_msgs/msg/output.hpp" //Deprecated?
 
 
 
@@ -50,18 +50,18 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr jointStatePublisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr requestedTorquePublisher_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr referenceJointPositionsPublisher_;
-    rclcpp::Publisher<exo_msgs::msg::Output>::SharedPtr controllerOutputPublisher_;
+    // rclcpp::Publisher<exo_msgs::msg::Output>::SharedPtr controllerOutputPublisher_; //Deprecated?
     rclcpp::Publisher<exo_msgs::msg::Endpoint>::SharedPtr ankleEndpointPublisher_;
 
     //Subscribers    
     // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr gainUpdateSubscriber_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr jointStateSubscriber_;
-    rclcpp::Subscription<exo_msgs::msg::PD>::SharedPtr gainUpdateSubscriber_;
-    rclcpp::Subscription<exo_msgs::msg::External>::SharedPtr externalUpdateSubscriber_;
-    rclcpp::Subscription<exo_msgs::msg::Friction>::SharedPtr frictionUpdateSubscriber_;
-    rclcpp::Subscription<exo_msgs::msg::Enable>::SharedPtr enableUpdateSubscriber_;
+    rclcpp::Subscription<exo_msgs::msg::PDParameter>::SharedPtr gainUpdateSubscriber_;
+    rclcpp::Subscription<exo_msgs::msg::ExternalParameter>::SharedPtr externalUpdateSubscriber_;
+    rclcpp::Subscription<exo_msgs::msg::FrictionParameter>::SharedPtr frictionUpdateSubscriber_;
+    rclcpp::Subscription<exo_msgs::msg::DevToggle>::SharedPtr enableUpdateSubscriber_;
 
-    rclcpp::Subscription<exo_msgs::msg::Corc>::SharedPtr corcParamsSubscriber_;
+    // rclcpp::Subscription<exo_msgs::msg::Corc>::SharedPtr corcParamsSubscriber_; //Deprecated
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr frictionCompensationSubscriber_;
     // rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr jointCommandSubscriber_;
 
@@ -69,15 +69,15 @@ private:
     exo_msgs::msg::Endpoint ankleEndpoitsMsg_;
     std_msgs::msg::Float64MultiArray requestedJointTorquesMsg_;
     std_msgs::msg::Float64MultiArray desiredJointReferencePositionsMsg_;
-    exo_msgs::msg::Output controllerOutputsMsg_;
+    // exo_msgs::msg::Output controllerOutputsMsg_;
     
     // void updateExternalTorquesCallback(const std_msgs::msg::Float64MultiArray::SharedPtr externalTorques);
     void jointRefCallback(const sensor_msgs::msg::JointState::SharedPtr jointRef);
-    void updateGainCallback(const exo_msgs::msg::PD::SharedPtr gains);
-    void externalForceCallback(const exo_msgs::msg::External::SharedPtr ext);
-    void frictionForceCallback(const exo_msgs::msg::Friction::SharedPtr fric);
-    void enablerCallback(const exo_msgs::msg::Enable::SharedPtr enable);
-    void corcParamCallback(const exo_msgs::msg::Corc::SharedPtr corcParams);
+    void updateGainCallback(const exo_msgs::msg::PDParameter::SharedPtr gains);
+    void externalForceCallback(const exo_msgs::msg::ExternalParameter::SharedPtr ext);
+    void frictionForceCallback(const exo_msgs::msg::FrictionParameter::SharedPtr fric);
+    void enablerCallback(const exo_msgs::msg::DevToggle::SharedPtr enable);
+    // void corcParamCallback(const exo_msgs::msg::Corc::SharedPtr corcParams);
 };
 
 #endif

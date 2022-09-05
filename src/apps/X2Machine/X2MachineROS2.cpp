@@ -20,15 +20,15 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
     requestedTorquePublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("joint_output", 10);
     referenceJointPositionsPublisher_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>("actual_joint_references", 10);
 
-    controllerOutputPublisher_ = node_->create_publisher<exo_msgs::msg::Output>("controller_outputs",10);
+    // controllerOutputPublisher_ = node_->create_publisher<exo_msgs::msg::Output>("controller_outputs",10);
 
-    gainUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::PD>("pd_params", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
+    gainUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::PDParameter>("pd_params", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
     jointStateSubscriber_ = node_->create_subscription<sensor_msgs::msg::JointState>("joint_references", 1, std::bind(&X2MachineROS2::jointRefCallback, this, _1));
-    corcParamsSubscriber_ = node_->create_subscription<exo_msgs::msg::Corc>("corc_params",1, std::bind(&X2MachineROS2::corcParamCallback, this, _1));
+    // corcParamsSubscriber_ = node_->create_subscription<exo_msgs::msg::Corc>("corc_params",1, std::bind(&X2MachineROS2::corcParamCallback, this, _1));
 
-    externalUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::External>("external_params",1, std::bind(&X2MachineROS2::externalForceCallback, this, _1));
-    frictionUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::Friction>("friction_params", 1, std::bind(&X2MachineROS2::frictionForceCallback, this, _1));
-    enableUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::Enable>("enable",1, std::bind(&X2MachineROS2::enablerCallback, this, _1));
+    externalUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::ExternalParameter>("external_params",1, std::bind(&X2MachineROS2::externalForceCallback, this, _1));
+    frictionUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::FrictionParameter>("friction_params", 1, std::bind(&X2MachineROS2::frictionForceCallback, this, _1));
+    enableUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::DevToggle>("enable",1, std::bind(&X2MachineROS2::enablerCallback, this, _1));
 
 }
 
@@ -46,15 +46,15 @@ void X2MachineROS2::update() {
 #ifndef SIM
     publishJointStates();
 #endif
-    publishControllerOutputs();
+    // publishControllerOutputs();
 }
 
-void X2MachineROS2::publishControllerOutputs(void){ 
-    //TODO Gravity
-    memcpy(controllerOutputsMsg_.friction.data(), x2FollowerState_->FricCntrl->output().data(), sizeof(double) * X2_NUM_JOINTS);
-    memcpy(controllerOutputsMsg_.total.data(), x2FollowerState_->getDesiredJointTorques().data(), sizeof(double) * X2_NUM_JOINTS);
-    controllerOutputPublisher_->publish(controllerOutputsMsg_);
-}
+// void X2MachineROS2::publishControllerOutputs(void){ 
+//     //TODO Gravity
+//     memcpy(controllerOutputsMsg_.friction.data(), x2FollowerState_->FricCntrl->output().data(), sizeof(double) * X2_NUM_JOINTS);
+//     memcpy(controllerOutputsMsg_.total.data(), x2FollowerState_->getDesiredJointTorques().data(), sizeof(double) * X2_NUM_JOINTS);
+//     controllerOutputPublisher_->publish(controllerOutputsMsg_);
+// }
 
 
 void X2MachineROS2::publishJointStates(void) {
@@ -122,7 +122,7 @@ void X2MachineROS2::publishJointReferencePositions(void) {
     referenceJointPositionsPublisher_->publish(desiredJointReferencePositionsMsg_);
 }
 
-void X2MachineROS2::updateGainCallback(const exo_msgs::msg::PD::SharedPtr gains) {
+void X2MachineROS2::updateGainCallback(const exo_msgs::msg::PDParameter::SharedPtr gains) {
     Tm kp, kd;
     Tv alphaMax(gains->alpha_max.data()), alphaMin(gains->alpha_min.data());
     kp << gains->left_kp[0], gains->left_kp[1], 0 , 0,
@@ -144,26 +144,26 @@ void X2MachineROS2::jointRefCallback(const sensor_msgs::msg::JointState::SharedP
     x2FollowerState_->desiredJointReferences_ = jointRef;
 }
 
-void X2MachineROS2::externalForceCallback(const exo_msgs::msg::External::SharedPtr ext){
+void X2MachineROS2::externalForceCallback(const exo_msgs::msg::ExternalParameter::SharedPtr ext){
     Tv torque(ext->torque.data());
     x2FollowerState_->ExtCntrl->set_external_torque(torque);
 }
 
-void X2MachineROS2::frictionForceCallback(const exo_msgs::msg::Friction::SharedPtr fric) {
+void X2MachineROS2::frictionForceCallback(const exo_msgs::msg::FrictionParameter::SharedPtr fric) {
     Tv b_static, b_viscous;
-    memcpy(b_static.data(), fric->b_static.data(), sizeof(double) * X2_NUM_JOINTS);
-    memcpy(b_viscous.data(), fric->b_viscous.data(), sizeof(double) * X2_NUM_JOINTS);
+    memcpy(b_static.data(), fric->static_coefficient.data(), sizeof(double) * X2_NUM_JOINTS);
+    memcpy(b_viscous.data(), fric->viscous_coefficient.data(), sizeof(double) * X2_NUM_JOINTS);
     x2FollowerState_->FricCntrl->set_static(b_static);
     x2FollowerState_->FricCntrl->set_viscous(b_viscous);
 }
 
-void X2MachineROS2::enablerCallback(const exo_msgs::msg::Enable::SharedPtr enable) {
+void X2MachineROS2::enablerCallback(const exo_msgs::msg::DevToggle::SharedPtr enable) {
     //TODO
 }
 
 
-void X2MachineROS2::corcParamCallback(const exo_msgs::msg::Corc::SharedPtr corcParams) {
-    x2FollowerState_->rateLimit = corcParams->reference_limit;
-    x2FollowerState_->maxTorqueLimit = corcParams->maximum_torque;
-    x2FollowerState_->posReader.updateTrajectoryTime(corcParams->trajectory_period);
-}
+// void X2MachineROS2::corcParamCallback(const exo_msgs::msg::Corc::SharedPtr corcParams) {
+//     x2FollowerState_->rateLimit = corcParams->reference_limit;
+//     x2FollowerState_->maxTorqueLimit = corcParams->maximum_torque;
+//     x2FollowerState_->posReader.updateTrajectoryTime(corcParams->trajectory_period);
+// }
