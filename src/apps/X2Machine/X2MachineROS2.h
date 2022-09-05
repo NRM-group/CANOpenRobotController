@@ -60,6 +60,7 @@ private:
     rclcpp::Subscription<exo_msgs::msg::ExternalParameter>::SharedPtr externalUpdateSubscriber_;
     rclcpp::Subscription<exo_msgs::msg::FrictionParameter>::SharedPtr frictionUpdateSubscriber_;
     rclcpp::Subscription<exo_msgs::msg::DevToggle>::SharedPtr enableUpdateSubscriber_;
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr torqueLimitSubscriber_;
 
     // rclcpp::Subscription<exo_msgs::msg::Corc>::SharedPtr corcParamsSubscriber_; //Deprecated
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr frictionCompensationSubscriber_;
@@ -77,6 +78,7 @@ private:
     void externalForceCallback(const exo_msgs::msg::ExternalParameter::SharedPtr ext);
     void frictionForceCallback(const exo_msgs::msg::FrictionParameter::SharedPtr fric);
     void enablerCallback(const exo_msgs::msg::DevToggle::SharedPtr enable);
+    void torqueLimitCallback(const std_msgs::msg::Float64::SharedPtr limit);
     // void corcParamCallback(const exo_msgs::msg::Corc::SharedPtr corcParams);
 };
 

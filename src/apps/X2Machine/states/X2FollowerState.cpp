@@ -28,8 +28,6 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     actualDesiredJointPositions_= Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     startJointPositions_ = robot_->getPosition();
 
-    refPos1 = 0;
-    refPos2 = 0;
     refPosPeriod = 5;
     rateLimit = 0.0;
     maxTorqueLimit = 0.0;
