@@ -41,6 +41,9 @@ X2DemoMachineROS::X2DemoMachineROS(X2Robot *robot, X2DemoState *x2DemoState, ros
     requestedJoint3TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_3_torque", 10);
     requestedJoint4TorquePublisher_ = nodeHandle_->advertise<std_msgs::Float64>("joint_4_torque", 10);
 
+    joint1AffcFeedbackTorque_ = nodeHandle_->advertise<std_msgs::Float64>("affc_fb_joint_1", 10);
+    joint2AffcFeedbackTorque_ = nodeHandle_->advertise<std_msgs::Float64>("affc_fb_joint_2", 10);
+
 }
 
 X2DemoMachineROS::~X2DemoMachineROS() {
@@ -62,6 +65,7 @@ void X2DemoMachineROS::update() {
     publishRequestedJointTorquesSeperate();
     publishJointReferencePositions();
     publishJointActualPositionsSeperate();
+    publishAffcFbTorqueSeperate();
 }
 
 void X2DemoMachineROS::publishJointStates() {
@@ -186,6 +190,14 @@ void X2DemoMachineROS::publishJointActualPositionsSeperate() {
 
    jointActualPositionsMsg_.data = robot_->getPosition()[3]; 
    actualJoint4PositionsPublisher_.publish(jointActualPositionsMsg_);
+}
+
+void X2DemoMachineROS::publishAffcFbTorqueSeperate() {
+    affcFbTorqueMsg_.data = x2DemoState_->affcFbTorque(0, 0);
+    joint1AffcFeedbackTorque_.publish(affcFbTorqueMsg_);
+
+    affcFbTorqueMsg_.data = x2DemoState_->affcFbTorque(1, 0);
+    joint2AffcFeedbackTorque_.publish(affcFbTorqueMsg_);
 }
 
 ros::NodeHandle & X2DemoMachineROS::getNodeHandle() {

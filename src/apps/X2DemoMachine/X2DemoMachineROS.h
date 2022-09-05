@@ -41,6 +41,7 @@ public:
     void publishRequestedJointTorquesSeperate(void);
     void publishJointReferencePositions(void);
     void publishJointActualPositionsSeperate(void);
+    void publishAffcFbTorqueSeperate(void);
     void initialize();
     void setNodeHandle(ros::NodeHandle& nodeHandle);
     ros::NodeHandle& getNodeHandle();
@@ -68,6 +69,9 @@ private:
     ros::Publisher actualJoint3PositionsPublisher_;
     ros::Publisher actualJoint4PositionsPublisher_;
 
+    ros::Publisher joint1AffcFeedbackTorque_;
+    ros::Publisher joint2AffcFeedbackTorque_;
+
     ros::Subscriber gainUpdateSubscriber_;
     ros::Subscriber gainLimitUpdateSubscriber_;
     ros::Subscriber maxTorqueSubscriber_;
@@ -84,6 +88,7 @@ private:
     std_msgs::Float64 jointReferencePositionsMsg_;
     std_msgs::Float64 jointActualPositionsMsg_;
     std_msgs::Float64 requestedJointTorqueSeperateMsg_;
+    std_msgs::Float64 affcFbTorqueMsg_;
     CORC::X2Array interactionForceMsg_;
     geometry_msgs::WrenchStamped groundReactionForceMsgArray_[X2_NUM_GRF_SENSORS];
 

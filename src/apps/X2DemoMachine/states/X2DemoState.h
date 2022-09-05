@@ -82,10 +82,12 @@ public:
     std::shared_ptr<spdlog::logger> torque_logger;
     std::shared_ptr<spdlog::logger> qact_logger;
     std::shared_ptr<spdlog::logger> qerr_logger;
+    std::shared_ptr<spdlog::logger> affc_grad_logger;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
+    Eigen::MatrixXd affcFbTorque;
 
-    PDController<double, X2_NUM_JOINTS> pdController;
+    PDController<double, X2_NUM_JOINTS, 3> pdController;
     Butterworth<double, X2_NUM_JOINTS, 2> lowPass;
 
 private:
@@ -112,6 +114,7 @@ private:
 
     Eigen::VectorXd kTransperancy_;
     double amplitude_, period_, offset_;
+    double period_counter_;
 
     LookupTable<double, X2_NUM_JOINTS> posReader_;
     LookupTable<double, X2_NUM_JOINTS> velReader_;
