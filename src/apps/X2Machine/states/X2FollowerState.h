@@ -22,6 +22,7 @@
 #define IK_GAIT         2
 #define IDLE            3
 #define TUNE            4
+#define TEST            5
 
 #define STEP_UP         0
 #define STEP_DOWN       1
@@ -37,6 +38,13 @@ public:
     Eigen::VectorXd frictionCompensationTorques;
 
     Eigen::VectorXd desiredJointReferences_; //Used to communicate with the IK node
+    //Storage variables for robot qualtities
+    Eigen::VectorXd jointTorques_;
+    Eigen::VectorXd jointPositions_;
+    Eigen::VectorXd prevJointPositions_;
+    Eigen::VectorXd prevJointReferences_;
+    Eigen::VectorXd dJointPositions_; //Numerical derivative of the jointPositions
+    Eigen::VectorXd dJointReferences_;
 
     std::string csvFileName;
     Eigen::VectorXd& getDesiredJointTorques();
@@ -53,6 +61,25 @@ public:
     void exit(void);
     X2FollowerState(StateMachine* m, X2Robot* exo, const float updateT, const char* name = NULL);
     
+    timespec origTime;
+    timespec currTime;
+    std::ofstream PDFile;
+    
+    // Logging Functions
+    std::chrono::time_point<std::chrono::steady_clock> _Time_prev; // Used to identify Derivative.
+    std::chrono::time_point<std::chrono::steady_clock> _Time; // Used to identify Derivative.
+    std::shared_ptr<spdlog::logger> dpos_logger;
+    std::shared_ptr<spdlog::logger> pos_logger;
+    std::shared_ptr<spdlog::logger> dref_logger;
+    std::shared_ptr<spdlog::logger> ref_logger;
+    std::shared_ptr<spdlog::logger> p_logger; //P Component of the output
+    std::shared_ptr<spdlog::logger> d_logger; //D Component of the output
+    std::shared_ptr<spdlog::logger> torque_logger; //Torque commanded by PD controller
+    std::shared_ptr<spdlog::logger> effort_logger; //Copely measured torque
+    std::shared_ptr<spdlog::logger> err_logger; //The error used to compute  P and D component
+    
+    
+
 
     enum cntrl {PD, Ext, Fric, Grav};
     ctrl::PDController<double, X2_NUM_JOINTS>* PDCntrl;

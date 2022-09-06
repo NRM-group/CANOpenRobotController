@@ -22,12 +22,12 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
 
     // controllerOutputPublisher_ = node_->create_publisher<exo_msgs::msg::Output>("controller_outputs",10);
     torqueLimitSubscriber_ = node_->create_subscription<std_msgs::msg::Float64>("maximum_torque", 1, std::bind(&X2MachineROS2::torqueLimitCallback, this, _1));
-    gainUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::PDParameter>("pd_params", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
+    gainUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::PDParameter>("pd_parameters", 1, std::bind(&X2MachineROS2::updateGainCallback, this, _1));
     jointStateSubscriber_ = node_->create_subscription<sensor_msgs::msg::JointState>("joint_references", 1, std::bind(&X2MachineROS2::jointRefCallback, this, _1));
     // corcParamsSubscriber_ = node_->create_subscription<exo_msgs::msg::Corc>("corc_params",1, std::bind(&X2MachineROS2::corcParamCallback, this, _1));
 
-    externalUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::ExternalParameter>("external_params",1, std::bind(&X2MachineROS2::externalForceCallback, this, _1));
-    frictionUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::FrictionParameter>("friction_params", 1, std::bind(&X2MachineROS2::frictionForceCallback, this, _1));
+    externalUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::ExternalParameter>("external_parameters",1, std::bind(&X2MachineROS2::externalForceCallback, this, _1));
+    frictionUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::FrictionParameter>("friction_parameters", 1, std::bind(&X2MachineROS2::frictionForceCallback, this, _1));
     enableUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::DevToggle>("enable",1, std::bind(&X2MachineROS2::enablerCallback, this, _1));
 
 }
@@ -94,8 +94,8 @@ void X2MachineROS2::publishRequestedJointTorques(void) {
     Eigen::VectorXd dJointTorques = x2FollowerState_->getDesiredJointTorquesDSplit();
 
     requestedJointTorquesMsg_.data[0] = desiredJointTorques[0];
-    requestedJointTorquesMsg_.data[1] = pJointTorques[0];
-    requestedJointTorquesMsg_.data[2] = dJointTorques[0];
+    requestedJointTorquesMsg_.data[1] = x2FollowerState_->PDCntrl->get_p()[0];
+    requestedJointTorquesMsg_.data[2] = x2FollowerState_->PDCntrl->get_d()[0];
 
     requestedJointTorquesMsg_.data[3] = desiredJointTorques[1];
     requestedJointTorquesMsg_.data[4] = pJointTorques[1];
@@ -127,15 +127,15 @@ void X2MachineROS2::publishJointReferencePositions(void) {
 void X2MachineROS2::updateGainCallback(const exo_msgs::msg::PDParameter::SharedPtr gains) {
     Tm kp, kd;
     Tv alphaMax(gains->alpha_max.data()), alphaMin(gains->alpha_min.data());
-    kp << gains->left_kp[0], gains->left_kp[1], 0 , 0,
-                gains->left_kp[2], gains->left_kp[3], 0, 0,
-                0, 0, gains->right_kp[0], gains->right_kp[1],
-                0, 0, gains->right_kp[2], gains->right_kp[3];
+    kp << gains->left_kp[1], gains->left_kp[2], 0 , 0,
+                gains->left_kp[3], gains->left_kp[4], 0, 0,
+                0, 0, gains->right_kp[1], gains->right_kp[2],
+                0, 0, gains->right_kp[3], gains->right_kp[4];
     
-    kd << gains->left_kd[0], gains->left_kd[1], 0 , 0,
-                gains->left_kd[2], gains->left_kd[3], 0, 0,
-                0, 0, gains->right_kd[0], gains->right_kd[1],
-                0, 0, gains->right_kd[2], gains->right_kd[3];
+    kd << gains->left_kd[1], gains->left_kd[2], 0 , 0,
+                gains->left_kd[3], gains->left_kd[4], 0, 0,
+                0, 0, gains->right_kd[1], gains->right_kd[2],
+                0, 0, gains->right_kd[3], gains->right_kd[4];
     x2FollowerState_->PDCntrl->set_gains(kp,kd);
     x2FollowerState_->PDCntrl->set_alphas(alphaMin, alphaMax);
 }
