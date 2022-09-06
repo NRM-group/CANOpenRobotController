@@ -61,6 +61,8 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     err_logger =   spdlog::basic_logger_mt("err", "logs/err_logs.log", true);
     spdlog::flush_every(std::chrono::seconds(2)); 
 
+    butter.set_coeff_a({1,-1.7345,0.7658});
+    butter.set_coeff_b({0.0078, 0.0157, 0.0078});
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     trajTime = 2;
@@ -145,6 +147,8 @@ void X2FollowerState::during(void) {
         desiredJointPositions_[3] =0;
 
         jointPositions_ = robot_->getPosition();
+        butter.filter(jointPositions_);
+        jointPositions_ = butter.output();
         jointTorques_ = robot_->getTorque();
         PDCntrl->loop(desiredJointPositions_ - jointPositions_);
         //Logging
@@ -163,11 +167,12 @@ void X2FollowerState::during(void) {
         d_logger->info("{},{},{},{}", PDCntrl->get_d()[0], PDCntrl->get_d()[1], PDCntrl->get_d()[2], PDCntrl->get_d()[3]);
         torque_logger->info("{},{},{},{}", PDCntrl->output()[0], PDCntrl->output()[1], PDCntrl->output()[2], PDCntrl->output()[3]);
         effort_logger->info("{},{},{},{}", jointTorques_[0], jointTorques_[1], jointTorques_[2], jointTorques_[3]);
-        err_logger->info("{},{},{},{}", PDCntrl->get_err_prev()[0],  PDCntrl->get_err_prev()[0],PDCntrl->get_err_prev()[0], PDCntrl->get_err_prev()[0]);
+        err_logger->info("{},{},{},{}", PDCntrl->get_err_prev()[0],  PDCntrl->get_err_prev()[1],PDCntrl->get_err_prev()[2], PDCntrl->get_err_prev()[3]);
 
         prevJointPositions_ = jointPositions_;
         prevJointReferences_ = desiredJointPositions_;
 
+        // std::cout << PDCntrl->get_kd() << std::endl;
         desiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
         for(auto &cnt : controllers) {
             desiredJointTorques_ += cnt->output();

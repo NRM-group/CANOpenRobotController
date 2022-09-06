@@ -126,7 +126,7 @@ void X2MachineROS2::publishJointReferencePositions(void) {
 
 void X2MachineROS2::updateGainCallback(const exo_msgs::msg::PDParameter::SharedPtr gains) {
     Tm kp, kd;
-    Tv alphaMax(gains->alpha_max.data()), alphaMin(gains->alpha_min.data());
+    Tv alphaMax(gains->alpha_max.data() + 1), alphaMin(gains->alpha_min.data() + 1);
     kp << gains->left_kp[1], gains->left_kp[2], 0 , 0,
                 gains->left_kp[3], gains->left_kp[4], 0, 0,
                 0, 0, gains->right_kp[1], gains->right_kp[2],

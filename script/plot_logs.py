@@ -40,8 +40,8 @@ def plot_log_file(filename:str):
     plt.plot(j2)
     plt.plot(j3)
     plt.plot(j4)
-    # plt.plot(ref1)
-    # plt.plot(ref2)
+    plt.plot(ref1)
+    plt.plot(ref2)
     plt.legend(["Left Hip", "Left Knee", "Right Hip", "Right Knee"])
 
 

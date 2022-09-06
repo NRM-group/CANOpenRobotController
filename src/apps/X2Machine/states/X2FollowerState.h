@@ -88,6 +88,7 @@ public:
     ctrl::GravityController<double, X2_NUM_JOINTS>* GravCntrl;
     std::array<ctrl::BaseController<double, X2_NUM_JOINTS>*, 4> controllers;
 
+    ctrl::Butterworth<double, X2_NUM_JOINTS, 2> butter;
     bool checkSafety(void);
     
     LookupTable<double, X2_NUM_JOINTS> posReader;
