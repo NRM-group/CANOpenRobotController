@@ -37,7 +37,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     rateLimit = 0.0;
     maxTorqueLimit = 0.0;
 
-    PDCntrl = new ctrl::PDController<double, X2_NUM_JOINTS>();
+    PDCntrl = new ctrl::PDController<double, X2_NUM_JOINTS, 500>();
     ExtCntrl = new ctrl::ExternalController<double, X2_NUM_JOINTS>();
     FricCntrl = new ctrl::FrictionController<double, X2_NUM_JOINTS>();
     GravCntrl = new ctrl::GravityController<double, X2_NUM_JOINTS>();
@@ -141,21 +141,21 @@ void X2FollowerState::during(void) {
         double timeElapsed =  currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec)/(1e9);
         desiredJointPositions_[0] = 0.2 * sin(timeElapsed/5 * 2 * M_PI);
         desiredJointPositions_[1] =0;
-        desiredJointPositions_[2] =0;
+        desiredJointPositions_[2] = 0.2 * sin(timeElapsed/5 * 2 * M_PI);
         desiredJointPositions_[3] =0;
 
         jointPositions_ = robot_->getPosition();
         jointTorques_ = robot_->getTorque();
-        PDCntrl->loop(desiredJointPositions_- jointPositions_);
+        PDCntrl->loop(desiredJointPositions_ - jointPositions_);
         //Logging
         auto dt = static_cast<double>(
             (std::chrono::steady_clock::now() - _Time_prev).count() / 1e9
         );
-        pos_logger->info("{},{},{},{}", jointPositions_[0], jointPositions_[1], jointPositions_[2], jointPositions_[3]);
+        pos_logger->info("{},{},{},{},{},{}", jointPositions_[0], jointPositions_[1], jointPositions_[2], jointPositions_[3], desiredJointPositions_[0], desiredJointPositions_[2]);
         ref_logger->info("{},{},{},{}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
 
         dJointPositions_ = (jointPositions_ - prevJointPositions_) / dt;
-        dJointReferences_ = (desiredJointReferences_ - prevJointReferences_) / dt;
+        dJointReferences_ = (desiredJointPositions_ - prevJointReferences_) / dt;
         dpos_logger->info("{},{},{},{}", dJointPositions_[0], dJointPositions_[1], dJointPositions_[2], dJointPositions_[3]);
         dref_logger->info("{},{},{},{}", dJointReferences_[0], dJointReferences_[1], dJointReferences_[2], dJointReferences_[3]);
 

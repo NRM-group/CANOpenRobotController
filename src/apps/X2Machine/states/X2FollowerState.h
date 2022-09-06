@@ -82,7 +82,7 @@ public:
 
 
     enum cntrl {PD, Ext, Fric, Grav};
-    ctrl::PDController<double, X2_NUM_JOINTS>* PDCntrl;
+    ctrl::PDController<double, X2_NUM_JOINTS, 500>* PDCntrl;
     ctrl::ExternalController<double, X2_NUM_JOINTS>* ExtCntrl;
     ctrl::FrictionController<double, X2_NUM_JOINTS>* FricCntrl;
     ctrl::GravityController<double, X2_NUM_JOINTS>* GravCntrl;
