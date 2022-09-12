@@ -141,13 +141,14 @@ void X2FollowerState::during(void) {
         }
         clock_gettime(CLOCK_MONOTONIC, &currTime);
         double timeElapsed =  currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec)/(1e9);
-        desiredJointPositions_[0] = 0.2 * sin(timeElapsed/5 * 2 * M_PI);
-        desiredJointPositions_[1] =0;
-        desiredJointPositions_[2] = 0.2 * sin(timeElapsed/5 * 2 * M_PI);
-        desiredJointPositions_[3] =0;
+        // desiredJointPositions_[0] = 0.2 * sin(timeElapsed * 2 * M_PI);
+        // desiredJointPositions_[1] =0;
+        // desiredJointPositions_[2] = 0.2 * sin(timeElapsed * 2 * M_PI);
+        // desiredJointPositions_[3] =0;
+        desiredJointPositions_ = posReader.getNextPos();
 
-        jointPositions_ = robot_->getPosition();
-        butter.filter(jointPositions_);
+       
+        butter.filter(robot_->getPosition());
         jointPositions_ = butter.output();
         jointTorques_ = robot_->getTorque();
         PDCntrl->loop(desiredJointPositions_ - jointPositions_);

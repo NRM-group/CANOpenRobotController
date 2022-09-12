@@ -9,6 +9,7 @@
 #include "exo_msgs/msg/external_parameter.hpp"
 #include "exo_msgs/msg/friction_parameter.hpp"
 #include "exo_msgs/msg/dev_toggle.hpp"
+#include "exo_msgs/msg/gait_parameter.hpp"
 // #include "exo_msgs/msg/corc.hpp" //Deprecated?
 // #include "exo_msgs/msg/output.hpp" //Deprecated?
 
@@ -61,6 +62,7 @@ private:
     rclcpp::Subscription<exo_msgs::msg::FrictionParameter>::SharedPtr frictionUpdateSubscriber_;
     rclcpp::Subscription<exo_msgs::msg::DevToggle>::SharedPtr enableUpdateSubscriber_;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr torqueLimitSubscriber_;
+    rclcpp::Subscription<exo_msgs::msg::GaitParameter>::SharedPtr gaitParamSubscriber_;
 
     // rclcpp::Subscription<exo_msgs::msg::Corc>::SharedPtr corcParamsSubscriber_; //Deprecated
     rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr frictionCompensationSubscriber_;
@@ -79,6 +81,7 @@ private:
     void frictionForceCallback(const exo_msgs::msg::FrictionParameter::SharedPtr fric);
     void enablerCallback(const exo_msgs::msg::DevToggle::SharedPtr enable);
     void torqueLimitCallback(const std_msgs::msg::Float64::SharedPtr limit);
+    void gaitParamCallback(const exo_msgs::msg::GaitParameter::SharedPtr gaitParam);
     // void corcParamCallback(const exo_msgs::msg::Corc::SharedPtr corcParams);
 };
 
