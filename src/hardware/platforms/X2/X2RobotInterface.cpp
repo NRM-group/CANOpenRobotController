@@ -1,43 +1,68 @@
 #include "X2Robot.h"
 
-X2Robot::X2Robot()
-    : Robot(X2_NUM_JOINTS), _StrainGauge{},
-    _PosMotorProfile{ 4000000, 240000, 240000 },
-    _VelMotorProfile{ 0, 240000, 240000 },
-    _ControlMode(ControlMode::CM_UNCONFIGURED)
+void X2Robot::init()
 {
+    _PosMotorProfile = { 4000000, 240000, 240000 };
+    _VelMotorProfile = { 0, 240000, 240000 };
+    _ControlMode = ControlMode::CM_UNCONFIGURED;
     initialiseInputs();
     initialiseJoints();
     initialiseNetwork();
-    spdlog::info("X2Robot: Ready");
 }
 
-X2Robot::~X2Robot()
+void X2Robot::kill_robot()
 {
-    for (unsigned i = 0; i < X2_NUM_JOINTS; i++) {
-        delete inputs[i];
-        delete joints[i];
-    }
-    spdlog::info("X2Robot: Destructed");
+    spdlog::info("Shutting down...");
+    this->disable();
+    exit(EXIT_SUCCESS);
 }
 
-void X2Robot::update()
+void X2Robot::update_robot()
 {
     this->updateRobot();
     for (unsigned i = 0; i < X2_NUM_JOINTS; i++) {
         if (std::abs(jointTorques_[i]) > _MaxTorque) {
             spdlog::error(
-                "X2Robot: JOINT {} exceeded maximum TORQUE {} at {}",
+                "X2Robot: JOINT {} exceeded maximum TORQUE {} with {}",
                 i, _MaxTorque, jointTorques_[i]
             );
-            this->disable();
+            kill_robot();
         }
         if (std::abs(jointVelocities_[i]) > _MaxVelocity) {
             spdlog::error(
-                "X2Robot: JOINT {} exceeded maximum VELOCITY {} at {}",
+                "X2Robot: JOINT {} exceeded maximum VELOCITY {} with {}",
                 i, _MaxVelocity, jointVelocities_[i]
             );
-            this->disable();
+            kill_robot();
+        }
+        if (i % 2) { // knee
+            if (jointPositions_[i] < _MinKnee) {
+                spdlog::error(
+                    "X2Robot: JOINT {} exceeded minimum POSITION {} with {}",
+                    i, _MinKnee, jointPositions_[i]
+                );
+                kill_robot();
+            } else if (jointPositions_[i] > _MaxKnee) {
+                spdlog::error(
+                    "X2Robot: JOINT {} exceeded maximum POSITION {} with {}",
+                    i, _MaxKnee, jointPositions_[i]
+                );
+                kill_robot();
+            }
+        } else { // hip
+            if (jointPositions_[i] < _MinHip) {
+                spdlog::error(
+                    "X2Robot: JOINT {} exceeded minimum POSITION {} with {}",
+                    i, _MinHip, jointPositions_[i]
+                );
+                kill_robot();
+            } else if (jointPositions_[i] > _MaxHip) {
+                spdlog::error(
+                    "X2Robot: JOINT {} exceeded maximum POSITION {} with {}",
+                    i, _MaxHip, jointPositions_[i]
+                );
+                kill_robot();
+            }
         }
         _StrainGauge[i] = _ForceSensors[i]->getForce();
     }
@@ -61,7 +86,7 @@ void X2Robot::set_position(const Eigen::Vector4d &pos)
 void X2Robot::set_velocity(const Eigen::Vector4d &vel)
 {
     for (unsigned i = 0; i < X2_NUM_JOINTS; i++) {
-        auto retval = joints[i]->setPosition(vel[i]);
+        auto retval = joints[i]->setVelocity(vel[i]);
         if (retval == INCORRECT_MODE) {
             spdlog::error("JOINT {} not in VELOCITY mode", i);
         } else if (retval != SUCCESS) {
@@ -76,7 +101,7 @@ void X2Robot::set_velocity(const Eigen::Vector4d &vel)
 void X2Robot::set_torque(const Eigen::Vector4d &tor)
 {
     for (unsigned i = 0; i < X2_NUM_JOINTS; i++) {
-        auto retval = joints[i]->setPosition(tor[i]);
+        auto retval = joints[i]->setTorque(tor[i]);
         if (retval == INCORRECT_MODE) {
             spdlog::error("JOINT {} not in TORQUE mode", i);
         } else if (retval != SUCCESS) {
@@ -107,11 +132,6 @@ bool X2Robot::set_control(ControlMode mode)
 
     if (success) { _ControlMode = mode; }
     return success;
-}
-
-const Eigen::Vector4d &X2Robot::get_strain_gauge()
-{
-    return _StrainGauge;
 }
 
 bool X2Robot::initialiseInputs()
@@ -147,22 +167,4 @@ bool X2Robot::initialiseNetwork()
     }
     spdlog::info("X2Robot: Initialised network");
     return true;
-}
-
-bool X2Robot::loadParametersFromYAML(YAML::Node params)
-{
-    spdlog::info("X2Robot: Loading safety parameters...");
-    auto config = params["x2"]["ros__parameters"];
-    _MaxHip = config["hip_max"].as<double>();
-    _MinHip = config["hip_min"].as<double>();
-    _MaxKnee = config["knee_max"].as<double>();
-    _MinKnee = config["knee_min"].as<double>();
-    _MaxTorque = config["max_torque"].as<double>();
-    _MaxVelocity = config["max_velocity"].as<double>();
-    spdlog::info("X2Robot: Max hip: {}", _MaxHip);
-    spdlog::info("X2Robot: Min hip: {}", _MinHip);
-    spdlog::info("X2Robot: Max knee: {}", _MaxKnee);
-    spdlog::info("X2Robot: Min knee: {}", _MinKnee);
-    spdlog::info("X2Robot: Max torque: {}", _MaxTorque);
-    spdlog::info("X2Robot: Max velocity: {}", _MaxVelocity);
 }

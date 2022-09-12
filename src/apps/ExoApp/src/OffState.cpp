@@ -15,8 +15,8 @@ OffState::~OffState()
 void OffState::entry()
 {
     _Robot->initTorqueControl();
-    _Robot->setTorque(Eigen::VectorXd::Zero(X2_NUM_JOINTS));
-    spdlog::info("OffState: Call to entry()");
+    _Robot->set_torque(Eigen::VectorXd::Zero(X2_NUM_JOINTS));
+    spdlog::info("OffState: Entry");
 }
 
 void OffState::during() // TODO:
@@ -30,5 +30,5 @@ void OffState::during() // TODO:
 
 void OffState::exit()
 {
-    spdlog::info("OffState: Call to exit()");
+    spdlog::info("OffState: Exit");
 }

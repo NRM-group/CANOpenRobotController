@@ -26,15 +26,8 @@
 #include <fstream>
 #include "yaml-cpp/yaml.h"
 
-// These are used to access the MACRO: BASE_DIRECTORY
-#define XSTR(x) STR(x)
-#define STR(x) #x
-
 #include "InputDevice.h"
 #include "Joint.h"
-
-
-short int sign(double val);
 
 /**
  * @ingroup Robot
@@ -67,7 +60,6 @@ class Robot {
     * \param name a name of the robot. If a yaml_config_file is also provided, the name will be used to seek parameters in this file (and so should match robot name in the YAML file).
     * \param config_path the name of a valide YAML file describing kinematic and dynamic parameters of the M3. If absent or incomplete default parameters are used instead.
     */
-    //Robot(const std::string &name);
     Robot(std::size_t size);
     virtual ~Robot();
     //@}
@@ -84,22 +76,6 @@ class Robot {
      * \return false if unsuccessful
      */
     bool initialise();
-
-   protected:
-    /**
-    * \brief Attempts to read specified parameters YAML file (in config folder) if a filename is specified.
-    * Load configuration associated with RobotName (if specified) and pass it to specialised initialiseFromYAML.
-    * \params a YAML filename (assume located in config folder)
-    * \return true if succesfully open the YAML file and a robot with RobotName exists. false otherwise
-    */
-    virtual bool initialiseFromYAML(std::string yaml_config_file) final;
-    /**
-    * \brief Load parameters from YAML file if valid one specified in constructor.
-    * Default base version not doing anything. See derived class for implementation.
-    * \params params a valid YAML robot parameters node loaded by initialiseFromYAML() method.
-    * \return true
-    */
-    virtual bool loadParametersFromYAML(YAML::Node params) {  spdlog::info("Robot does not support YAML: using default robot parameters."); return false; };
 
    public:
 
@@ -172,17 +148,6 @@ class Robot {
     * \return Eigen::VectorXd a reference to the vector of actual joint positions
     */
     const Eigen::VectorXd& getTorque();
-
-    /**
-    * \brief print out status of robot and all of its joints
-    *
-    */
-    void printStatus();
-    /**
-    * \brief print out status of <code>Joint<code> J_i
-    *
-    */
-    void printJointStatus(int J_i);
     //@}
 
 
@@ -235,24 +200,6 @@ class Robot {
     * @return MovementCode representing success or failure of the application
     */
     virtual setMovementReturnCode_t setTorque(std::vector<double> torques) { return INCORRECT_MODE; };
-    //@}
-
-
-    /**
-    * \brief Initialises Logging to specified file
-    *
-    */
-    void initialiseLog();
-    /**
-    * \brief Log input data point to currently open log file
-    *
-    */
-    void logDataPoint(std::string data);
-    /**
-    * \brief Save and close any currently open logging files
-    *
-    */
-    bool closeLog();
     //@}
 };
 
