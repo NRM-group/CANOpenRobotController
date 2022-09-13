@@ -12,12 +12,12 @@
 #include "DummyTrajectoryGenerator.h"
 
 
-double sitting[6] = {deg2rad(95), deg2rad(95), -deg2rad(90), -deg2rad(90), 0, 0};
+double sitting[6] = {deg2rad(95), -deg2rad(90), deg2rad(95), -deg2rad(90), 0, 0};
 double standing[6] = {0, 0, 0, 0, 0, 0};
 Eigen::VectorXd startPos(6);
 
 DummyTrajectoryGenerator::DummyTrajectoryGenerator(int NumOfJoints) {
-    double sitPos[6] = {deg2rad(95), deg2rad(95), deg2rad(90), deg2rad(90), 0, 0};
+    double sitPos[6] = {deg2rad(95), -deg2rad(90), deg2rad(95), -deg2rad(90), 0, 0};
     double standPos[6] = {0, 0, 0, 0, 0, 0};
 
     numJoints = NumOfJoints;

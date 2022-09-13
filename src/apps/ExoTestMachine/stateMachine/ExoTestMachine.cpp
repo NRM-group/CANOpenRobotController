@@ -80,7 +80,7 @@ ExoTestMachine::ExoTestMachine() {
     addTransition("standing", &startSit, "sittingDwn");
     addTransition("sittingDwn", &endTraj, "sitting");
 
-    setInitState("initState"); 
+    setInitState("initState");
 }
 /**
  * \brief start function for running any designed statemachine specific functions

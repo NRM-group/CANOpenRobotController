@@ -1,3 +1,4 @@
+#ifdef ROS2
 #include "robot/Node.h"
 
 RobotNode::RobotNode(const std::string &__node, const std::string &__config)
@@ -44,3 +45,4 @@ void RobotNode::joint_command_callback(const JointState::SharedPtr __msg)
 {
 	_JointCommand = *__msg;
 }
+#endif

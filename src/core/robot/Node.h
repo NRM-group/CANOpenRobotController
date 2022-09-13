@@ -19,6 +19,7 @@
  * @defgroup Robot Robot Module
  * TOOD:
  */
+#ifdef ROS2
 #ifndef NODE_H_INCLUDED
 #define NODE_H_INCLUDED
 
@@ -98,4 +99,5 @@ private:
 	//@}
 };
 
+#endif
 #endif
