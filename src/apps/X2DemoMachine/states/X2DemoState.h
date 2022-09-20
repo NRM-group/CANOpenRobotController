@@ -87,7 +87,7 @@ public:
     Eigen::VectorXd frictionCompensationTorques;
     Eigen::MatrixXd affcFbTorque;
 
-    PDController<double, X2_NUM_JOINTS, 3> pdController;
+    PDController<double, X2_NUM_JOINTS> pdController;
     Butterworth<double, X2_NUM_JOINTS, 2> lowPass;
 
 private:

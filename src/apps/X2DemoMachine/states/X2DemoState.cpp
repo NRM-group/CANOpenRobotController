@@ -45,8 +45,8 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     pdController.set_gains(pgains, dgains);
     pdController.set_alphas({2, 1.9, 2, 1.9}, {2.2, 2, 2.2, 2});
 
-    lowPass.set_coeff_a({1, 2, 1});
-    lowPass.set_coeff_b({251.011, 455.255, -208.244});
+    lowPass.set_coeff_a({1.0, -0.7478, 0.2722});
+    lowPass.set_coeff_b({0.1311, 0.2622, 0.1311});
 
     Eigen::Matrix<double, 2, 2> p_gains = Eigen::Matrix<double, 2, 2>::Zero();
     Eigen::Matrix<double, 2, 2> d_gains = Eigen::Matrix<double, 2, 2>::Zero();
@@ -62,7 +62,7 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     // learning_rate << 10, 200, 1, 1, 10, 1, 50, 1, 20, 1;
     learning_rate << 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1;
     // learning_rate << 1, 1, 1, 1, 1, 1, 1, 1, 1, 1;
-    learning_rate *= 2e-5;
+    learning_rate *= 8e-5;
 
     // One leg low PD controller gains
     p_gains(0, 0) = 450.0 * 0.03;
@@ -114,30 +114,30 @@ void X2DemoState::entry(void) {
 
 void X2DemoState::during(void) {
 
-    if(controller_mode_ == 0) {
-        if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
-            robot_->initTorqueControl();
-            spdlog::info("Initalised Torque Control Mode");
-        }
+    // if(controller_mode_ == 0) {
+    //     if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
+    //         robot_->initTorqueControl();
+    //         spdlog::info("Initalised Torque Control Mode");
+    //     }
 
-        // desiredJointPositions_ = posReader_.getNextPos();
-        double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
-        desiredJointPositions_[0] = 0.3*sin(2.0*M_PI/5*time);
-        desiredJointPositions_[1] = 0.2*sin(2.0*M_PI/5*time) - 0.5;
+    //     // desiredJointPositions_ = posReader_.getNextPos();
+    //     double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
+    //     desiredJointPositions_[0] = 0.3*sin(2.0*M_PI/5*time);
+    //     desiredJointPositions_[1] = 0.2*sin(2.0*M_PI/5*time) - 0.5;
 
-        pdController.loop(desiredJointPositions_, robot_->getPosition());
-        desiredJointTorques_ = pdController.output();
+    //     pdController.loop(desiredJointPositions_, robot_->getPosition());
+    //     desiredJointTorques_ = pdController.output();
 
-        // qact_logger->info("{},{},{},{}", robot_->getPosition()[0], robot_->getPosition()[1], robot_->getPosition()[2], robot_->getPosition()[3]);
-        // qerr_logger->info("{},{},{},{}", pdController.get_err_prev()[0], pdController.get_err_prev()[1], pdController.get_err_prev()[2], pdController.get_err_prev()[3]);
+    //     // qact_logger->info("{},{},{},{}", robot_->getPosition()[0], robot_->getPosition()[1], robot_->getPosition()[2], robot_->getPosition()[3]);
+    //     // qerr_logger->info("{},{},{},{}", pdController.get_err_prev()[0], pdController.get_err_prev()[1], pdController.get_err_prev()[2], pdController.get_err_prev()[3]);
 
-        complete_logger->info("{},{},{},{}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointTorques_[0], desiredJointTorques_[1]);
+    //     complete_logger->info("{},{},{},{}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointTorques_[0], desiredJointTorques_[1]);
 
-        torque_limiter(80.0);
+    //     torque_limiter(80.0);
 
-        robot_->setTorque(desiredJointTorques_);
-    }
-    else if(controller_mode_ == 0){
+    //     robot_->setTorque(desiredJointTorques_);
+    // }
+    if(controller_mode_ == 0){
         // AFFC Controller Mode
 
         // switch motor control mode to torque control
@@ -192,9 +192,9 @@ void X2DemoState::during(void) {
         refAccel << desiredJointAccelerations_[0], desiredJointAccelerations_[1];
 
         // filter qact to remove noise
-        // lowPass.filter(robot_->getPosition());
-        // actualPos << lowPass.output()[0], lowPass.output()[1];
-        actualPos << robot_->getPosition()[0], robot_->getPosition()[1];
+        lowPass.filter(robot_->getPosition());
+        actualPos << lowPass.output()[0], lowPass.output()[1];
+        // actualPos << robot_->getPosition()[0], robot_->getPosition()[1];
 
         // iterate the AFFC algorithm once
         if (period_counter_ * 5.0 < time) {
