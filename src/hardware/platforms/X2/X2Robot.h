@@ -56,7 +56,7 @@
 #define X2_REDUCTION_RATIO 122.5
 
 // robot name is used to access the properties of the correct robot version
-#define X2_NAME_DEFAULT X2_MELB_A
+#define X2_NAME_DEFAULT x2
 
 // Macros
 #define deg2rad(deg) ((deg)*M_PI / 180.0)
