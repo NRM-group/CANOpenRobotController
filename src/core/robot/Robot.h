@@ -101,7 +101,6 @@ class Robot {
     virtual bool loadParametersFromYAML(YAML::Node params) { spdlog::info("Robot does not support YAML: using default robot parameters."); return false; };
 
    public:
-
     /**
      * \brief Stop the robot: disable all actuated joints.
      *

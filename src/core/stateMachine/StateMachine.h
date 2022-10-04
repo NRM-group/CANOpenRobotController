@@ -87,7 +87,7 @@ class StateMachine {
      * \param r A unique_ptr to a Robot object (e.g. setRobot(std::make_unique<RobotM3>("ROBOT_NAME")) )
      *
      */
-    void setRobot(std::unique_ptr<Robot> r);
+    void setRobot(std::shared_ptr<Robot> r);
 
      /**
      * \brief Add a State instance to the stateMachine.
@@ -95,7 +95,7 @@ class StateMachine {
      * \param state_name A unique state name, used to access the state
      * \param s_ptr A shared_ptr to the State to be added.
      */
-    void addState(std::string state_name, std::shared_ptr<State> s_ptr);
+    void addState(std::string state_name, std::unique_ptr<State> s_ptr);
     /**
      * \brief Add a Transition (as a cb function) between two states registered using AddState().
      * If multiple transitions from the same state are active (true) simultaneously, the first registered one will be used.
@@ -123,18 +123,18 @@ class StateMachine {
      * \brief Return pointer to the State specified by its state_name
      *
      */
-    std::shared_ptr<State> state(std::string state_name) { return _states[state_name]; }
+    const std::unique_ptr<State> & state(std::string state_name) { return _states[state_name]; }
     /**
      * \brief Return pointer to the State specified by its name with specicialised State type
      *
      */
     template <typename S>
-    std::shared_ptr<S> state(std::string state_name) { return std::static_pointer_cast<S>(_states[state_name]); }
+    const std::unique_ptr<S> & state(std::string state_name) { return std::static_pointer_cast<S>(_states[state_name]); }
     /**
      * \brief Return pointer to current active State of the stateMachine
      *
      */
-    std::shared_ptr<State> state() { return _states[_currentState]; }
+    const std::unique_ptr<State> & state() { return _states[_currentState]; }
 
     /**
      * \brief Is stateMachine running?
@@ -156,7 +156,7 @@ class StateMachine {
      */
     virtual void hwStateUpdate();
 
-    std::unique_ptr<Robot> _robot = nullptr;        //!< Set using setRobot method. Can be left null.
+    std::shared_ptr<Robot> _robot = nullptr;        //!< Set using setRobot method. Can be left null.
 
     /**
      * \brief Custom spdlogger allowing to conveniently log Eigen Vectors (among other things)
@@ -166,7 +166,7 @@ class StateMachine {
 
    private:
     std::string _currentState;                                      //!< Current active State name
-    std::map<std::string, std::shared_ptr<State>> _states;          //!< Map of states, indexed and accessed by their names (string)
+    std::map<std::string, std::unique_ptr<State>> _states;          //!< Map of states, indexed and accessed by their names (string)
     std::map<std::string, std::vector<Transition_t>> _transitions;  //!< Map holding for each state a vector of possible std::pair transistions.
     std::string _lastToState;                                       //!< Hold the last state to which a transition has been registered to. Used for addTransitionFromLast().
 

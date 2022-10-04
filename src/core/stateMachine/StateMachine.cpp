@@ -4,7 +4,7 @@
 StateMachine::StateMachine(): _lastToState(""), _running(false){
 }
 
-void StateMachine::setRobot(std::unique_ptr<Robot> r) {
+void StateMachine::setRobot(std::shared_ptr<Robot> r) {
     spdlog::debug("StateMachine::setRobot()");
     if(!_robot) {
         _robot = move(r);
@@ -31,9 +31,9 @@ void StateMachine::setInitState(std::string state_name) {
     }
 }
 
-void StateMachine::addState(std::string state_name, std::shared_ptr<State> s_ptr) {
+void StateMachine::addState(std::string state_name, std::unique_ptr<State> s_ptr) {
    spdlog::debug("StateMachine::addState({})", state_name);
-   _states[state_name]=s_ptr;
+   _states[state_name]=std::move(s_ptr);
    //Set first added state as default first for execution
    if(_states.size()==1) {
       _currentState=state_name;

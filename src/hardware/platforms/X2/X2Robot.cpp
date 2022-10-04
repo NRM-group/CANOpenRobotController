@@ -115,9 +115,9 @@ X2Robot::X2Robot(std::string robot_name, std::string yaml_config_file):Robot(rob
     backpackVelDerivativeCutOffFreq_ = 0.0;
 
     //Check if YAML file exists and contain robot parameters
-    initialiseFromYAML(yaml_config_file);
+    //initialiseFromYAML(yaml_config_file);
 
-    spdlog::debug("initialiseJoints call");
+    // spdlog::debug("initialiseJoints call");
     initialiseJoints();
     initialiseInputs();
 #ifdef SIM
@@ -366,20 +366,31 @@ setMovementReturnCode_t X2Robot::setTorque(Eigen::VectorXd torques) {
     return returnValue;
 }
 
-bool X2Robot::calibrateForceSensors() {
-    int numberOfSuccess = 0;
-    for (int i = 0; i < X2_NUM_FORCE_SENSORS + X2_NUM_GRF_SENSORS; i++) {
-        if (forceSensors[i]->calibrate()) numberOfSuccess++;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+// bool X2Robot::calibrateForceSensors() {
+//     int numberOfSuccess = 0;
+//     for (int i = 0; i < X2_NUM_FORCE_SENSORS + X2_NUM_GRF_SENSORS; i++) {
+//         if (forceSensors[i]->calibrate()) numberOfSuccess++;
+//     }
+//     std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
-    if (numberOfSuccess == X2_NUM_FORCE_SENSORS + X2_NUM_GRF_SENSORS) {
-        spdlog::info("[X2Robot::calibrateForceSensors]: Zeroing of force sensors are successfully completed.");
-        return true;
-    } else {
-        spdlog::error("[X2Robot::calibrateForceSensors]: Zeroing failed.");
-        return false;
+//     if (numberOfSuccess == X2_NUM_FORCE_SENSORS + X2_NUM_GRF_SENSORS) {
+//         spdlog::info("[X2Robot::calibrateForceSensors]: Zeroing of force sensors are successfully completed.");
+//         return true;
+//     } else {
+//         spdlog::error("[X2Robot::calibrateForceSensors]: Zeroing failed.");
+//         return false;
+//     }
+// }
+
+bool X2Robot::calibrateForceSensors() {
+
+    for (std::size_t i = 0; i < X2_NUM_FORCE_SENSORS; i++) {
+        if (!forceSensors[i]->calibrate()) {
+            spdlog::error("Failed to calibrate sensor ({})", i);
+            return false;
+        }
     }
+    return true;
 }
 
 Eigen::VectorXd X2Robot::getBackpackQuaternions() {
@@ -461,10 +472,6 @@ void X2Robot::updateForceMeasurements() {
 
     for (int i = 0; i < X2_NUM_FORCE_SENSORS; i++) {
         jointTorquesViaStrainGauges_[i] = forceSensors[i]->getForce();
-    }
-
-    for (int i = 0; i < X2_NUM_GRF_SENSORS ; i++) {
-        groundReactionForces_[i] = forceSensors[i + X2_NUM_FORCE_SENSORS]->getForce();
     }
 }
 
@@ -635,25 +642,10 @@ bool X2Robot::initialiseNetwork() {
 }
 
 bool X2Robot::initialiseInputs() {
-    inputs.push_back(keyboard = new Keyboard());
 
     for (int id = 0; id < X2_NUM_FORCE_SENSORS; id++) {
-        forceSensors.push_back(new FourierForceSensor(id + 17, x2Parameters.forceSensorScaleFactor[id]));
+        forceSensors.push_back(new FourierForceSensor(id + 17, 1.0));
         inputs.push_back(forceSensors[id]);
-    }
-
-    for (int id = 0; id < X2_NUM_GRF_SENSORS; id++) {
-        forceSensors.push_back(new FourierForceSensor(id + 33, x2Parameters.grfSensorScaleFactor[id]));
-        inputs.push_back(forceSensors[id + X2_NUM_FORCE_SENSORS]);
-    }
-
-    if(x2Parameters.imuParameters.useIMU){
-        technaidIMUs = new TechnaidIMU(x2Parameters.imuParameters);
-//        inputs.push_back(technaidIMUs); // commented because techIMU class starts its own thread for data update
-        technaidIMUs->initialize();
-
-//        setBackpackIMUMode(IMUOutputMode::QUATERNION); // commented because calibration will be done by a service call
-        setContactIMUMode(IMUOutputMode::ACCELERATION);
     }
 
     buttons = new FourierHandle(9);
@@ -662,133 +654,24 @@ bool X2Robot::initialiseInputs() {
     return true;
 }
 
-bool X2Robot::loadParametersFromYAML(YAML::Node params) {
+bool X2Robot::loadParametersFromYAML(YAML::Node params_node) {
 
-    // todo only make corresponding parameter 0, if not found
-    if(params[robotName]["m"].size() != X2_NUM_JOINTS+2 || params[robotName]["l"].size() != X2_NUM_JOINTS ||
-       params[robotName]["s"].size() != X2_NUM_JOINTS+3 || params[robotName]["I"].size() != X2_NUM_JOINTS+2 ||
-       params[robotName]["G"].size() != X2_NUM_JOINTS || params[robotName]["c0"].size() != X2_NUM_JOINTS ||
-       params[robotName]["c1"].size() != X2_NUM_JOINTS || params[robotName]["c2"].size() != X2_NUM_JOINTS ||
-       params[robotName]["cuff_weights"].size() != X2_NUM_FORCE_SENSORS ||
-       params[robotName]["force_sensor_scale_factor"].size() != X2_NUM_FORCE_SENSORS ||
-       params[robotName]["grf_sensor_scale_factor"].size() != X2_NUM_GRF_SENSORS ||
-       params[robotName]["grf_sensor_threshold"].size() != X2_NUM_GRF_SENSORS)
-    {
-        spdlog::error("Parameter sizes are not correct");
-        spdlog::error("All parameters are zero !");
+    auto params = params_node[robotName]["ros__parameters"];
 
-        return false;
-    }
-    // getting the parameters from the yaml file
-    for(int i = 0; i<X2_NUM_JOINTS; i++){
-        x2Parameters.l[i] = params[robotName]["l"][i].as<double>();
-        x2Parameters.G[i] = params[robotName]["G"][i].as<double>();
-        x2Parameters.c0[i] = params[robotName]["c0"][i].as<double>();
-        x2Parameters.c1[i] = params[robotName]["c1"][i].as<double>();
-        x2Parameters.c2[i] = params[robotName]["c2"][i].as<double>();
-        x2Parameters.imuDistance[i] = params[robotName]["imu_distance"][i].as<double>();
-    }
+    x2Parameters.maxTorque = params["max_torque"].as<double>();
+    x2Parameters.maxVelocity = params["max_velocity"].as<double>();
+    x2Parameters.jointPositionLimits.hipMax = deg2rad(params["position_limits"]["max_hip"].as<double>());
+    x2Parameters.jointPositionLimits.hipMin = deg2rad(params["position_limits"]["min_hip"].as<double>());
+    x2Parameters.jointPositionLimits.kneeMax = deg2rad(params["position_limits"]["max_knee"].as<double>());
+    x2Parameters.jointPositionLimits.kneeMin = deg2rad(params["position_limits"]["min_knee"].as<double>());
 
-    for(int i = 0; i<X2_NUM_JOINTS+2; i++){
-        x2Parameters.m[i] = params[robotName]["m"][i].as<double>();
-        x2Parameters.I[i] = params[robotName]["I"][i].as<double>();
-    }
+    _StrainGauge.set_coeff_a(
+        params["strain_gauge"]["coeff_a"].as<std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1>>()
+    );
+    _StrainGauge.set_coeff_b(
+        params["strain_gauge"]["coeff_b"].as<std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1>>()
+    );
 
-    for(int i = 0; i<X2_NUM_JOINTS+3; i++){
-        x2Parameters.s[i] = params[robotName]["s"][i].as<double>();
-    }
-
-    for(int i = 0; i<X2_NUM_FORCE_SENSORS; i++) {
-        x2Parameters.cuffWeights[i] = params[robotName]["cuff_weights"][i].as<double>();
-        x2Parameters.forceSensorScaleFactor[i] = params[robotName]["force_sensor_scale_factor"][i].as<double>();
-    }
-    for(int i = 0; i<X2_NUM_GRF_SENSORS; i++) {
-        x2Parameters.grfSensorScaleFactor[i] = params[robotName]["grf_sensor_scale_factor"][i].as<double>();
-        x2Parameters.grfSensorThreshold[i] = params[robotName]["grf_sensor_threshold"][i].as<double>();
-    }
-    if(!params[robotName]["technaid_imu"]){
-        spdlog::warn("IMU parameters couldn't be found!");
-        x2Parameters.imuParameters.useIMU = false;
-    } else{ // there is imu params
-        if(params[robotName]["technaid_imu"]["network_id"].size() != params[robotName]["technaid_imu"]["serial_no"].size()||
-           params[robotName]["technaid_imu"]["location"].size() != params[robotName]["technaid_imu"]["serial_no"].size()){
-            spdlog::error("IMU parameter sizes are not consistent!");
-            x2Parameters.imuParameters.useIMU = false;
-        }else{ // imu parameters have consistent size
-
-            numberOfIMUs_ = params[robotName]["technaid_imu"]["serial_no"].size();
-            int numberOfContactIMUs = 0;
-            int numberOfBackpackIMUs = 0;
-
-            for(int i = 0; i<numberOfIMUs_; i++) {
-                x2Parameters.imuParameters.serialNo.push_back(params[robotName]["technaid_imu"]["serial_no"][i].as<int>());
-                x2Parameters.imuParameters.networkId.push_back(params[robotName]["technaid_imu"]["network_id"][i].as<int>());
-                x2Parameters.imuParameters.location.push_back(params[robotName]["technaid_imu"]["location"][i].as<char>());
-                if(x2Parameters.imuParameters.location[i] == 'c') numberOfContactIMUs++;
-                else if(x2Parameters.imuParameters.location[i] == 'b') numberOfBackpackIMUs++;
-            }
-
-            if(numberOfContactIMUs > 4 || numberOfBackpackIMUs != 1){
-                spdlog::error("IMU locations are not proper");
-                x2Parameters.imuParameters.useIMU = false;
-            } else{
-                spdlog::info("IMU parameters are succefully parsed");
-                x2Parameters.imuParameters.useIMU = true;
-                x2Parameters.imuParameters.canChannel = params[robotName]["technaid_imu"]["can_channel"].as<std::string>();
-
-//                contactAccelerations_ = Eigen::MatrixXd::Zero(3, numberOfContactIMUs);
-//                contactQuaternions_ = Eigen::MatrixXd::Zero(4, numberOfContactIMUs);
-            }
-        }
-    }
-
-    x2Parameters.maxTorque = params[robotName]["max_torque"].as<double>();
-//    x2Parameters.maxPower = params[robotName]["max_power"].as<double>();
-    x2Parameters.maxVelocity = params[robotName]["max_velocity"].as<double>();
-    x2Parameters.jointPositionLimits.hipMax = deg2rad(params[robotName]["joint_position_limits"]["hip_max"].as<double>());
-    x2Parameters.jointPositionLimits.hipMin = deg2rad(params[robotName]["joint_position_limits"]["hip_min"].as<double>());
-    x2Parameters.jointPositionLimits.kneeMax = deg2rad(params[robotName]["joint_position_limits"]["knee_max"].as<double>());
-    x2Parameters.jointPositionLimits.kneeMin = deg2rad(params[robotName]["joint_position_limits"]["knee_min"].as<double>());
-
-    x2Parameters.sThighLeft = (x2Parameters.m[0]*x2Parameters.s[0] + x2Parameters.m[1]*(x2Parameters.l[0] - x2Parameters.s[1]))
-                              / (x2Parameters.m[0] + x2Parameters.m[1]); // COM of left thigh from hip
-    x2Parameters.sThighRight = (x2Parameters.m[0]*x2Parameters.s[0] + x2Parameters.m[1]*(x2Parameters.l[2] - x2Parameters.s[1]))
-                               / (x2Parameters.m[0] + x2Parameters.m[1]); // COM of right thigh from hip
-    x2Parameters.mThigh = x2Parameters.m[0] + x2Parameters.m[1]; // mass of thigh
-
-    // mass moment of inertia of left thigh at COM
-    x2Parameters.LThighLeft = x2Parameters.I[0] + x2Parameters.m[0]*(-x2Parameters.s[0] + x2Parameters.sThighLeft)*(-x2Parameters.s[0] + x2Parameters.sThighLeft) +
-                              x2Parameters.I[1] + x2Parameters.m[1]*(x2Parameters.sThighLeft - x2Parameters.l[0] + x2Parameters.s[1])*(x2Parameters.sThighLeft - x2Parameters.l[0] + x2Parameters.s[1]);
-
-    // mass moment of inertia of right thigh at COM
-    x2Parameters.LThighRight = x2Parameters.I[0] + x2Parameters.m[0]*(-x2Parameters.s[0] + x2Parameters.sThighRight)*(-x2Parameters.s[0] + x2Parameters.sThighRight) +
-                               x2Parameters.I[1] + x2Parameters.m[1]*(x2Parameters.sThighRight - x2Parameters.l[2] + x2Parameters.s[1])*(x2Parameters.sThighRight - x2Parameters.l[2] + x2Parameters.s[1]);
-
-    x2Parameters.sShankLeft = (x2Parameters.m[2]*x2Parameters.s[2] + x2Parameters.m[3]*(x2Parameters.l[1] - x2Parameters.s[3])
-                               + x2Parameters.m[4]*(x2Parameters.l[1] +  x2Parameters.s[4]))
-                              / (x2Parameters.m[2] + x2Parameters.m[3] + x2Parameters.m[4]); // COM of left shank from knee
-
-    x2Parameters.sShankRight = (x2Parameters.m[2]*x2Parameters.s[2] + x2Parameters.m[3]*(x2Parameters.l[3] - x2Parameters.s[3])
-                                + x2Parameters.m[4]*(x2Parameters.l[3] +  x2Parameters.s[4]))
-                               / (x2Parameters.m[2] + x2Parameters.m[3] + x2Parameters.m[4]); // COM of right shank from knee
-
-    x2Parameters.mShank = x2Parameters.m[2] + x2Parameters.m[3] + x2Parameters.m[4]; // mass of shank
-
-    // mass moment of inertia of left shank at COM
-    x2Parameters.LShankLeft = x2Parameters.I[2] + x2Parameters.m[2]*(-x2Parameters.s[2] + x2Parameters.sShankLeft)*(-x2Parameters.s[2] + x2Parameters.sShankLeft) +
-                              x2Parameters.I[3] + x2Parameters.m[3]*(x2Parameters.sShankLeft - x2Parameters.l[1] + x2Parameters.s[3])*(x2Parameters.sShankLeft - x2Parameters.l[1] + x2Parameters.s[3]) +
-                              x2Parameters.I[4] + x2Parameters.m[4]*(x2Parameters.sShankLeft - x2Parameters.l[1] - x2Parameters.s[4])*(x2Parameters.sShankLeft - x2Parameters.l[1] - x2Parameters.s[4]);
-
-    // mass moment of inertia of left shank at COM
-    x2Parameters.LShankRight = x2Parameters.I[2] + x2Parameters.m[2]*(-x2Parameters.s[2] + x2Parameters.sShankRight)*(-x2Parameters.s[2] + x2Parameters.sShankRight) +
-                               x2Parameters.I[3] + x2Parameters.m[3]*(x2Parameters.sShankRight - x2Parameters.l[3] + x2Parameters.s[3])*(x2Parameters.sShankRight - x2Parameters.l[3] + x2Parameters.s[3]) +
-                               x2Parameters.I[4] + x2Parameters.m[4]*(x2Parameters.sShankRight - x2Parameters.l[3] - x2Parameters.s[4])*(x2Parameters.sShankRight - x2Parameters.l[3] - x2Parameters.s[4]);
-
-    // mass of the backpack
-    x2Parameters.mBackpack = x2Parameters.m[5];
-
-    // mass moment of inertia of backpack at COM
-    x2Parameters.LBackpack = x2Parameters.I[5];
     return true;
 }
 
@@ -810,31 +693,19 @@ void X2Robot::freeMemory() {
 void X2Robot::updateRobot(bool duringHoming) {
 #ifndef SIM
     Robot::updateRobot();
-    updateBackpackAndContactAnglesOnMedianPlane();
-    updateBackpackAngularVelocity();
+    // updateBackpackAndContactAnglesOnMedianPlane();
+    // updateBackpackAngularVelocity();
     updateForceMeasurements();
-    updateGeneralizedAcceleration();
+    // updateGeneralizedAcceleration();
 #endif
-    updateDynamicTerms();
-    updateInteractionForce();
-    updateFeedforwardTorque();
+    // updateDynamicTerms();
+    // updateInteractionForce();
+    // updateFeedforwardTorque();
 
-#ifndef SIM // no safety during sim
-    if(!safetyCheck(duringHoming)){
-        std::raise(SIGTERM); //Clean exit
-    }
-#endif
-
+    _StrainGauge.filter(jointTorquesViaStrainGauges_);
 }
 
 bool X2Robot::safetyCheck(bool duringHoming) {
-
-    if(getButtonValue(ButtonColor::RED) == 1){
-        spdlog::critical("Emergency button is pressed!");
-        return false;
-    }
-
-
 
     for (int jointId = 0; jointId<X2_NUM_JOINTS; jointId++){
         if(abs(getVelocity()[jointId]) >= x2Parameters.maxVelocity){
@@ -960,6 +831,10 @@ Eigen::VectorXd &X2Robot::getJointTorquesViaStrainGauges() {
 #else
     return simJointTorquesViaStrainGauges_;
 #endif
+}
+
+X2Robot::Butter &X2Robot::getStrainGauges() {
+    return _StrainGauge;
 }
 
 Eigen::VectorXd &X2Robot::getInteractionForce() {

@@ -28,6 +28,9 @@
 #include "TechnaidIMU.h"
 #include "FourierHandle.h"
 
+#include "butterworth.hpp"
+#define STRAIN_GAUGE_FILTER_ORDER 2
+
 // Logger
 #include "LogHelper.h"
 // yaml-parser
@@ -181,6 +184,10 @@ private:
     int numberOfIMUs_;
 
     std::chrono::steady_clock::time_point time0;
+
+    using Butter = ctrl::Butterworth<double, X2_NUM_JOINTS, STRAIN_GAUGE_FILTER_ORDER>;
+    Butter _StrainGauge;
+
 
     bool loadParametersFromYAML(YAML::Node params);
 
@@ -384,6 +391,8 @@ public:
     * \return Eigen::VectorXd a reference to the vector of strain gauge measurements
     */
     Eigen::VectorXd& getJointTorquesViaStrainGauges();
+
+    Butter& getStrainGauges();
 
     /**
     * \brief Get the interaction force estimation
@@ -639,7 +648,7 @@ public:
     /**
        * \brief check if the current state of the robot is safe or if emergency button is pressed
        */
-    bool safetyCheck(bool duringHoming);
+    bool safetyCheck(bool duringHoming=false);
 
     /**
        * \brief get the robot name
