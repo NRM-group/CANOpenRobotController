@@ -15,6 +15,7 @@
 #include "X2Robot.h"
 #include "controller.hpp"
 #include "LookupTable.hpp"
+#include "FourierSeries.hpp"
 #include <ctime>
 #include <sstream>
 #include <iostream>
@@ -83,6 +84,7 @@ public:
     std::shared_ptr<spdlog::logger> qact_logger;
     std::shared_ptr<spdlog::logger> qerr_logger;
     std::shared_ptr<spdlog::logger> affc_grad_logger;
+    std::shared_ptr<spdlog::logger> affc_lambda_debug_logger;
     Eigen::VectorXd debugTorques;
     Eigen::VectorXd frictionCompensationTorques;
     Eigen::MatrixXd affcFbTorque;
@@ -119,6 +121,7 @@ private:
     LookupTable<double, X2_NUM_JOINTS> posReader_;
     LookupTable<double, X2_NUM_JOINTS> velReader_;
     LookupTable<double, X2_NUM_JOINTS> accelReader_;
+    FourierSeries<double, X2_NUM_JOINTS> gaitTrajectory_;
     int completed_cycles_;
 };
 

@@ -26,9 +26,6 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     frictionCompensationTorques = Eigen::VectorXd::Zero(8);
 
     completed_cycles_ = 0;
-    posReader_ = LookupTable<double, X2_NUM_JOINTS>(4);
-    posReader_.readCSV("/home/bigbird/catkin_ws/src/CANOpenRobotController/lib/trajectorylib/gaits/walking.csv");
-    posReader_.startTrajectory(robot_->getPosition(), 0.1);
 
     Eigen::Matrix<double, 4, 4> pgains;
     Eigen::Matrix<double, 4, 4> dgains;
@@ -45,8 +42,12 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     pdController.set_gains(pgains, dgains);
     pdController.set_alphas({2, 1.9, 2, 1.9}, {2.2, 2, 2.2, 2});
 
-    lowPass.set_coeff_a({1.0, -0.7478, 0.2722});
-    lowPass.set_coeff_b({0.1311, 0.2622, 0.1311});
+    // butterworth 2nd order fc = 15Hz, fs = 333.333Hz
+    // lowPass.set_coeff_a({1.0, -0.7478, 0.2722});
+    // lowPass.set_coeff_b({0.1311, 0.2622, 0.1311});
+    // butterworth 2nd order fc = 30Hz, fs = 333.333Hz
+    lowPass.set_coeff_a({1.0, -1.2247, 0.4504});
+    lowPass.set_coeff_b({0.0564, 0.1129, 0.0564});
 
     Eigen::Matrix<double, 2, 2> p_gains = Eigen::Matrix<double, 2, 2>::Zero();
     Eigen::Matrix<double, 2, 2> d_gains = Eigen::Matrix<double, 2, 2>::Zero();
@@ -54,30 +55,25 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     Eigen::Matrix<double, 16, 1> learning_rate = Eigen::Matrix<double, 16, 1>::Zero(); 
     Eigen::Matrix<double, 16, 1> inital_guess = Eigen::Matrix<double, 16, 1>::Zero();
 
-    // single length hip and shank lengths
-    lengths << 0.4, 0.4;
+    // single length hip and shank lengths - without footplates
+    lengths << 0.4, 0.36;
 
     // AFFC learning rates
-    // learning_rate << 30, 20, 1, 1, 10, 1, 100, 1, 20, 1;
-    // learning_rate << 10, 200, 1, 1, 10, 1, 50, 1, 20, 1;
     learning_rate << 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1;
-    // learning_rate << 1, 1, 1, 1, 1, 1, 1, 1, 1, 1;
-    learning_rate *= 8e-5;
+    learning_rate *= 8e-4;
 
     // One leg low PD controller gains
-    p_gains(0, 0) = 450.0 * 0.03;
-    p_gains(1, 1) = 450.0 * 0.03;
+    p_gains(0, 0) = 450.0 * 0.09;
+    p_gains(1, 1) = 450.0 * 0.09;
     d_gains(0, 0) = 2 * sqrt(p_gains(0, 0));
     d_gains(1, 1) = 2 * sqrt(p_gains(1, 1));
 
-    // inital guesses from calculations - with foot plates
-    // inital_guess << -0.658, 0.821, 0.830, 0, 1.69, 0, 0, 5, 0, 3.26;
-    // The below is the best guess AFFC has achieved over 222 steps 
-    // inital_guess << -0.0155, -0.58,	0.47, 0.286, -0.679, 0.0674, 0.802, 5.00, -1.19, 2.95;
+    // inital guess from 400 steps with async fix
+    // inital_guess << 0.2484, -3.237, 1.007, -1.272, 0.1401, -0.1218, 6.646, -3.608, -0.0151, -0.4636, -0.1614, 2.365, 7.335, 3.785, 7.222, 3.768;
 
     // setup AFFC controller and set Criterion 1 and Criterion 2
     affc = new AdaptiveController<double, 2, 50>(lengths, learning_rate, p_gains, d_gains);
-    affc->set_criterions(deg2rad(2), deg2rad(0.2));
+    affc->set_criterions(deg2rad(0.7), deg2rad(0.2));
     affc->set_inital_guess(inital_guess);
 
     // unknown parameter logger
@@ -91,7 +87,8 @@ X2DemoState::X2DemoState(StateMachine *m, X2Robot *exo, const float updateT, con
     qact_logger = spdlog::basic_logger_mt("qact_logger", "logs/affc_qact.log", true);
     qerr_logger = spdlog::basic_logger_mt("qerr_logger", "logs/pd_err.log", true);
     affc_grad_logger = spdlog::basic_logger_mt("affc_grad_logger", "logs/affc_grad.log", true);
-    spdlog::flush_every(std::chrono::seconds(2));
+    affc_lambda_debug_logger = spdlog::basic_logger_mt("affc_lambda_debug_logger", "logs/affc_lambda_debug.log", true);
+    spdlog::flush_every(std::chrono::seconds(1));
 }
 
 X2DemoState::~X2DemoState(void) {
@@ -113,30 +110,6 @@ void X2DemoState::entry(void) {
 }
 
 void X2DemoState::during(void) {
-
-    // if(controller_mode_ == 0) {
-    //     if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
-    //         robot_->initTorqueControl();
-    //         spdlog::info("Initalised Torque Control Mode");
-    //     }
-
-    //     // desiredJointPositions_ = posReader_.getNextPos();
-    //     double time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - time0).count()/1000.0;
-    //     desiredJointPositions_[0] = 0.3*sin(2.0*M_PI/5*time);
-    //     desiredJointPositions_[1] = 0.2*sin(2.0*M_PI/5*time) - 0.5;
-
-    //     pdController.loop(desiredJointPositions_, robot_->getPosition());
-    //     desiredJointTorques_ = pdController.output();
-
-    //     // qact_logger->info("{},{},{},{}", robot_->getPosition()[0], robot_->getPosition()[1], robot_->getPosition()[2], robot_->getPosition()[3]);
-    //     // qerr_logger->info("{},{},{},{}", pdController.get_err_prev()[0], pdController.get_err_prev()[1], pdController.get_err_prev()[2], pdController.get_err_prev()[3]);
-
-    //     complete_logger->info("{},{},{},{}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointTorques_[0], desiredJointTorques_[1]);
-
-    //     torque_limiter(80.0);
-
-    //     robot_->setTorque(desiredJointTorques_);
-    // }
     if(controller_mode_ == 0){
         // AFFC Controller Mode
 
@@ -147,14 +120,17 @@ void X2DemoState::during(void) {
         }
 
         // we only want to loop through one leg at a time 
-        // desiredJointPositions_ = posReader_.getNextPos();
         double time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - time0).count()/1.0e9;
-        desiredJointPositions_[0] = 0.2*sin(2.0*M_PI/5*time);
-        desiredJointPositions_[1] = 0.1*sin(2.0*M_PI/5*time) - 0.5;
-        desiredJointVelocities_[0] = (0.2*2.0*M_PI/5)*cos(2.0*M_PI/5*time);
-        desiredJointVelocities_[1] = (0.1*2.0*M_PI/5)*cos(2.0*M_PI/5*time);
-        desiredJointAccelerations_[0] = -0.2*pow(2.0*M_PI/5, 2)*sin(2.0*M_PI/5*time);
-        desiredJointAccelerations_[1] = -0.1*pow(2.0*M_PI/5, 2)*sin(2.0*M_PI/5*time);
+        // desiredJointPositions_[0] = 0.2*sin(2.0*M_PI/5*time);
+        // desiredJointPositions_[1] = 0.2*sin(2.0*M_PI/5*time) - 0.5;
+        // desiredJointVelocities_[0] = (0.2*2.0*M_PI/5)*cos(2.0*M_PI/5*time);
+        // desiredJointVelocities_[1] = (0.2*2.0*M_PI/5)*cos(2.0*M_PI/5*time);
+        // desiredJointAccelerations_[0] = -0.2*pow(2.0*M_PI/5, 2)*sin(2.0*M_PI/5*time);
+        // desiredJointAccelerations_[1] = -0.2*pow(2.0*M_PI/5, 2)*sin(2.0*M_PI/5*time);
+
+        desiredJointPositions_ = gaitTrajectory_.getPosition(time);
+        desiredJointVelocities_ = gaitTrajectory_.getVelocity(time);
+        desiredJointAccelerations_ = gaitTrajectory_.getAccelaration(time);
         for(int j = 0; j < X2_NUM_JOINTS / 2; j++) {
             
             if (j == LEFT_HIP || j == RIGHT_HIP) {
@@ -173,9 +149,6 @@ void X2DemoState::during(void) {
                 }
             }
         }
-
-        // limit the desiredJointPositions_ delta from previous callback
-        // vel_limiter(deg2rad(rateLimit));
 
         // check if the AFFC algorithm is finished
         if (affc->is_finished()) {
@@ -201,7 +174,6 @@ void X2DemoState::during(void) {
             period_counter_++;
             spdlog::info("AFFC cycle {} complete", period_counter_);
             // a complete cycle of the trajectory has been completed
-            // affc->loop(refPos, actualPos, true);
             affc->loop(refPos, actualPos, refVel, refAccel, true);
 
             // log unknown parameters and tracking error over iterations
@@ -245,13 +217,31 @@ void X2DemoState::during(void) {
                                 lambdas(15, 0)
             );
             spdlog::info("{}, {}", tracking_err(0, 0), tracking_err(1, 0));
-
-            // update the number of trajectory cycles that have been completed
-            completed_cycles_ = posReader_.getCycles();
         } else {
             // affc->loop(refPos, actualPos, false);
             affc->loop(refPos, actualPos, refVel, refAccel, false);
         }
+
+        // log lambdas at each loop - for debug purposes
+        auto lambdas = affc->peek_current_learned_params();
+        // affc_lambda_debug_logger->info("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}", 
+        //                     lambdas(0, 0),
+        //                     lambdas(1, 0),
+        //                     lambdas(2, 0),
+        //                     lambdas(3, 0),
+        //                     lambdas(4, 0),
+        //                     lambdas(5, 0),
+        //                     lambdas(6, 0),
+        //                     lambdas(7, 0),
+        //                     lambdas(8, 0),
+        //                     lambdas(9, 0),
+        //                     lambdas(10, 0),
+        //                     lambdas(11, 0),
+        //                     lambdas(12, 0),
+        //                     lambdas(13, 0),
+        //                     lambdas(14, 0),
+        //                     lambdas(15, 0)
+        // );
 
         // affc gradient descent of the tracking error function
         affcFbTorque = affc->peek_grad_descent_error(); 
@@ -261,7 +251,7 @@ void X2DemoState::during(void) {
         Eigen::Matrix<double, 2, 1> affc_out = affc->output();
         desiredJointTorques_ << affc_out(0, 0), affc_out(1, 0), 0, 0;
 
-        complete_logger->info("{},{},{},{},{},{}", posReader_.getGaitIndex(), refPos[0], refPos[1], desiredJointTorques_[0], desiredJointTorques_[1], time);
+        complete_logger->info("{},{},{},{},{}", refPos[0], refPos[1], desiredJointTorques_[0], desiredJointTorques_[1], time);
         qact_logger->info("{}, {}", robot_->getPosition()[0], robot_->getPosition()[1]);
 
         // limit torques
