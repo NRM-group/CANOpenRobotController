@@ -6,10 +6,21 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
     : State("Run State"), _Robot(robot), _Node(node), _CtrlExternal{},
     _CtrlFriction{}, _CtrlGravity{}, _CtrlPD{}, _CtrlTorque{}
 {
-    std::vector<double> m, s, l;
+    // Strain gauge filter parameters
+    std::vector<double> coeff_a, coeff_b;
+    std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1> coeff;
+    _Node->ros_parameter("strain_gauge.coeff_a", coeff_a);
+    _Node->ros_parameter("strain_gauge.coeff_b", coeff_b);
+    std::copy(coeff_a.begin(), coeff_a.end(), coeff.begin());
+    _Robot->getStrainGauges().set_coeff_a(coeff);
+    std::copy(coeff_b.begin(), coeff_b.end(), coeff.begin());
+    _Robot->getStrainGauges().set_coeff_b(coeff);
+
+    // Gravity control parameters
+    std::vector<double> l, m, s;
+    _Node->ros_parameter("l", l);
     _Node->ros_parameter("m", m);
     _Node->ros_parameter("s", s);
-    _Node->ros_parameter("l", l);
     double mass_thigh = m[0] + m[1];
     double mass_shank = m[2] + m[3] + m[4];
     double com_thigh = (s[0] * m[0] + (l[0] - s[1]) * m[1]) / mass_thigh;

@@ -9,7 +9,7 @@ def generate_launch_description():
 	ld = LaunchDescription()
 
 	# Package share path
-	corc_path = get_package_share_directory("CORC")
+	corc_path = get_package_share_directory("corc")
 	x2_description_path = get_package_share_directory("x2_description")
 
 	# Package share files
@@ -22,7 +22,7 @@ def generate_launch_description():
 
 	# Nodes
 	x2_node = Node(
-		package="CORC",
+		package="corc",
 		executable="ExoApp",
 		arguments=["-can", "can0"],
 		name="exo",
@@ -34,7 +34,7 @@ def generate_launch_description():
 		]
 	)
 	x2_ik_node = Node(
-		package="CORC",
+		package="corc",
 		executable="x2_ik"
 	)
 	robot_state_node = Node(

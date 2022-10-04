@@ -133,11 +133,7 @@ bool ExoNode::ok()
 
     get_parameter<int>("dry_run", dry_run);
 
-    if (dry_run) {
-        return true;
-    }
-
-    return _HeartBeat.status == ExoNode::OK;
+    return dry_run || _HeartBeat.status == ExoNode::OK;
 }
 
 /**************
@@ -145,18 +141,8 @@ bool ExoNode::ok()
  **************/
 void ExoNode::ros_parameter(const std::string &name, std::vector<double> &val)
 {
-    try {
-        declare_parameter<std::vector<double>>(name, { });
-    }
-    catch (...) {
-        spdlog::warn("[ExoNode]: Already declared parameter vector ()", name);
-    }
-    try {
-        get_parameter<std::vector<double>>(name, val);
-    }
-    catch (...) {
-        spdlog::warn("[ExoNode]: Failed to get parameter vector ()", name);
-    }
+    declare_parameter<std::vector<double>>(name, { });
+    get_parameter<std::vector<double>>(name, val);
 }
 
 void ExoNode::get_exo_file(std::string &path)

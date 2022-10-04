@@ -20,7 +20,7 @@ def generate_launch_description():
 	)
 
 	# Package share path
-	corc_path = get_package_share_directory("CORC")
+	corc_path = get_package_share_directory("corc")
 
 	# Package share files
 	exo_file = os.path.join(corc_path, "config", "exo_default.yaml")
@@ -28,7 +28,7 @@ def generate_launch_description():
 
 	# Nodes
 	exo_node = Node(
-		package="CORC",
+		package="corc",
 		executable="ExoApp",
 		arguments=["-can", "can0"],
 		name="exo",
