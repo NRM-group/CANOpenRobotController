@@ -28,6 +28,10 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
     Eigen::Vector4d mass { mass_thigh, mass_shank, mass_thigh, mass_shank };
     Eigen::Vector4d com { com_thigh, com_shank, com_thigh, com_shank };
     _CtrlGravity.set_parameters(mass, { l[0], l[1], l[2], l[3] }, com);
+
+    Eigen::Vector4d upperVelLimit { 0.1, 0.1, 0.1, 0.1 };
+    Eigen::Vector4d lowerVelLimit { -0.1, -0.1, -0.1, -0.1 };
+    _CtrlFriction.set_deadband(lowerVelLimit, upperVelLimit);
 }
 
 void RunState::entry()
