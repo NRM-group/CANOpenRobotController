@@ -1,23 +1,26 @@
 import os
 
+from datetime import datetime
+
 from ament_index_python import get_package_share_directory
 
 from launch import LaunchDescription
+from launch.actions import ExecuteProcess
 from launch.actions import DeclareLaunchArgument
-from launch.actions import IncludeLaunchDescription
-from launch.actions import GroupAction
 from launch.substitutions import LaunchConfiguration
 from launch.substitutions import TextSubstitution
 from launch_ros.actions import Node
-from launch_ros.actions import PushRosNamespace
 
 def generate_launch_description():
+	# Launch description
+	ld = LaunchDescription()
 
 	# Launch arguments
 	dry_run_arg = DeclareLaunchArgument(
 		"dry_run", default_value=TextSubstitution(text="0"),
-		description="Set to `1` to run CORC without LabVIEW heartbeat"
+		description="Set to '1' to run CORC without LabVIEW heartbeat"
 	)
+	ld.add_action(dry_run_arg)
 
 	# Package share path
 	corc_path = get_package_share_directory("corc")
@@ -47,9 +50,18 @@ def generate_launch_description():
         executable="exo_splitter",
         name="exo_splitter"
     )
+	ld.add_action(exo_node)
+	ld.add_action(exo_splitter_node)
 
-	return LaunchDescription([
-		dry_run_arg,
-		exo_node,
-		exo_splitter_node
-	])
+	# Bag
+	ros2bag = ExecuteProcess(
+		cmd=[
+			"ros2", "bag", "record", "-a", "-o",
+			f"{os.path.expanduser('~')}/nrm-logs/{datetime.now().strftime('%H%M_%d-%m-%Y')}"
+		],
+		output="screen"
+	)
+	ld.add_action(ros2bag)
+
+	# Launch description
+	return ld
