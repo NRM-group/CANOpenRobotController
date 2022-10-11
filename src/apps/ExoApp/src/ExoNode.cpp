@@ -1,5 +1,5 @@
 #include "ExoNode.hpp"
-#define LOG(x)  spdlog::info("[ExoNode]: ()", x)
+#define LOG(x)  spdlog::info("[ExoNode]: {}", x)
 
 /***************
  * CONSTRUCTOR *

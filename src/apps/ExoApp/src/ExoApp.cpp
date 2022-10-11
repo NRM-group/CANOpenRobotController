@@ -69,8 +69,6 @@ ExoApp::ExoApp(int argc, char **argv) : StateMachine()
 void ExoApp::init()
 {
     get_robot()->initialiseNetwork();
-
-    
 }
 
 void ExoApp::end()

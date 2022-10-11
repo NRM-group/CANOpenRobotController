@@ -7,6 +7,10 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
     _CtrlExternal{}, _CtrlFriction{}, _CtrlGravity{},
     _CtrlPD{}, _CtrlTorque{}
 {
+}
+
+void RunState::entry()
+{
     std::vector<double> buffer, buffer2, buffer3, buffer4;
 
     // Strain gauge filter parameters
@@ -57,10 +61,8 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
     Eigen::Vector4d mass { mass_thigh, mass_shank, mass_thigh, mass_shank };
     Eigen::Vector4d com { com_thigh, com_shank, com_thigh, com_shank };
     _CtrlGravity.set_parameters(mass, { l[0], l[1], l[2], l[3] }, com);
-}
 
-void RunState::entry()
-{
+    // Initialise torque control
     _Robot->initTorqueControl();
     LOG(">>> Entered >>>");
 }
