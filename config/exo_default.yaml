@@ -20,9 +20,8 @@ exo:
       # Viscous coefficients
       viscous: [1.0, 1.0, 1.0, 1.0] # Nms/rad
       # Deadband cutoff velocity
-      deadband:
-        neg: [-0.1, -0.1, -0.1, -0.1] # rad/s
-        pos: [0.1, 0.1, 0.1, 0.1] # rad/s
+      neg: [-0.1, -0.1, -0.1, -0.1] # rad/s
+      pos: [0.1, 0.1, 0.1, 0.1] # rad/s
     # PD
     pd:
       left_kp: [450.0, 0.0, 0.0, 450.0] # Nm/rad

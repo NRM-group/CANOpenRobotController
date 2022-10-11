@@ -75,12 +75,11 @@ void ExoApp::init()
 
 void ExoApp::end()
 {
-    // TODO:
+    LOG("Shut down");
 }
 
 void ExoApp::hwStateUpdate()
 {
-
 #ifdef DEBUG
     spdlog::info("positions: [{:.4}, {:.4}, {:.4}, {:.4}]",
         get_robot()->getPosition()[0],
@@ -89,7 +88,6 @@ void ExoApp::hwStateUpdate()
         get_robot()->getPosition()[3]
     );
 #endif
-
     get_robot()->updateRobot();
     get_node()->publish_heart_beat();
     rclcpp::spin_some(get_node()->get_interface());
