@@ -9,7 +9,7 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     _DevToggle(), _ExternalParameter(), _FrictionParameter(),
     _GaitParameter(), _HeartBeat(), _PatientParameter(),
     _PDParameter(), _SitToStandParameter(), _TorqueLimit(),
-    _TorqueParameter(), _UserCommand()
+    _TorqueParameter(), _UserCommand(), _SaveError(), _IsSaved()
 {
     _PubHeartBeat = create_publisher<HeartBeat>("corc_heartbeat", 4);
     _PubJointState = create_publisher<JointState>("joint_states", 4);
@@ -117,14 +117,12 @@ bool ExoNode::overwrite_save()
 
 bool ExoNode::save_error()
 {
-    // TODO:
-    return false;
+    return _SaveError;
 }
 
 bool ExoNode::is_saved()
 {
-    // TODO:
-    return true;
+    return _IsSaved;
 }
 
 bool ExoNode::ok()
@@ -133,7 +131,7 @@ bool ExoNode::ok()
 
     get_parameter<int>("dry_run", dry_run);
 
-    return dry_run || _HeartBeat.status == ExoNode::OK;
+    return dry_run || (_HeartBeat.status == ExoNode::OK);
 }
 
 /**************
@@ -148,6 +146,16 @@ void ExoNode::ros_parameter(const std::string &name, std::vector<double> &val)
 void ExoNode::get_exo_file(std::string &path)
 {
     get_parameter<std::string>("exo_file", path);
+}
+
+void ExoNode::set_save_error(bool val)
+{
+    _SaveError = val;
+}
+
+void ExoNode::set_is_saved(bool val)
+{
+    _IsSaved = val;
 }
 
 rclcpp::node_interfaces::NodeBaseInterface::SharedPtr ExoNode::get_interface()
@@ -215,8 +223,8 @@ void ExoNode::publish_strain_gauge()
     FloatArray msg{};
     
     msg.data.assign(
-        _Robot->getStrainGauges().output().data(),
-        _Robot->getStrainGauges().output().data() + _Robot->getStrainGauges().output().size()
+        _Robot->getStrainGauges().data(),
+        _Robot->getStrainGauges().data() + _Robot->getStrainGauges().size()
     );
 
     _PubStrainGauge->publish(msg);

@@ -10,34 +10,36 @@ Robot::~Robot() {
     spdlog::debug("Robot object deleted");
 }
 
+
 bool Robot::initialiseFromYAML(std::string yaml_config_file) {
-    // if(yaml_config_file.size()>0) {
-    //     // need to use address of base directory because when run with ROS, working directory is ~/.ros
-    //     try {
-    //         YAML::Node params = YAML::LoadFile(configPath);
+    if(yaml_config_file.size()>0) {
+        // need to use address of base directory because when run with ROS, working directory is ~/.ros
+        std::string baseDirectory = XSTR(BASE_DIRECTORY);
+        std::string relativeFilePath = "/config/";
+        try {
+            YAML::Node params = YAML::LoadFile(baseDirectory + relativeFilePath + yaml_config_file);
 
-    //         if(!params[robotName]){
-    //             spdlog::error("Parameters of {} couldn't be found in {} !", robotName, configPath);
-    //             spdlog::error("Default parameters used !");
+            if(!params[robotName]){
+                spdlog::error("Parameters of {} couldn't be found in {} !", robotName, baseDirectory + relativeFilePath + yaml_config_file);
+                spdlog::error("Default parameters used !");
 
-    //             return false;
-    //         }
-    //         else {
-    //             // spdlog::info("Loading robot parameters from {}.", baseDirectory + relativeFilePath + yaml_config_file);
-    //             //Attempt to load parameters from YAML file (delegated to each custom robot implementation)
-    //             return loadParametersFromYAML(params);
-    //         }
+                return false;
+            }
+            else {
+                spdlog::info("Loading robot parameters from {}.", baseDirectory + relativeFilePath + yaml_config_file);
+                //Attempt to load parameters from YAML file (delegated to each custom robot implementation)
+                return loadParametersFromYAML(params);
+            }
 
-    //     } catch (...) {
-    //         spdlog::error("Failed loading parameters from {}. Using default parameters instead.", configPath);
-    //         return false;
-    //     }
-    // }
-    // else {
-    //     spdlog::info("Using default robot parameters (no YAML file specified).");
-    //     return false;
-    // }
-    return true;
+        } catch (...) {
+            spdlog::error("Failed loading parameters from {}. Using default parameters instead.", baseDirectory + relativeFilePath + yaml_config_file);
+            return false;
+        }
+    }
+    else {
+        spdlog::info("Using default robot parameters (no YAML file specified).");
+        return false;
+    }
 }
 
 bool Robot::initialise() {

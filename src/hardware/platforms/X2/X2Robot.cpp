@@ -366,6 +366,11 @@ setMovementReturnCode_t X2Robot::setTorque(Eigen::VectorXd torques) {
     return returnValue;
 }
 
+void X2Robot::setStrainGaugeScale(const Eigen::Vector4d &scale)
+{
+    _StrainGaugeScale = scale;
+}
+
 // bool X2Robot::calibrateForceSensors() {
 //     int numberOfSuccess = 0;
 //     for (int i = 0; i < X2_NUM_FORCE_SENSORS + X2_NUM_GRF_SENSORS; i++) {
@@ -385,10 +390,7 @@ setMovementReturnCode_t X2Robot::setTorque(Eigen::VectorXd torques) {
 bool X2Robot::calibrateForceSensors() {
 
     for (std::size_t i = 0; i < X2_NUM_FORCE_SENSORS; i++) {
-        if (!forceSensors[i]->calibrate()) {
-            spdlog::error("Failed to calibrate sensor ({})", i);
-            return false;
-        }
+        forceSensors[i]->calibrate();
     }
     return true;
 }
@@ -644,7 +646,7 @@ bool X2Robot::initialiseNetwork() {
 bool X2Robot::initialiseInputs() {
 
     for (int id = 0; id < X2_NUM_FORCE_SENSORS; id++) {
-        forceSensors.push_back(new FourierForceSensor(id + 17, 1.0));
+        forceSensors.push_back(new FourierForceSensor(id + 17));
         inputs.push_back(forceSensors[id]);
     }
 
@@ -833,8 +835,12 @@ Eigen::VectorXd &X2Robot::getJointTorquesViaStrainGauges() {
 #endif
 }
 
-X2Robot::Butter &X2Robot::getStrainGauges() {
+X2Robot::Butter &X2Robot::getStrainGaugeFilter() {
     return _StrainGauge;
+}
+
+Eigen::Vector4d X2Robot::getStrainGauges() {
+    return _StrainGauge.output().cwiseProduct(_StrainGaugeScale);
 }
 
 Eigen::VectorXd &X2Robot::getInteractionForce() {

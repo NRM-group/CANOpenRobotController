@@ -3,18 +3,31 @@
 
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
-    : State("Run State"), _Robot(robot), _Node(node), _CtrlExternal{},
-    _CtrlFriction{}, _CtrlGravity{}, _CtrlPD{}, _CtrlTorque{}
+    : State("Run State"), _Robot(robot), _Node(node),
+    _CtrlExternal{}, _CtrlFriction{}, _CtrlGravity{},
+    _CtrlPD{}, _CtrlTorque{}
 {
+    std::vector<double> temp;
+
     // Strain gauge filter parameters
-    std::vector<double> coeff_a, coeff_b;
     std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1> coeff;
-    _Node->ros_parameter("strain_gauge.coeff_a", coeff_a);
-    _Node->ros_parameter("strain_gauge.coeff_b", coeff_b);
-    std::copy(coeff_a.begin(), coeff_a.end(), coeff.begin());
-    _Robot->getStrainGauges().set_coeff_a(coeff);
-    std::copy(coeff_b.begin(), coeff_b.end(), coeff.begin());
-    _Robot->getStrainGauges().set_coeff_b(coeff);
+    _Node->ros_parameter("strain_gauge.coeff_a", temp);
+    std::copy(temp.begin(), temp.end(), coeff.begin());
+    _Robot->getStrainGaugeFilter().set_coeff_a(coeff);
+    _Node->ros_parameter("strain_gauge.coeff_b", temp);
+    std::copy(temp.begin(), temp.end(), coeff.begin());
+    _Robot->getStrainGaugeFilter().set_coeff_b(coeff);
+
+    // TODO: set default parameters
+    // External control parameters
+    // _Node->ros_parameter("external", temp);
+    // _CtrlExternal.set_external_torque(temp.data());
+
+    // Friction control parameters
+    // Eigen::Vector4d 
+    // Eigen::Vector4d upperVelLimit { 0.1, 0.1, 0.1, 0.1 };
+    // Eigen::Vector4d lowerVelLimit { -0.1, -0.1, -0.1, -0.1 };
+    // _CtrlFriction.set_deadband(lowerVelLimit, upperVelLimit);
 
     // Gravity control parameters
     std::vector<double> l, m, s;
@@ -29,9 +42,6 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
     Eigen::Vector4d com { com_thigh, com_shank, com_thigh, com_shank };
     _CtrlGravity.set_parameters(mass, { l[0], l[1], l[2], l[3] }, com);
 
-    Eigen::Vector4d upperVelLimit { 0.1, 0.1, 0.1, 0.1 };
-    Eigen::Vector4d lowerVelLimit { -0.1, -0.1, -0.1, -0.1 };
-    _CtrlFriction.set_deadband(lowerVelLimit, upperVelLimit);
 }
 
 void RunState::entry()
@@ -120,8 +130,8 @@ void RunState::update_controllers()
     );
     Eigen::Matrix4d kp{}, kd{};
     kp.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kp.cbegin() + 1);
-    kp.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kd.cbegin() + 1);
-    kd.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kp.cbegin() + 1);
+    kp.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kp.cbegin() + 1);
+    kd.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kd.cbegin() + 1);
     kd.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kd.cbegin() + 1);
     _CtrlPD.set_gains(kp, kd);
     // TODO:

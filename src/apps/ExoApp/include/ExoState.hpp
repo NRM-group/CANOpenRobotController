@@ -2,6 +2,7 @@
 #define __EXO_STATE_HPP__
 
 /* STL */
+#include <string>
 #include <iostream>
 /* CORC interfaces */
 #include "State.h"

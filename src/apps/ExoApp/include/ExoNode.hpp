@@ -43,13 +43,13 @@ public:
     using FloatArray = Float64MultiArray;
     enum HeartBeatStatus
     {
-        DEAD, OK, ERROR
+        DEAD, OK, ERROR, TMP
     };
 
 public: // Constructor
-    ExoNode(std::shared_ptr<X2Robot> robot);
+    explicit ExoNode(std::shared_ptr<X2Robot> robot);
 
-public: // ROS event flags
+public: // State machine event flags
     bool overwrite_save();
     bool save_error();
     bool is_saved();
@@ -58,6 +58,8 @@ public: // ROS event flags
 public: // ROS method visibility modifiers
     void ros_parameter(const std::string &name, std::vector<double> &val);
     void get_exo_file(std::string &path);
+    void set_save_error(bool val);
+    void set_is_saved(bool val);
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_interface();
 
 public: // ROS publish methods
@@ -95,6 +97,8 @@ private: // ROS subscription callbacks
 private: // Internal robot reference
     const std::shared_ptr<X2Robot> _Robot;
     std::chrono::_V2::system_clock::time_point _Midnight;
+    bool _SaveError;
+    bool _IsSaved;
 
 private: // ROS-LabVIEW message copies
     DevToggle _DevToggle;
