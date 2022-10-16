@@ -28,7 +28,7 @@ X2MachineROS2::X2MachineROS2(X2Robot* robot, X2FollowerState* x2FollowerState, s
 
     externalUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::ExternalParameter>("external_parameters",1, std::bind(&X2MachineROS2::externalForceCallback, this, _1));
     frictionUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::FrictionParameter>("friction_parameters", 1, std::bind(&X2MachineROS2::frictionForceCallback, this, _1));
-    enableUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::DevToggle>("enable",1, std::bind(&X2MachineROS2::enablerCallback, this, _1));
+    enableUpdateSubscriber_ = node_->create_subscription<exo_msgs::msg::DevToggle>("dev_toggles",1, std::bind(&X2MachineROS2::enablerCallback, this, _1));
     gaitParamSubscriber_ = node_->create_subscription<exo_msgs::msg::GaitParameter>("gait_parameters", 1, std::bind(&X2MachineROS2::gaitParamCallback, this, _1));
 
 }
@@ -161,7 +161,11 @@ void X2MachineROS2::frictionForceCallback(const exo_msgs::msg::FrictionParameter
 }
 
 void X2MachineROS2::enablerCallback(const exo_msgs::msg::DevToggle::SharedPtr enable) {
-    //TODO
+    if (enable->pd == 1) {
+        x2FollowerState_->posReader.start();
+    } else {
+        x2FollowerState_->posReader.stop();
+    }
 }
 
 void X2MachineROS2::torqueLimitCallback(const std_msgs::msg::Float64::SharedPtr limit) {
@@ -169,7 +173,7 @@ void X2MachineROS2::torqueLimitCallback(const std_msgs::msg::Float64::SharedPtr 
 }
 
 void X2MachineROS2::gaitParamCallback(const exo_msgs::msg::GaitParameter::SharedPtr gaitParam){
-    x2FollowerState_->posReader.updateTrajectoryTime(gaitParam->step_period);
+    x2FollowerState_->posReader.setPeriod(gaitParam->step_period);
 }
 
 // void X2MachineROS2::corcParamCallback(const exo_msgs::msg::Corc::SharedPtr corcParams) {

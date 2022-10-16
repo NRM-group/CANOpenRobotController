@@ -5,6 +5,7 @@
 #include "X2Robot.h"
 #include "controller.hpp"
 #include "LookupTable.hpp"
+#include "FourierSeries.hpp"
 #include "kinematics.hpp"
 #include <map>
 
@@ -72,6 +73,7 @@ public:
     std::shared_ptr<spdlog::logger> pos_logger;
     std::shared_ptr<spdlog::logger> dref_logger;
     std::shared_ptr<spdlog::logger> ref_logger;
+    std::shared_ptr<spdlog::logger> dt_logger;
     std::shared_ptr<spdlog::logger> p_logger; //P Component of the output
     std::shared_ptr<spdlog::logger> d_logger; //D Component of the output
     std::shared_ptr<spdlog::logger> torque_logger; //Torque commanded by PD controller
@@ -82,7 +84,7 @@ public:
 
 
     enum cntrl {PD, Ext, Fric, Grav};
-    ctrl::PDController<double, X2_NUM_JOINTS, 500>* PDCntrl;
+    ctrl::PDController<double, X2_NUM_JOINTS>* PDCntrl;
     ctrl::ExternalController<double, X2_NUM_JOINTS>* ExtCntrl;
     ctrl::FrictionController<double, X2_NUM_JOINTS>* FricCntrl;
     ctrl::GravityController<double, X2_NUM_JOINTS>* GravCntrl;
@@ -98,6 +100,10 @@ private:
     int t_count_;
     int state_;
 
+    unsigned long long int i;
+    double temp;
+
+    FourierSeries<double, X2_NUM_JOINTS> gaitGenerator;
 
     timespec prevTime;
     int gaitIndex;
@@ -119,11 +125,19 @@ private:
     Eigen::VectorXd desiredJointTorquesD_;
     Eigen::VectorXd startJointPositions_;
 
+    Eigen::VectorXd jointVelocity_;
+    Eigen::VectorXd prevJointVelocity_;
+    double dt;
+    
+
 
     void rateLimiter(double limit);
     void torqueLimiter(double limit);
     void addDebugTorques(int joint);
     void addFrictionCompensationTorques(int joint);
+    bool detectRace(Eigen::VectorXd jointPos, Eigen::VectorXd prevPos, double thresh);
+    bool detectDelay(Eigen::VectorXd jointPos, Eigen::VectorXd jointVelocity);
+    void logData(void);
     
     LegKinematics<double> kinHandler;
 };

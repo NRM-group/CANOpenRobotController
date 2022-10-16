@@ -17,7 +17,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     mode = TEST;
     state_ = STEP_UP;
     desiredJointReferences_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
-    desiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    desiredJointPositions_ = robot_->getPosition();//Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevDesiredJointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     desiredJointVelocities_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
@@ -32,12 +32,15 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     prevJointPositions_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     prevJointReferences_  = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
     jointTorques_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    jointVelocity_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
+    prevJointVelocity_ = Eigen::VectorXd::Zero(X2_NUM_JOINTS);
 
+    i = 0;
     refPosPeriod = 5;
     rateLimit = 0.0;
     maxTorqueLimit = 0.0;
 
-    PDCntrl = new ctrl::PDController<double, X2_NUM_JOINTS, 500>();
+    PDCntrl = new ctrl::PDController<double, X2_NUM_JOINTS>();
     ExtCntrl = new ctrl::ExternalController<double, X2_NUM_JOINTS>();
     FricCntrl = new ctrl::FrictionController<double, X2_NUM_JOINTS>();
     GravCntrl = new ctrl::GravityController<double, X2_NUM_JOINTS>();
@@ -47,7 +50,8 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
     // // Gravity to be implmented     
     controllers = {PDCntrl, ExtCntrl, FricCntrl, GravCntrl};
-    posReader = LookupTable<double, X2_NUM_JOINTS>(1, 1);
+    posReader = LookupTable<double, X2_NUM_JOINTS>();
+    gaitGenerator = FourierSeries<double, X2_NUM_JOINTS>();
     //Logging Sedtup
     dpos_logger =   spdlog::basic_logger_mt("dpos", "logs/posd_logs.log", true);
     pos_logger =   spdlog::basic_logger_mt("pos", "logs/pos_logs.log", true);
@@ -57,6 +61,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     d_logger =   spdlog::basic_logger_mt("d_out", "logs/d_logs.log", true);
     torque_logger =   spdlog::basic_logger_mt("torque", "logs/pdout_logs.log", true);
     effort_logger =   spdlog::basic_logger_mt("effort", "logs/effort_logs.log", true);
+    dt_logger = spdlog::basic_logger_mt("dt", "logs/dt_logs.log",true);
 
     err_logger =   spdlog::basic_logger_mt("err", "logs/err_logs.log", true);
     spdlog::flush_every(std::chrono::seconds(2)); 
@@ -71,7 +76,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
 void X2FollowerState::entry(void) {
     spdlog::info("Entered Follower State");
     posReader.readCSV(csvFileName);
-    posReader.startTrajectory(robot_->getPosition(), 4);
+    
     safetyFlag = false; //Initialise with no safetyfkag
     time0 = std::chrono::steady_clock::now();
     _Time_prev = time0;
@@ -138,38 +143,29 @@ void X2FollowerState::during(void) {
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
             robot_->initTorqueControl();
             spdlog::info("Initalised Torque Control Mode");
+            posReader.startTrajectory(robot_->getPosition(), 0.1);
         }
         clock_gettime(CLOCK_MONOTONIC, &currTime);
         double timeElapsed =  currTime.tv_sec - prevTime.tv_sec + (currTime.tv_nsec - prevTime.tv_nsec)/(1e9);
-        // desiredJointPositions_[0] = 0.2 * sin(timeElapsed * 2 * M_PI);
-        // desiredJointPositions_[1] =0;
-        // desiredJointPositions_[2] = 0.2 * sin(timeElapsed * 2 * M_PI);
-        // desiredJointPositions_[3] =0;
+        // desiredJointPositions_ = gaitGenerator.getPosition(timeElapsed);
         desiredJointPositions_ = posReader.getNextPos();
-
-       
-        butter.filter(robot_->getPosition());
-        jointPositions_ = butter.output();
+        jointPositions_ = robot_->getPosition();
+        jointVelocity_ = robot_->getVelocity();
         jointTorques_ = robot_->getTorque();
-        PDCntrl->loop(desiredJointPositions_ - jointPositions_);
-        //Logging
-        auto dt = static_cast<double>(
+
+        butter.filter(jointPositions_);
+        jointPositions_ = butter.output();
+        // temp = jointPositions_[0]; //Hip Position without correctiontemptemp
+        // Function used to detect and handle race conditions
+        dt = static_cast<double>(
             (std::chrono::steady_clock::now() - _Time_prev).count() / 1e9
         );
-        pos_logger->info("{},{},{},{},{},{}", jointPositions_[0], jointPositions_[1], jointPositions_[2], jointPositions_[3], desiredJointPositions_[0], desiredJointPositions_[2]);
-        ref_logger->info("{},{},{},{}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+        _Time_prev = std::chrono::steady_clock::now();
 
-        dJointPositions_ = (jointPositions_ - prevJointPositions_) / dt;
-        dJointReferences_ = (desiredJointPositions_ - prevJointReferences_) / dt;
-        dpos_logger->info("{},{},{},{}", dJointPositions_[0], dJointPositions_[1], dJointPositions_[2], dJointPositions_[3]);
-        dref_logger->info("{},{},{},{}", dJointReferences_[0], dJointReferences_[1], dJointReferences_[2], dJointReferences_[3]);
-
-        p_logger->info("{},{},{},{}", PDCntrl->get_p()[0], PDCntrl->get_p()[1], PDCntrl->get_p()[2], PDCntrl->get_p()[3]);
-        d_logger->info("{},{},{},{}", PDCntrl->get_d()[0], PDCntrl->get_d()[1], PDCntrl->get_d()[2], PDCntrl->get_d()[3]);
-        torque_logger->info("{},{},{},{}", PDCntrl->output()[0], PDCntrl->output()[1], PDCntrl->output()[2], PDCntrl->output()[3]);
-        effort_logger->info("{},{},{},{}", jointTorques_[0], jointTorques_[1], jointTorques_[2], jointTorques_[3]);
-        err_logger->info("{},{},{},{}", PDCntrl->get_err_prev()[0],  PDCntrl->get_err_prev()[1],PDCntrl->get_err_prev()[2], PDCntrl->get_err_prev()[3]);
-
+        PDCntrl->loop(desiredJointPositions_ - jointPositions_);
+        //Logging
+        logData();
+        prevJointVelocity_ = jointVelocity_;
         prevJointPositions_ = jointPositions_;
         prevJointReferences_ = desiredJointPositions_;
 
@@ -179,8 +175,8 @@ void X2FollowerState::during(void) {
             desiredJointTorques_ += cnt->output();
         }
         torqueLimiter(maxTorqueLimit);
-
         robot_->setTorque(desiredJointTorques_);
+        i+=1;
     
     } else if (mode == IK) {
 
@@ -407,4 +403,76 @@ bool X2FollowerState::checkSafety() {
         }
     }
     return false;
+}
+
+/**
+ * @brief detect if postion hasnt changed since last recorded value, extrapolate
+ * The position
+ * Return true if there has been a race condition
+ * 
+ */
+bool X2FollowerState::detectRace(Eigen::VectorXd jointPos, Eigen::VectorXd prevPos, double thresh) {
+    Eigen::VectorXd diff = jointPos - prevPos;
+    for (int j = 0; j < X2_NUM_JOINTS; j ++) {
+        if(abs(diff[j]) < thresh) {
+            return true;
+        }
+    }
+    // Also return true
+    return false;
+   
+}
+
+/**
+ * @brief Detects if there is a delay in the system
+ * 
+ * @param jointPos The measured Joint Positions
+ * @param jointVelocity  The measured Joint Veloicity
+ * @return true :If there is a detected delay
+ * @return false 
+ */
+bool X2FollowerState::detectDelay(Eigen::VectorXd jointPos, Eigen::VectorXd jointVelocity) {
+    //The expected joint Position is the velocity * dt + the jointPosition
+    Eigen::VectorXd exptPos = prevJointPositions_ + jointVelocity * 1.5 * dt;
+    std::cout << "detectDelay function" << std::endl;
+    std::cout << "Expected Position" << std::endl<< exptPos;
+    std::cout << "Actual POSITION" << std::endl << jointPos;
+    double diff;
+    for (int j = 0; j < X2_NUM_JOINTS; j++) {
+        diff = exptPos[j] - jointPos[j];
+        if (abs(diff) > 1e-3) {
+            // The measured position is different to expected position  
+            return true;
+        }
+    }
+    return false;
+
+}
+
+
+/**
+ * @brief Used to log the required outputs to the logs file
+ * 
+ */
+void X2FollowerState::logData() {
+
+    // dt = static_cast<double>(
+    //     (std::chrono::steady_clock::now() - _Time_prev).count() / 1e9
+    // );
+    // _Time_prev = std::chrono::steady_clock::now();
+    pos_logger->info("{},{},{},{},{}", jointPositions_[0], jointPositions_[1], jointPositions_[2], jointPositions_[3], desiredJointPositions_[0]);
+    ref_logger->info("{},{},{},{}", desiredJointPositions_[0], desiredJointPositions_[1], desiredJointPositions_[2], desiredJointPositions_[3]);
+
+    dJointPositions_ = (jointPositions_ - prevJointPositions_) / dt;
+    dJointReferences_ = (desiredJointPositions_ - prevJointReferences_) / dt;
+    dpos_logger->info("{},{},{},{}", dJointPositions_[0], dJointPositions_[1], dJointPositions_[2], dJointPositions_[3]);
+    dref_logger->info("{},{},{},{}", dJointReferences_[0], dJointReferences_[1], dJointReferences_[2], dJointReferences_[3]);
+
+    p_logger->info("{},{},{},{}", PDCntrl->get_p()[0], PDCntrl->get_p()[1], PDCntrl->get_p()[2], PDCntrl->get_p()[3]);
+    d_logger->info("{},{},{},{}", PDCntrl->get_d()[0], PDCntrl->get_d()[1], PDCntrl->get_d()[2], PDCntrl->get_d()[3]);
+    torque_logger->info("{},{},{},{}", PDCntrl->output()[0], PDCntrl->output()[1], PDCntrl->output()[2], PDCntrl->output()[3]);
+    effort_logger->info("{},{},{},{}", jointTorques_[0], jointTorques_[1], jointTorques_[2], jointTorques_[3]);
+    err_logger->info("{},{},{},{}", PDCntrl->get_err_prev()[0],  PDCntrl->get_err_prev()[1],PDCntrl->get_err_prev()[2], PDCntrl->get_err_prev()[3]);
+    dt_logger->info("{}", dt);
+
 }

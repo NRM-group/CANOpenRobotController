@@ -103,6 +103,7 @@ ament_target_dependencies(x2_ik rclcpp sensor_msgs exo_msgs)
 
 install(TARGETS ${APP_NAME} x2_ik DESTINATION lib/${PROJECT_NAME})
 install(PROGRAMS script/initCAN0.sh DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS script/plot_logs.py DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY lib/trajectorylib/gaits DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})

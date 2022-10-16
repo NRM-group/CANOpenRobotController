@@ -18,6 +18,7 @@ dt = 3 * pow(10, -3)
 #       - FIx Master closing as well bug
 #   Create an auto-backup thing
 #   Plot individual joints ect
+#       Mode array, to select what joints to plot
 
 def plot_log_file(filename:str) -> int:
     """Plots data from the hip joint log files, only works for those
@@ -55,11 +56,11 @@ def plot_log_file(filename:str) -> int:
     plt.title(str(title))
     plt.ylabel("y-Axis")
     plt.xlabel("Sample (#)")
-    plt.plot(j1)
+    plt.plot(j1, ".-")
     plt.plot(j2)
     plt.plot(j3)
     plt.plot(j4)
-    plt.plot(ref1)
+    plt.plot(ref1, ".-")
     plt.legend(["Left Hip", "Left Knee", "Right Hip", "Right Knee"])
     return figure
 
@@ -119,6 +120,11 @@ class Plotter():
         self.master = tk.Frame(self.root, width=500, height=500, background="white")
         self.master.pack(fill=tk.BOTH, expand=True)
         self.root.mainloop()
+
+    def create_backups():
+        """Save the data in the logs/ directory into the backups section"""
+        pass
+    
     def open_file(self):
         """Create a new file, to be used with AI_EXO custom log files only"""
         #Create a new frame
@@ -171,15 +177,3 @@ class FigureFrame():
 if __name__ == "__main__":
     plter = Plotter()
     plter.construct_GUI()
-    # home_path = (os.path.expanduser("~"))
-    # plot_log_file(home_path  + "/exo_ws/logs/d_logs.log")
-    # plot_log_file(home_path  + "/exo_ws/logs/dref_logs.log")
-    # plot_log_file(home_path  + "/exo_ws/logs/effort_logs.log")
-    # plot_log_file(home_path  + "/exo_ws/logs/err_logs.log")
-    # plot_log_file(home_path  + "/exo_ws/logs/p_logs.log")
-    # plot_log_file(home_path  + "/exo_ws/logs/pdout_logs.log")
-    # plot_log_file(home_path  + "/exo_ws/logs/pos_logs.log")
-    # plot_log_file(home_path  + "/exo_ws/logs/posd_logs.log")
-    # plot_log_file(home_path  + "/exo_ws/logs/ref_logs.log")
-    # plot_dt_log_file(home_path + "/exo_ws/logs/dt_logs.log")
-    # plt.show()
