@@ -86,6 +86,8 @@ void RunState::during()
         _TorqueOutput += _CtrlExternal.output();
     }
     if (_Node->get_dev_toggle().friction) {
+        sdfgsdfg
+
         _TorqueOutput += _CtrlFriction.output();
     }
     if (_Node->get_dev_toggle().gravity) {
