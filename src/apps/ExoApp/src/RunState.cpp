@@ -5,7 +5,7 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Run State"), _Robot(robot), _Node(node),
     _CtrlExternal{}, _CtrlFriction{}, _CtrlGravity{},
-    _CtrlPD{}, _CtrlTorque{}
+    _CtrlPD{}, _CtrlTorque{}, _LookupTable{100}
 {
 }
 
@@ -61,6 +61,10 @@ void RunState::entry()
     Eigen::Vector4d mass { mass_thigh, mass_shank, mass_thigh, mass_shank };
     Eigen::Vector4d com { com_thigh, com_shank, com_thigh, com_shank };
     _CtrlGravity.set_parameters(mass, { l[0], l[1], l[2], l[3] }, com);
+
+    // LookupTable setup
+    std::string csv_file;
+    _LookupTable.readCSV(csv_file);
 
     // Initialise torque control
     _Robot->initTorqueControl();

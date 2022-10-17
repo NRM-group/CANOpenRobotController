@@ -9,6 +9,7 @@
 #include "X2Robot.h"
 #include "ExoNode.hpp"
 #include "controller.hpp"
+#include "LookupTable.hpp"
 #include "yaml-cpp/yaml.h"
 /* Standard interfaces */
 #include <std_msgs/msg/float64.hpp>
@@ -73,6 +74,7 @@ private:
     ctrl::GravityController<double, X2_NUM_JOINTS> _CtrlGravity;
     ctrl::PDController<double, X2_NUM_JOINTS> _CtrlPD;
     ctrl::TorqueController<double, X2_NUM_JOINTS> _CtrlTorque;
+    LookupTable<double, X2_NUM_JOINTS> _LookupTable;
 };
 
 /*************
