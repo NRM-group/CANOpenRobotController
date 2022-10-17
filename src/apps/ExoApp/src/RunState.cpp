@@ -37,6 +37,10 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
 
     _CtrlAffcRightLeg->set_criterions(deg2rad(criterions[0]), deg2rad(criterions[1]));
     _CtrlAffcRightLeg->set_inital_guess(right_unknown);
+
+    // butterworth 2nd order fc = 30Hz, fs = 333.333Hz
+    _CtrlPositionFilter.set_coeff_a({1.0, -1.2247, 0.4504});
+    _CtrlPositionFilter.set_coeff_b({0.0564, 0.1129, 0.0564});
 }
 
 void RunState::entry()
@@ -48,15 +52,15 @@ void RunState::entry()
 void RunState::during()
 {
     update_controllers();
-    // FIXME:
+    // TODO: add trajectory lib for reference position, velocity
     _TorqueOutput = Eigen::Vector4d::Zero();
-    //_StrainGauge = _StrainGaugeScale.cwiseProduct(_StrainGauge - _StrainGaugeOffset);
-    //_CtrlPD.loop(_LookupTable.getJointPositions() - jointPositions_);
-    _CtrlFriction.loop(_Robot->getVelocity());
-    _CtrlGravity.loop(_Robot->getPosition());
-    //_CtrlButterStrainGauge.filter(_StrainGauge);
-    //_CtrlTorque.loop(_CtrlButterStrainGauge.output());
-    // spdlog::info("POS: {}", _Robot->getPosition()[0]);
+    _ActualPosition = Eigen::Vector4d::Zero();
+
+    _CtrlPositionFilter.filter(_Robot->getPosition());
+    _ActualPosition = _CtrlPositionFilter.output();
+
+    _CtrlAffcLeftLeg->loop();
+    _CtrlAffcRightLeg->loop();
 
     // Sum toggled controllers
     if (_Node->get_user_command().toggle_walk) {
@@ -68,6 +72,7 @@ void RunState::during()
     if (_Node->get_dev_toggle().external) {
         _TorqueOutput += _CtrlExternal.output();
     }
+    // Feedforward compensation
     if (_Node->get_dev_toggle().friction) {
         _TorqueOutput += _CtrlFriction.output();
     }
