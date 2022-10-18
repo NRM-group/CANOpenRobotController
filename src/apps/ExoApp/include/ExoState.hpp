@@ -65,6 +65,9 @@ private:
     const std::shared_ptr<X2Robot> _Robot;
     const std::shared_ptr<ExoNode> _Node;
     Eigen::Vector4d _TorqueOutput;
+    Eigen::Vector4d _ActualPosition;
+    Eigen::Vector2d _LeftTorque;
+    Eigen::Vector2d _RightTorque;
 
 private:
     void update_controllers();
@@ -73,6 +76,7 @@ private:
     ctrl::ExternalController<double, X2_NUM_JOINTS> _CtrlExternal;
     ctrl::PDController<double, X2_NUM_JOINTS> _CtrlPD;
     ctrl::TorqueController<double, X2_NUM_JOINTS> _CtrlTorque;
+    ctrl::Butterworth<double, X2_NUM_JOINTS, 2> _CtrlPositionFilter;
 };
 
 /*************

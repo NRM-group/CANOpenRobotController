@@ -4,8 +4,7 @@
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Run State"), _Robot(robot), _Node(node),
-    _CtrlExternal{}, ,
-    _CtrlPD{}, _CtrlTorque{}
+    _CtrlExternal{}, _CtrlPD{}, _CtrlTorque{}
 {
 }
 
@@ -77,9 +76,13 @@ void RunState::entry()
     //      loop() method and tune_loop() method seperately
     _CtrlAffcLeftLeg->set_criterions(deg2rad(criterions[0]), deg2rad(criterions[1]);
     _CtrlAffcLeftLeg->set_inital_guess(left_unknown);
+
     _CtrlAffcRightLeg->set_criterions(deg2rad(criterions[0]), deg2rad(criterions[1]));
     _CtrlAffcRightLeg->set_inital_guess(right_unknown);
 
+   // butterworth 2nd order fc = 30Hz, fs = 333.333Hz
+    _CtrlPositionFilter.set_coeff_a({1.0, -1.2247, 0.4504});
+    _CtrlPositionFilter.set_coeff_b({0.0564, 0.1129, 0.0564});
 }
 
 void RunState::entry()
@@ -93,8 +96,13 @@ void RunState::during()
     update_controllers();
 
     _TorqueOutput = Eigen::Vector4d::Zero();
-    _CtrlFriction.loop(_Robot->getVelocity());
-    _CtrlGravity.loop(_Robot->getPosition());
+    _ActualPosition = Eigen::Vector4d::Zero();
+
+    _CtrlPositionFilter.filter(_Robot->getPosition());
+    _ActualPosition = _CtrlPositionFilter.output();
+
+    _CtrlAffcLeftLeg->loop();
+    _CtrlAffcRightLeg->loop();
 
     // Sum toggled controllers
     if (_Node->get_user_command().toggle_walk) {
@@ -106,11 +114,15 @@ void RunState::during()
     if (_Node->get_dev_toggle().external) {
         _TorqueOutput += _CtrlExternal.output();
     }
+    // TODO: Add mass and coriolis dev toggles for AFFC
     if (_Node->get_dev_toggle().friction) {
-        _TorqueOutput += _CtrlFriction.output();
+        // _TorqueOutput += _CtrlFriction.output();
+        _LeftTorque = _CtrlAffcLeftLeg->output();
+        _RightTorque = _CtrlAffcRightLeg->output();
+        _TorqueOutput +=  
     }
     if (_Node->get_dev_toggle().gravity) {
-        _TorqueOutput += _CtrlGravity.output();
+        // _TorqueOutput += _CtrlGravity.output();
     }
     if (_Node->get_dev_toggle().torque) {
         _TorqueOutput += _CtrlTorque.output();
