@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
-project(CORC)
+project(corc)
 
 
 # DEBUG MODE
-add_definitions(-DDEBUG)
+#add_definitions(-DDEBUG)
 
 
 # STATE MACHINE (APP)

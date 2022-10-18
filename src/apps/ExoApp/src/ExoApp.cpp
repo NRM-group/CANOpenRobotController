@@ -1,5 +1,5 @@
 #include "ExoApp.hpp"
-#define LOG(x)  spdlog::info("[ExoApp]: {}", x);
+#define LOG(x)  spdlog::info("[ExoApp]: {}", x)
 #define APP(x)  static_cast<ExoApp &>(x)
 
 /************************
@@ -7,49 +7,27 @@
  ************************/
 bool off_to_set(StateMachine &sm)
 {
-    // if (APP(sm).get_robot()->keyboard->getS()) {
-    //     LOG("Off to Set");
-    //     return true;
-    // }
-    // return false;
-    // FIXME:
-    return true;
+    return APP(sm).get_node()->get_heart_beat().status == ExoNode::TMP;
 }
 
 bool run_to_off(StateMachine &sm)
 {
-    if (!APP(sm).get_robot()->safetyCheck() || !APP(sm).get_node()->ok()) {
-        LOG("Run to Off");
-        return true;
-    }
-    return false;
+    return !APP(sm).get_robot()->safetyCheck() || !APP(sm).get_node()->ok();
 }
 
 bool run_to_set(StateMachine &sm)
 {
-    if (APP(sm).get_node()->overwrite_save()) {
-        LOG("Run to Set");
-        return true;
-    }
-    return false;
+    return APP(sm).get_node()->overwrite_save();
 }
 
 bool set_to_off(StateMachine &sm)
 {
-    if (APP(sm).get_node()->save_error() || !APP(sm).get_node()->ok()) {
-        LOG("Set to Off");
-        return true;
-    }
-    return false;
+    return APP(sm).get_node()->save_error() || !APP(sm).get_node()->ok();
 }
 
 bool set_to_run(StateMachine &sm)
 {
-    if (APP(sm).get_node()->is_saved()) {
-        LOG("Set to Run");
-        return true;
-    }
-    return false;
+    return APP(sm).get_node()->is_saved();
 }
 
 /*****************************
@@ -81,23 +59,25 @@ ExoApp::ExoApp(int argc, char **argv) : StateMachine()
     addTransition("SetState", set_to_off, "OffState");
     addTransition("SetState", set_to_run, "RunState");
     setInitState("SetState");
+
+    LOG("Ready");
+
+    // FIXME:
+    get_node()->set_is_saved(false);
 }
 
 void ExoApp::init()
 {
     get_robot()->initialiseNetwork();
-
-    // TODO: Data loggers
 }
 
 void ExoApp::end()
 {
-    // TODO:
+    LOG("Shut down");
 }
 
 void ExoApp::hwStateUpdate()
 {
-
 #ifdef DEBUG
     spdlog::info("positions: [{:.4}, {:.4}, {:.4}, {:.4}]",
         get_robot()->getPosition()[0],
@@ -106,7 +86,6 @@ void ExoApp::hwStateUpdate()
         get_robot()->getPosition()[3]
     );
 #endif
-
     get_robot()->updateRobot();
     get_node()->publish_heart_beat();
     rclcpp::spin_some(get_node()->get_interface());

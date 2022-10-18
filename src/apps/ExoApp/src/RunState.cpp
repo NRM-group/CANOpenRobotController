@@ -3,13 +3,56 @@
 
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
-    : State("Run State"), _Robot(robot), _Node(node), _CtrlExternal{},
-    , _CtrlPD{}, _CtrlTorque{}
+    : State("Run State"), _Robot(robot), _Node(node),
+    _CtrlExternal{}, ,
+    _CtrlPD{}, _CtrlTorque{}
 {
+}
+
+void RunState::entry()
+{
+    std::vector<double> buffer, buffer2, buffer3, buffer4;
     std::vector<double> left_unknown, left_learning_rate, left_p_gains, left_d_gains;
     std::vector<double> right_unknown, right_learning_rate, right_p_gains, right_d_gains;
     std::vector<double> criterions, lengths;
 
+    // Strain gauge filter parameters
+    std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1> coeff;
+    _Node->ros_parameter("strain_gauge.coeff_a", buffer);
+    std::copy(buffer.begin(), buffer.end(), coeff.begin());
+    _Robot->getStrainGaugeFilter().set_coeff_a(coeff);
+    _Node->ros_parameter("strain_gauge.coeff_b", buffer);
+    std::copy(buffer.begin(), buffer.end(), coeff.begin());
+    _Robot->getStrainGaugeFilter().set_coeff_b(coeff);
+
+    // External control parameters
+    _Node->ros_parameter("external", buffer);
+    _CtrlExternal.set_external_torque(buffer);
+
+    // Friction control parameters
+    _Node->ros_parameter("friction.static", buffer);
+    _CtrlFriction.set_static(buffer);
+    _Node->ros_parameter("friction.viscous", buffer);
+    _CtrlFriction.set_static(buffer);
+    _Node->ros_parameter("friction.neg", buffer);
+    _Node->ros_parameter("friction.pos", buffer2);
+    _CtrlFriction.set_deadband(buffer, buffer2);
+
+    // PD control parameters
+    _Node->ros_parameter("pd.left_kp", buffer);
+    _Node->ros_parameter("pd.right_kp", buffer2);
+    _Node->ros_parameter("pd.left_kd", buffer3);
+    _Node->ros_parameter("pd.right_kd", buffer4);
+    _CtrlPD.set_gains(buffer, buffer2, buffer3, buffer4);
+    _Node->ros_parameter("pd.alpha_min", buffer);
+    _Node->ros_parameter("pd.alpha_max", buffer2);
+    _CtrlPD.set_alphas(buffer, buffer2);
+
+    // Torque control parameters
+    _Node->ros_parameter("torque", buffer);
+    _CtrlTorque.set_gain(buffer);
+
+    // AFFC control parameters
     _Node->ros_parameter("affc.left_unknown", left_unknown);
     _Node->ros_parameter("affc.left_learning_rate", left_learning_rate);
     _Node->ros_parameter("affc.left_kp", left_p_gains);
@@ -34,9 +77,9 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
     //      loop() method and tune_loop() method seperately
     _CtrlAffcLeftLeg->set_criterions(deg2rad(criterions[0]), deg2rad(criterions[1]);
     _CtrlAffcLeftLeg->set_inital_guess(left_unknown);
-
     _CtrlAffcRightLeg->set_criterions(deg2rad(criterions[0]), deg2rad(criterions[1]));
     _CtrlAffcRightLeg->set_inital_guess(right_unknown);
+
 }
 
 void RunState::entry()
@@ -48,15 +91,10 @@ void RunState::entry()
 void RunState::during()
 {
     update_controllers();
-    // FIXME:
+
     _TorqueOutput = Eigen::Vector4d::Zero();
-    //_StrainGauge = _StrainGaugeScale.cwiseProduct(_StrainGauge - _StrainGaugeOffset);
-    //_CtrlPD.loop(_LookupTable.getJointPositions() - jointPositions_);
     _CtrlFriction.loop(_Robot->getVelocity());
     _CtrlGravity.loop(_Robot->getPosition());
-    //_CtrlButterStrainGauge.filter(_StrainGauge);
-    //_CtrlTorque.loop(_CtrlButterStrainGauge.output());
-    // spdlog::info("POS: {}", _Robot->getPosition()[0]);
 
     // Sum toggled controllers
     if (_Node->get_user_command().toggle_walk) {
@@ -87,7 +125,7 @@ void RunState::during()
             _TorqueOutput[i] = -_Node->get_torque_limit();
         }
     }
-    // spdlog::info("TOR: {}", _TorqueOutput[0]);
+
     _Robot->setTorque(_TorqueOutput);
     _Node->publish_joint_state();
     _Node->publish_strain_gauge();
@@ -105,6 +143,7 @@ void RunState::update_controllers()
             _Node->get_external_parameter().torque.cbegin() + 1
         )
     );
+
     _CtrlFriction.set_static(
         Eigen::Vector4d(
             _Node->get_friction_parameter().static_coefficient.cbegin() + 1
@@ -115,6 +154,7 @@ void RunState::update_controllers()
             _Node->get_friction_parameter().viscous_coefficient.cbegin() + 1
         )
     );
+
     _CtrlPD.set_alphas(
         Eigen::Vector4d(
             _Node->get_pd_parameter().alpha_min.cbegin() + 1
@@ -125,10 +165,11 @@ void RunState::update_controllers()
     );
     Eigen::Matrix4d kp{}, kd{};
     kp.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kp.cbegin() + 1);
-    kp.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kd.cbegin() + 1);
-    kd.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kp.cbegin() + 1);
+    kp.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kp.cbegin() + 1);
+    kd.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kd.cbegin() + 1);
     kd.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kd.cbegin() + 1);
     _CtrlPD.set_gains(kp, kd);
+
     // TODO:
     //_CtrlTorque.set_gain()
 }

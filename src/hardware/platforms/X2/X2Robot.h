@@ -187,7 +187,7 @@ private:
 
     using Butter = ctrl::Butterworth<double, X2_NUM_JOINTS, STRAIN_GAUGE_FILTER_ORDER>;
     Butter _StrainGauge;
-
+    Eigen::Vector4d _StrainGaugeScale;
 
     bool loadParametersFromYAML(YAML::Node params);
 
@@ -363,6 +363,7 @@ public:
     */
     setMovementReturnCode_t setTorque(Eigen::VectorXd torques);
 
+    void setStrainGaugeScale(const Eigen::Vector4d &scale);
 
     /**
     * \brief Get the latest joints position
@@ -392,7 +393,9 @@ public:
     */
     Eigen::VectorXd& getJointTorquesViaStrainGauges();
 
-    Butter& getStrainGauges();
+    Butter & getStrainGaugeFilter();
+
+    Eigen::Vector4d getStrainGauges();
 
     /**
     * \brief Get the interaction force estimation
