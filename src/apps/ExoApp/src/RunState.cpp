@@ -94,7 +94,7 @@ void RunState::entry()
 void RunState::during()
 {
     update_controllers();
-
+    // TODO: add trajectory lib for reference position, velocity
     _TorqueOutput = Eigen::Vector4d::Zero();
     _ActualPosition = Eigen::Vector4d::Zero();
 
