@@ -101,9 +101,6 @@ void RunState::during()
     _CtrlPositionFilter.filter(_Robot->getPosition());
     _ActualPosition = _CtrlPositionFilter.output();
 
-    _CtrlAffcLeftLeg->loop();
-    _CtrlAffcRightLeg->loop();
-
     // Sum toggled controllers
     if (_Node->get_user_command().toggle_walk) {
         //_LookupTable.next();
@@ -114,15 +111,42 @@ void RunState::during()
     if (_Node->get_dev_toggle().external) {
         _TorqueOutput += _CtrlExternal.output();
     }
-    // TODO: Add mass and coriolis dev toggles for AFFC
+    // TODO: Add mass and coriolis dev toggles for AFFC to dev_toggle.msg
+    if (_Node>get_dev_toggle().mass) {
+        _CtrlAffcLeftLeg->loop(, ctrl::MASS_COMP);
+        _CtrlAffcRightLeg->loop(, ctrl::MASS_COMP);
+
+        Eigen::Vector4d friction_torque;
+        friction_torque << _CtrlAffcLeftLeg->output(), _CtrlAffcRightLeg->output();
+
+        _TorqueOutput += friction_torque;
+    }
+    if (_Node->get_dev_toggle().coriolis) {
+        _CtrlAffcLeftLeg->loop(, ctrl::CORIOLIS_COMP);
+        _CtrlAffcRightLeg->loop(, ctrl::CORIOLIS_COMP);
+
+        Eigen::Vector4d friction_torque;
+        friction_torque << _CtrlAffcLeftLeg->output(), _CtrlAffcRightLeg->output();
+
+        _TorqueOutput += friction_torque;
+    }
     if (_Node->get_dev_toggle().friction) {
-        // _TorqueOutput += _CtrlFriction.output();
-        _LeftTorque = _CtrlAffcLeftLeg->output();
-        _RightTorque = _CtrlAffcRightLeg->output();
-        _TorqueOutput +=  
+        _CtrlAffcLeftLeg->loop(, ctrl::FRICTION_COMP);
+        _CtrlAffcRightLeg->loop(, ctrl::FRICTION_COMP);
+
+        Eigen::Vector4d friction_torque;
+        friction_torque << _CtrlAffcLeftLeg->output(), _CtrlAffcRightLeg->output();
+
+        _TorqueOutput += friction_torque;
     }
     if (_Node->get_dev_toggle().gravity) {
-        // _TorqueOutput += _CtrlGravity.output();
+        _CtrlAffcLeftLeg->loop(, ctrl::GRAVITY_COMP);
+        _CtrlAffcRightLeg->loop(, ctrl::GRAVITY_COMP);
+
+        Eigen::Vector4d gravity_torque;
+        gravity_torque << _CtrlAffcLeftLeg->output(), _CtrlAffcRightLeg->output();
+
+        _TorqueOutput += gravity_torque;
     }
     if (_Node->get_dev_toggle().torque) {
         _TorqueOutput += _CtrlTorque.output();
