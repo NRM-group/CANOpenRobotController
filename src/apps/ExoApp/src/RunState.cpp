@@ -1,26 +1,34 @@
 #include "ExoState.hpp"
-#define LOG(x)  spdlog::info("[RunState]: {}", x)
+#define LOG(x)      spdlog::info("[RunState]: {}", x)
 
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Run State"), _Robot(robot), _Node(node),
     _CtrlExternal{}, _CtrlFriction{}, _CtrlGravity{},
-    _CtrlPD{}, _CtrlTorque{}, _LookupTable{100}
+    _CtrlPD{}, _CtrlTorque{}, _LookupTable{}
 {
+    _Node->ros_declare(
+        {
+            "friction.static",
+            "friction.viscous",
+            "friction.neg",
+            "friction.pos",
+            "pd.left_kp",
+            "pd.right_kp",
+            "pd.left_kd",
+            "pd.right_kd",
+            "pd.alpha_min",
+            "pd.alpha_max",
+            "external",
+            "torque",
+            "l", "m", "s"
+        }
+    );
 }
 
 void RunState::entry()
 {
     std::vector<double> buffer, buffer2, buffer3, buffer4;
-
-    // Strain gauge filter parameters
-    std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1> coeff;
-    _Node->ros_parameter("strain_gauge.coeff_a", buffer);
-    std::copy(buffer.begin(), buffer.end(), coeff.begin());
-    _Robot->getStrainGaugeFilter().set_coeff_a(coeff);
-    _Node->ros_parameter("strain_gauge.coeff_b", buffer);
-    std::copy(buffer.begin(), buffer.end(), coeff.begin());
-    _Robot->getStrainGaugeFilter().set_coeff_b(coeff);
 
     // External control parameters
     _Node->ros_parameter("external", buffer);
@@ -64,7 +72,9 @@ void RunState::entry()
 
     // LookupTable setup
     std::string csv_file;
+    _Node->get_gait_file(csv_file);
     _LookupTable.readCSV(csv_file);
+    _LookupTable.startTrajectory(_Robot->getPosition(), 1.0);
 
     // Initialise torque control
     _Robot->initTorqueControl();
@@ -74,30 +84,28 @@ void RunState::entry()
 void RunState::during()
 {
     update_controllers();
+    update_lookup_table();
 
     _TorqueOutput = Eigen::Vector4d::Zero();
-    _CtrlFriction.loop(_Robot->getVelocity());
-    _CtrlGravity.loop(_Robot->getPosition());
 
     // Sum toggled controllers
-    if (_Node->get_user_command().toggle_walk) {
-        //_LookupTable.next();
-        if (_Node->get_dev_toggle().pd) {
-            _TorqueOutput += _CtrlPD.output();
-        }
-    }
     if (_Node->get_dev_toggle().external) {
         _TorqueOutput += _CtrlExternal.output();
     }
     if (_Node->get_dev_toggle().friction) {
-        sdfgsdfg
-
+        _CtrlFriction.loop(_Robot->getVelocity());
         _TorqueOutput += _CtrlFriction.output();
     }
     if (_Node->get_dev_toggle().gravity) {
+        _CtrlGravity.loop(_Robot->getPosition());
         _TorqueOutput += _CtrlGravity.output();
     }
+    if (_Node->get_dev_toggle().pd && _Node->get_user_command().toggle_walk) {
+        _CtrlPD.loop(_LookupTable.getJointPositions(), _Robot->getPosition());
+        _TorqueOutput += _CtrlPD.output();
+    }
     if (_Node->get_dev_toggle().torque) {
+        _CtrlTorque.loop(_Robot->getStrainGauges());
         _TorqueOutput += _CtrlTorque.output();
     }
 
@@ -112,6 +120,12 @@ void RunState::during()
     }
 
     _Robot->setTorque(_TorqueOutput);
+    _Node->publish_joint_reference(
+        std::vector<double>(
+            _LookupTable.getJointPositions().data(),
+            _LookupTable.getJointPositions().data() + _LookupTable.getJointPositions().size()
+        )
+    );
     _Node->publish_joint_state();
     _Node->publish_strain_gauge();
 }
@@ -155,6 +169,29 @@ void RunState::update_controllers()
     kd.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kd.cbegin() + 1);
     _CtrlPD.set_gains(kp, kd);
 
-    // TODO:
-    //_CtrlTorque.set_gain()
+    _CtrlTorque.set_gain(
+        Eigen::Vector4d(
+            _Node->get_torque_parameter().gain.cbegin() + 1
+        )
+    );
+}
+
+void RunState::update_lookup_table()
+{
+    // Toggle start and stop trajectory
+    _Node->get_user_command().toggle_walk ? _LookupTable.start() : _LookupTable.stop();
+
+    // Set min and max range of motion
+    std::array<double, X2_NUM_JOINTS> rom_min, rom_max;
+    for (std::size_t i = 0; i < X2_NUM_JOINTS; i++) {
+        rom_min[i] = deg2rad(_Node->get_gait_parameter().rom_min[i+1]);
+        rom_max[i] = deg2rad(_Node->get_gait_parameter().rom_max[i+1]);
+    }
+    _LookupTable.setROM(rom_min, rom_max);
+
+    // Set period of gait trajectory
+    _LookupTable.setPeriod(_Node->get_gait_parameter().step_period);
+
+    // Increment gait
+    _LookupTable.next();
 }

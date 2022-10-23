@@ -5,14 +5,21 @@
 /************************
  * STATE MACHINE EVENTS *
  ************************/
+bool off_to_run(StateMachine &sm)
+{
+    return APP(sm).get_robot()->getButtonValue(ButtonColor::GREEN);
+}
+
 bool off_to_set(StateMachine &sm)
 {
-    return APP(sm).get_node()->get_heart_beat().status == ExoNode::TMP;
+    return APP(sm).get_robot()->getButtonValue(ButtonColor::YELLOW);
 }
 
 bool run_to_off(StateMachine &sm)
 {
-    return !APP(sm).get_robot()->safetyCheck() || !APP(sm).get_node()->ok();
+    return APP(sm).get_robot()->getButtonValue(ButtonColor::RED) ||
+           !APP(sm).get_robot()->safetyCheck() ||
+           !APP(sm).get_node()->ok();
 }
 
 bool run_to_set(StateMachine &sm)
@@ -22,7 +29,9 @@ bool run_to_set(StateMachine &sm)
 
 bool set_to_off(StateMachine &sm)
 {
-    return APP(sm).get_node()->save_error() || !APP(sm).get_node()->ok();
+    return APP(sm).get_robot()->getButtonValue(ButtonColor::RED) ||
+           APP(sm).get_node()->save_error() ||
+           !APP(sm).get_node()->ok();
 }
 
 bool set_to_run(StateMachine &sm)
@@ -53,6 +62,7 @@ ExoApp::ExoApp(int argc, char **argv) : StateMachine()
     LOG("Spawning Set State...(5/5)");
     addState("SetState", std::make_unique<SetState>(get_robot(), _Node));
 
+    addTransition("OffState", off_to_run, "RunState");
     addTransition("OffState", off_to_set, "SetState");
     addTransition("RunState", run_to_off, "OffState");
     addTransition("RunState", run_to_set, "SetState");
@@ -61,9 +71,6 @@ ExoApp::ExoApp(int argc, char **argv) : StateMachine()
     setInitState("SetState");
 
     LOG("Ready");
-
-    // FIXME:
-    get_node()->set_is_saved(false);
 }
 
 void ExoApp::init()
