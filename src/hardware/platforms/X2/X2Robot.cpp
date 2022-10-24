@@ -366,11 +366,6 @@ setMovementReturnCode_t X2Robot::setTorque(Eigen::VectorXd torques) {
     return returnValue;
 }
 
-void X2Robot::setStrainGaugeScale(const Eigen::Vector4d &scale)
-{
-    _StrainGaugeScale = scale;
-}
-
 // bool X2Robot::calibrateForceSensors() {
 //     int numberOfSuccess = 0;
 //     for (int i = 0; i < X2_NUM_FORCE_SENSORS + X2_NUM_GRF_SENSORS; i++) {
@@ -645,8 +640,13 @@ bool X2Robot::initialiseNetwork() {
 
 bool X2Robot::initialiseInputs() {
 
+    // FIXME: Temporary solution to strain gauge scale factors
+    constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
+        -0.019193478, -0.016627119, 0.015766071, 0.01308
+    };
+
     for (int id = 0; id < X2_NUM_FORCE_SENSORS; id++) {
-        forceSensors.push_back(new FourierForceSensor(id + 17));
+        forceSensors.push_back(new FourierForceSensor(id + 17, scale[id]));
         inputs.push_back(forceSensors[id]);
     }
 
@@ -840,7 +840,7 @@ X2Robot::Butter &X2Robot::getStrainGaugeFilter() {
 }
 
 Eigen::Vector4d X2Robot::getStrainGauges() {
-    return _StrainGauge.output().cwiseProduct(_StrainGaugeScale);
+    return _StrainGauge.output();
 }
 
 Eigen::VectorXd &X2Robot::getInteractionForce() {

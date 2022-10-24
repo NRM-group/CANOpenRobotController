@@ -56,15 +56,17 @@ public: // State machine event flags
     bool ok();
 
 public: // ROS method visibility modifiers
+    void ros_declare(const std::vector<std::string> &names);
     void ros_parameter(const std::string &name, std::vector<double> &val);
     void get_exo_file(std::string &path);
+    void get_gait_file(std::string &path);
     void set_save_error(bool val);
     void set_is_saved(bool val);
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_interface();
 
 public: // ROS publish methods
     void publish_heart_beat();
-    void publish_joint_reference(const std::vector<double> &vec);
+    void publish_joint_reference(const std::vector<double> &val);
     void publish_joint_state();
     void publish_strain_gauge();
 

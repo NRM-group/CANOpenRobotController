@@ -1,31 +1,47 @@
 #include "ExoState.hpp"
-#define LOG(x)      spdlog::info("[SetState]: {}", x)
-#define ERR(x)      spdlog::error("[SetState]: {}", x)
-#define PAUSE       usleep(1000)
-#define RANGE       16
-#define SAMPLES     50
+#define LOG(x) spdlog::info("[SetState]: {}", x)
+#define ERR(x) spdlog::error("[SetState]: {}", x)
 
 SetState::SetState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Set State"), _Robot(robot), _Node(node)
 {
+    _Node->ros_declare(
+        {
+            "strain_gauge.coeff_a",
+            "strain_gauge.coeff_b"
+        }
+    );
 }
 
 void SetState::entry()
 {
+    // TODO:
+    // _Robot->homing();
+
+    std::vector<double> buffer;
+    std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1> coeff;
+
+    _Node->ros_parameter("strain_gauge.coeff_a", buffer);
+    std::copy(buffer.begin(), buffer.end(), coeff.begin());
+    _Robot->getStrainGaugeFilter().set_coeff_a(coeff);
+
+    _Node->ros_parameter("strain_gauge.coeff_b", buffer);
+    std::copy(buffer.begin(), buffer.end(), coeff.begin());
+    _Robot->getStrainGaugeFilter().set_coeff_b(coeff);
+
+    _Robot->initPositionControl();
     LOG(">>> Entered >>>");
 }
 
 void SetState::during()
 {
     LOG("Calibrating strain gauge offset...");
-    _Robot->initPositionControl();
-    PAUSE;
     _Robot->setPosition(Eigen::Vector4d::Zero());
-    PAUSE;
     _Robot->calibrateForceSensors();
 
     if (_Node->get_dev_toggle().save_default) {
+
         LOG("Overwriting default parameters...");
         using vec = std::vector<double>;
         std::string filepath;

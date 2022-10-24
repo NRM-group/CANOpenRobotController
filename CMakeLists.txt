@@ -49,6 +49,7 @@ file(GLOB_RECURSE SOURCES
 	"src/core/*.cpp" "src/core/*.c" "src/hardware/*.cpp" "src/hardware/*.c"
 	"src/apps/${STATE_MACHINE_NAME}/src/*.c" "src/apps/${STATE_MACHINE_NAME}/src/*.cpp"
 	"lib/FLNL/src/*.cpp" "lib/spdlog/src/*.cpp" "lib/controllerlib/include/*.hpp"
+	"lib/trajectorylib/src/*.hpp"
 )
 file(GLOB_RECURSE HEADERS "src/core/*.h" "src/hardware/*.h" "src/apps/${STATE_MACHINE_NAME}/include/*.hpp")
 
@@ -64,6 +65,7 @@ list(APPEND INCLUDE_DIRS lib/Eigen/)
 list(APPEND INCLUDE_DIRS lib/FLNL/include/)
 list(APPEND INCLUDE_DIRS lib/spdlog/include/)
 list(APPEND INCLUDE_DIRS lib/controllerlib/include/)
+list(APPEND INCLUDE_DIRS lib/trajectorylib/src/)
 add_subdirectory(lib/yaml-cpp/)
 
 
@@ -71,9 +73,7 @@ add_subdirectory(lib/yaml-cpp/)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(exo_msgs REQUIRED)
 find_package(Threads REQUIRED)
 
@@ -83,12 +83,13 @@ target_link_libraries(${APP_NAME} ${CMAKE_THREAD_LIBS_INIT} yaml-cpp)
 target_include_directories(${APP_NAME} PUBLIC ${INCLUDE_DIRS})
 include_directories(${INCLUDE_DIRS})
 
-ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs)
-ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs)
+ament_target_dependencies(${APP_NAME} rclcpp std_msgs sensor_msgs exo_msgs)
+ament_export_dependencies(rclcpp std_msgs sensor_msgs exo_msgs)
 
 install(TARGETS ${APP_NAME} DESTINATION lib/${PROJECT_NAME})
 install(PROGRAMS script/initCAN0.sh DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY lib/trajectorylib/gaits DESTINATION share/${PROJECT_NAME})
 
 ament_package()

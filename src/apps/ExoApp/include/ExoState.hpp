@@ -9,6 +9,7 @@
 #include "X2Robot.h"
 #include "ExoNode.hpp"
 #include "controller.hpp"
+#include "LookupTable.hpp"
 #include "yaml-cpp/yaml.h"
 /* Standard interfaces */
 #include <std_msgs/msg/float64.hpp>
@@ -77,6 +78,10 @@ private:
     ctrl::PDController<double, X2_NUM_JOINTS> _CtrlPD;
     ctrl::TorqueController<double, X2_NUM_JOINTS> _CtrlTorque;
     ctrl::Butterworth<double, X2_NUM_JOINTS, 2> _CtrlPositionFilter;
+
+private:
+    void update_lookup_table();
+    LookupTable<double, X2_NUM_JOINTS> _LookupTable;
 };
 
 /*************

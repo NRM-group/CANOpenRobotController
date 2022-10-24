@@ -112,7 +112,7 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
  ***************************/
 bool ExoNode::overwrite_save()
 {
-    return _DevToggle.save_default > 0.0;
+    return _DevToggle.save_default;
 }
 
 bool ExoNode::save_error()
@@ -137,15 +137,26 @@ bool ExoNode::ok()
 /**************
  * VISIBILITY *
  **************/
+void ExoNode::ros_declare(const std::vector<std::string> &names)
+{
+    for (const std::string &n : names) {
+        declare_parameter<std::vector<double>>(n, { });
+    }
+}
+
 void ExoNode::ros_parameter(const std::string &name, std::vector<double> &val)
 {
-    declare_parameter<std::vector<double>>(name, { });
     get_parameter<std::vector<double>>(name, val);
 }
 
 void ExoNode::get_exo_file(std::string &path)
 {
     get_parameter<std::string>("exo_file", path);
+}
+
+void ExoNode::get_gait_file(std::string &path)
+{
+    get_parameter<std::string>("gait_file", path);
 }
 
 void ExoNode::set_save_error(bool val)
@@ -185,6 +196,16 @@ void ExoNode::publish_heart_beat()
     _PubHeartBeat->publish(msg);
 }
 
+void ExoNode::publish_joint_reference(const std::vector<double> &val)
+{
+    // TODO: May need to be offset + 1
+    FloatArray msg{};
+
+    msg.data = std::move(val);
+
+    _PubJointReference->publish(msg);
+}
+
 void ExoNode::publish_joint_state()
 {
     JointState msg{};
@@ -211,20 +232,13 @@ void ExoNode::publish_joint_state()
     _PubJointState->publish(msg);
 }
 
-void ExoNode::publish_joint_reference(const std::vector<double> &vec)
-{
-    FloatArray msg{};
-    msg.data = std::move(vec);
-    _PubJointReference->publish(msg);
-}
-
 void ExoNode::publish_strain_gauge()
 {
     FloatArray msg{};
     
     msg.data.assign(
-        _Robot->getStrainGauges().data(),
-        _Robot->getStrainGauges().data() + _Robot->getStrainGauges().size()
+        _Robot->getStrainGaugeFilter().begin(),
+        _Robot->getStrainGaugeFilter().end()
     );
 
     _PubStrainGauge->publish(msg);

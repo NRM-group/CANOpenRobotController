@@ -187,7 +187,6 @@ private:
 
     using Butter = ctrl::Butterworth<double, X2_NUM_JOINTS, STRAIN_GAUGE_FILTER_ORDER>;
     Butter _StrainGauge;
-    Eigen::Vector4d _StrainGaugeScale;
 
     bool loadParametersFromYAML(YAML::Node params);
 

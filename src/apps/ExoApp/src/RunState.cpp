@@ -1,19 +1,34 @@
 #include "ExoState.hpp"
-#define LOG(x)  spdlog::info("[RunState]: {}", x)
+#define LOG(x)      spdlog::info("[RunState]: {}", x)
 
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Run State"), _Robot(robot), _Node(node),
-    _CtrlExternal{}, _CtrlPD{}, _CtrlTorque{}
+    _CtrlExternal{}, _CtrlFriction{}, _CtrlGravity{},
+    _CtrlPD{}, _CtrlTorque{}, _LookupTable{}
 {
+    _Node->ros_declare(
+        {
+            "friction.static",
+            "friction.viscous",
+            "friction.neg",
+            "friction.pos",
+            "pd.left_kp",
+            "pd.right_kp",
+            "pd.left_kd",
+            "pd.right_kd",
+            "pd.alpha_min",
+            "pd.alpha_max",
+            "external",
+            "torque",
+            "l", "m", "s"
+        }
+    );
 }
 
 void RunState::entry()
 {
     std::vector<double> buffer, buffer2, buffer3, buffer4;
-    std::vector<double> left_unknown, left_learning_rate, left_p_gains, left_d_gains;
-    std::vector<double> right_unknown, right_learning_rate, right_p_gains, right_d_gains;
-    std::vector<double> criterions, lengths;
 
     // Strain gauge filter parameters
     std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1> coeff;
@@ -85,6 +100,12 @@ void RunState::entry()
     _CtrlPositionFilter.set_coeff_b({0.0564, 0.1129, 0.0564});
 }
 
+    // LookupTable setup
+    std::string csv_file;
+    _Node->get_gait_file(csv_file);
+    _LookupTable.readCSV(csv_file);
+    _LookupTable.startTrajectory(_Robot->getPosition(), 1.0);
+
 void RunState::entry()
 {
     _Robot->initTorqueControl();
@@ -94,7 +115,8 @@ void RunState::entry()
 void RunState::during()
 {
     update_controllers();
-    // TODO: add trajectory lib for reference position, velocity
+    update_lookup_table();
+
     _TorqueOutput = Eigen::Vector4d::Zero();
     _ActualPosition = Eigen::Vector4d::Zero();
 
@@ -108,8 +130,29 @@ void RunState::during()
             _TorqueOutput += _CtrlPD.output();
         }
     }
+    
+    
     if (_Node->get_dev_toggle().external) {
         _TorqueOutput += _CtrlExternal.output();
+    }
+    // TODO: Add mass and coriolis dev toggles for AFFC to dev_toggle.msg
+    if (_Node>get_dev_toggle().mass) {
+        _CtrlAffcLeftLeg->loop(, ctrl::MASS_COMP);
+        _CtrlAffcRightLeg->loop(, ctrl::MASS_COMP);
+
+        Eigen::Vector4d friction_torque;
+        friction_torque << _CtrlAffcLeftLeg->output(), _CtrlAffcRightLeg->output();
+
+        _TorqueOutput += friction_torque;
+    }
+    if (_Node->get_dev_toggle().coriolis) {
+        _CtrlAffcLeftLeg->loop(, ctrl::CORIOLIS_COMP);
+        _CtrlAffcRightLeg->loop(, ctrl::CORIOLIS_COMP);
+
+        Eigen::Vector4d friction_torque;
+        friction_torque << _CtrlAffcLeftLeg->output(), _CtrlAffcRightLeg->output();
+
+        _TorqueOutput += friction_torque;
     }
     // TODO: Add mass and coriolis dev toggles for AFFC to dev_toggle.msg
     if (_Node>get_dev_toggle().mass) {
@@ -148,7 +191,12 @@ void RunState::during()
 
         _TorqueOutput += gravity_torque;
     }
+    if (_Node->get_dev_toggle().pd && _Node->get_user_command().toggle_walk) {
+        _CtrlPD.loop(_LookupTable.getJointPositions(), _Robot->getPosition());
+        _TorqueOutput += _CtrlPD.output();
+    }
     if (_Node->get_dev_toggle().torque) {
+        _CtrlTorque.loop(_Robot->getStrainGauges());
         _TorqueOutput += _CtrlTorque.output();
     }
 
@@ -163,6 +211,12 @@ void RunState::during()
     }
 
     _Robot->setTorque(_TorqueOutput);
+    _Node->publish_joint_reference(
+        std::vector<double>(
+            _LookupTable.getJointPositions().data(),
+            _LookupTable.getJointPositions().data() + _LookupTable.getJointPositions().size()
+        )
+    );
     _Node->publish_joint_state();
     _Node->publish_strain_gauge();
 }
@@ -206,6 +260,29 @@ void RunState::update_controllers()
     kd.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kd.cbegin() + 1);
     _CtrlPD.set_gains(kp, kd);
 
-    // TODO:
-    //_CtrlTorque.set_gain()
+    _CtrlTorque.set_gain(
+        Eigen::Vector4d(
+            _Node->get_torque_parameter().gain.cbegin() + 1
+        )
+    );
+}
+
+void RunState::update_lookup_table()
+{
+    // Toggle start and stop trajectory
+    _Node->get_user_command().toggle_walk ? _LookupTable.start() : _LookupTable.stop();
+
+    // Set min and max range of motion
+    std::array<double, X2_NUM_JOINTS> rom_min, rom_max;
+    for (std::size_t i = 0; i < X2_NUM_JOINTS; i++) {
+        rom_min[i] = deg2rad(_Node->get_gait_parameter().rom_min[i+1]);
+        rom_max[i] = deg2rad(_Node->get_gait_parameter().rom_max[i+1]);
+    }
+    _LookupTable.setROM(rom_min, rom_max);
+
+    // Set period of gait trajectory
+    _LookupTable.setPeriod(_Node->get_gait_parameter().step_period);
+
+    // Increment gait
+    _LookupTable.next();
 }
