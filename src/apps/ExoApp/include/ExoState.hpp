@@ -67,13 +67,13 @@ private:
     const std::shared_ptr<ExoNode> _Node;
     Eigen::Vector4d _TorqueOutput;
     Eigen::Vector4d _ActualPosition;
-    Eigen::Vector2d _LeftTorque;
-    Eigen::Vector2d _RightTorque;
+    Eigen::Vector4d _DesiredPosition;
+    Eigen::Vector4d _DesiredVelocity;
+    Eigen::Vector4d _DesiredAccel;
 
 private:
     void update_controllers();
-    ctrl::AdaptiveController<double, X2_NUM_JOINTS/2, 50>* _CtrlAffcLeftLeg;
-    ctrl::AdaptiveController<double, X2_NUM_JOINTS/2, 50>* _CtrlAffcRightLeg;
+    ctrl::AdaptiveController<double, X2_NUM_JOINTS, 50>* _CtrlAffc;
     ctrl::ExternalController<double, X2_NUM_JOINTS> _CtrlExternal;
     ctrl::PDController<double, X2_NUM_JOINTS> _CtrlPD;
     ctrl::TorqueController<double, X2_NUM_JOINTS> _CtrlTorque;

@@ -50,15 +50,15 @@ exo:
     # AFFC PARAMETERS
     # ---------------
     affc:
+      # learning rate
+      learning_rate: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      # kp gains [left kp gains, right kp gains]
+      kp: [0, 0, 0, 0, 0, 0, 0, 0] 
+      # kd gains [left kd gains, right kd gains]
+      kd: [0, 0, 0, 0, 0, 0, 0, 0]
       # Left leg affc parameters
-      left_unknown: []
-      left_learning_rate: []
-      left_kp: []
-      left_kd: []
+      left_unknown: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
       # Right leg affc parameters
-      right_unknown: []
-      right_learning_rate: []
-      right_kp: []
-      right_kd: []
+      right_unknown: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
       # affc c1 and c2 criterions for tuning in deg
-      criterions: []
+      criterions: [0.1, 2]
