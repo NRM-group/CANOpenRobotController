@@ -22,13 +22,10 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
             "torque",
             "l", "m", "s",
             "affc.left_unknown",
-            "affc.left_learning_rate",
-            "affc.left_kp",
-            "affc.left_kd",
+            "affc.learning_rate",
+            "affc.kp",
+            "affc.kd",
             "affc.right_unknown",
-            "affc.right_learning_rate",
-            "affc.right_kp",
-            "affc.right_kd",
             "affc.criterions"
         }
     );
