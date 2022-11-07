@@ -77,9 +77,9 @@ private:
     ctrl::Butterworth<double, X2_NUM_JOINTS, 2> _CtrlPositionFilter;
 
 private:
-    double _Time0;
+    std::chrono::steady_clock::time_point _Time0;
     int _PeriodCounter;
-    FourierSeries<double, X2_NUM_JOINTS> _GaitTracjectory;
+    FourierSeries<double, X2_NUM_JOINTS> _GaitTrajectory;
 };
 
 /*************

@@ -3,7 +3,7 @@
 
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
-    : State("Run State"), _Robot(robot), _Node(node), _GaitTracjectory{}
+    : State("Run State"), _Robot(robot), _Node(node), _GaitTrajectory{}
 {
     _Node->ros_declare(
         {
@@ -47,6 +47,9 @@ void RunState::entry()
     _CtrlPositionFilter.set_coeff_a({1.0, -1.2247, 0.4504});
     _CtrlPositionFilter.set_coeff_b({0.0564, 0.1129, 0.0564});
 
+    // reset the number of times the AFFC tune algorithm has been run
+    _PeriodCounter = 0;
+
     // initalise time0 for gait trajectory
     _Time0 = std::chrono::steady_clock::now();
 
@@ -67,9 +70,9 @@ void RunState::during()
     double time  = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - _Time0).count()/1.0e9;
 
     // update current dynamics from ref trajectory
-    _DesiredPosition << _GaitTracjectory.getPosition(time);
-    _DesiredVelocity << _GaitTracjectory.getVelocity(time);
-    _DesiredAccel << _GaitTracjectory.getAccelaration(time);
+    _DesiredPosition << _GaitTrajectory.getPosition(time);
+    _DesiredVelocity << _GaitTrajectory.getVelocity(time);
+    _DesiredAccel << _GaitTrajectory.getAccelaration(time);
 
     // check if the AFFC algorithm is finished
     if (_CtrlAffc->is_finished(ctrl::LEFT_LEG) && _CtrlAffc->is_finished(ctrl::RIGHT_LEG)) {
@@ -78,15 +81,27 @@ void RunState::during()
     }
 
     // iterate AFFC tune algorithm once
+    Eigen::Vector4d torque_buffer = Eigen::Vector4d::Zero();
     if (_PeriodCounter * 5.0 < time) {
-        //TODO: Add the code for this
+
+        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, true, ctrl::LEFT_LEG);
+        torque_buffer << _CtrlAffc->output()[0], _CtrlAffc->output()[1], 0, 0;
+        _TorqueOutput += torque_buffer;
+
+        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, true, ctrl::RIGHT_LEG);
+        torque_buffer << 0, 0, _CtrlAffc->output()[2], _CtrlAffc->output()[3];
+        _TorqueOutput += torque_buffer;
+
+        spdlog::info("AFFC cycle {} complete", _PeriodCounter);
+        _PeriodCounter++;
     } else {
-        // TODO: Make sure to only use the first 2 elements for left leg and last 2 elements for right leg...otherwise garbage will come out
         _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, false, ctrl::LEFT_LEG);
-        _TorqueOutput += _CtrlAffc->output();
+        torque_buffer << _CtrlAffc->output()[0], _CtrlAffc->output()[1], 0, 0;
+        _TorqueOutput += torque_buffer;
 
         _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, false, ctrl::RIGHT_LEG);
-        _TorqueOutput += _CtrlAffc->output();
+        torque_buffer << 0, 0, _CtrlAffc->output()[2], _CtrlAffc->output()[3];
+        _TorqueOutput += torque_buffer;
     }
 
     // Limit torque output
@@ -102,8 +117,8 @@ void RunState::during()
     _Robot->setTorque(_TorqueOutput);
     _Node->publish_joint_reference(
         std::vector<double>(
-            _LookupTable.getJointPositions().data(),
-            _LookupTable.getJointPositions().data() + _LookupTable.getJointPositions().size()
+            _GaitTrajectory.getPosition(time).data(),
+            _GaitTrajectory.getPosition(time).data() + _GaitTrajectory.getPosition(time).size()
         )
     );
     _Node->publish_joint_state();
