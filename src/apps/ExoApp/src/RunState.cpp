@@ -1,6 +1,17 @@
 #include "ExoState.hpp"
 #define LOG(x)      spdlog::info("[RunState]: {}", x)
 
+template <typename T>
+void print_array(const std::vector<T> &a, std::ostream &output = std::cout)
+{
+    std::size_t N = a.size();
+    for (std::size_t i = 0; i < N - 1; i++)
+    {
+        output << a[i] << ",";
+    }
+    output << std::endl;
+}
+
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Run State"), _Robot(robot), _Node(node), _GaitTrajectory{}
@@ -76,6 +87,18 @@ void RunState::during()
 
     // check if the AFFC algorithm is finished
     if (_CtrlAffc->is_finished(ctrl::LEFT_LEG) && _CtrlAffc->is_finished(ctrl::RIGHT_LEG)) {
+        Eigen::Matrix<double, 18, 1> learned_parameters;
+
+        learned_parameters = _CtrlAffc->get_learned_params(ctrl::LEFT_LEG);
+        print_array(
+            std::vector<double>(learned_parameters.data(), learned_parameters.data() + learned_parameters.size())
+        );
+
+        learned_parameters = _CtrlAffc->get_learned_params(ctrl::RIGHT_LEG);
+        print_array(
+            std::vector<double>(learned_parameters.data(), learned_parameters.data() + learned_parameters.size())
+        );
+
         spdlog::info("AFFC is finished for both legs.");
         return;
     }
