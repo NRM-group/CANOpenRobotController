@@ -1,6 +1,8 @@
 #include "ExoState.hpp"
 #define LOG(x)      spdlog::info("[RunState]: {}", x)
 
+typedef ctrl::AdaptiveController<double, X2_NUM_JOINTS, 50> AFFC;
+
 template <typename T>
 void print_array(const std::vector<T> &a, std::ostream &output = std::cout)
 {
@@ -86,15 +88,15 @@ void RunState::during()
     _DesiredAccel << _GaitTrajectory.getAccelaration(time);
 
     // check if the AFFC algorithm is finished
-    if (_CtrlAffc->is_finished(ctrl::LEFT_LEG) && _CtrlAffc->is_finished(ctrl::RIGHT_LEG)) {
+    if (_CtrlAffc->is_finished(AFFC::Leg::LEFT_LEG) && _CtrlAffc->is_finished(AFFC::Leg::RIGHT_LEG)) {
         Eigen::Matrix<double, 18, 1> learned_parameters;
 
-        learned_parameters = _CtrlAffc->get_learned_params(ctrl::LEFT_LEG);
+        learned_parameters = _CtrlAffc->get_learned_params(AFFC::Leg::LEFT_LEG);
         print_array(
             std::vector<double>(learned_parameters.data(), learned_parameters.data() + learned_parameters.size())
         );
 
-        learned_parameters = _CtrlAffc->get_learned_params(ctrl::RIGHT_LEG);
+        learned_parameters = _CtrlAffc->get_learned_params(AFFC::Leg::RIGHT_LEG);
         print_array(
             std::vector<double>(learned_parameters.data(), learned_parameters.data() + learned_parameters.size())
         );
@@ -107,22 +109,22 @@ void RunState::during()
     Eigen::Vector4d torque_buffer = Eigen::Vector4d::Zero();
     if (_PeriodCounter * 5.0 < time) {
 
-        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, true, ctrl::LEFT_LEG);
+        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, true, AFFC::Leg::LEFT_LEG);
         torque_buffer << _CtrlAffc->output()[0], _CtrlAffc->output()[1], 0, 0;
         _TorqueOutput += torque_buffer;
 
-        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, true, ctrl::RIGHT_LEG);
+        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, true, AFFC::Leg::RIGHT_LEG);
         torque_buffer << 0, 0, _CtrlAffc->output()[2], _CtrlAffc->output()[3];
         _TorqueOutput += torque_buffer;
 
         spdlog::info("AFFC cycle {} complete", _PeriodCounter);
         _PeriodCounter++;
     } else {
-        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, false, ctrl::LEFT_LEG);
+        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, false, AFFC::Leg::LEFT_LEG);
         torque_buffer << _CtrlAffc->output()[0], _CtrlAffc->output()[1], 0, 0;
         _TorqueOutput += torque_buffer;
 
-        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, false, ctrl::RIGHT_LEG);
+        _CtrlAffc->tune_loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, false, AFFC::Leg::RIGHT_LEG);
         torque_buffer << 0, 0, _CtrlAffc->output()[2], _CtrlAffc->output()[3];
         _TorqueOutput += torque_buffer;
     }
