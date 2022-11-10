@@ -1,72 +1,59 @@
-# CANOpen Robot Controller (CORC) Project
+# CAN Open Robot Controller (CORC)
 
-CORC is a free and open source robotic development software stack, written in C++.
+This branch of the CAN Open Robot Controller is the specific implementation of the NRM group's integration and software architecture. It adds two new dependencies on top of the existing libraries in CORC, both also developed by the NRM group.
 
-The project was initiated at the University of Melbourne in partnership with Fourier Intelligence, however has welcomed (and continues to welcome) collaborators from all institutions. The project was initially developed to run on an ExoMotus X2 Exoskeleton powered by a Beaglebone Black, however, the software is designed to be extensible to any embedded Linux and CANopen enabled Robotic platform. The repository currently also includes code which has been run on the ArmMotus M1 and M3 rehabilitation devices, and using desktop or laptop Ubuntu installations.
+- [`controllerlib`](https://github.com/NRM-group/controllerlib)
+- [`trajectorylib`](https://github.com/NRM-group/trajectorylib)
 
-## The CANOpen Robot Controller project includes:
+In addition, this version of CORC integrates ROS2 Foxy as part of the communication structure with LabVIEW over LAN. As such, this branch may not be independently run outside of ROS2.
 
-- An extensible framework to represent multibody rigid robotic systems.
-- An event driven state machine to develop custom applications (see [here](doc/3.Software/StateMachine.md)).
-- An implementation of [CANopen Socket](https://github.com/CANopenNode/CANopenSocket) to provide an interface between CAN enabled embedded Linux system and CANopen-based motor drivers/sensors.
-- Documentation (this page and associated ones and code Doxygen).
-- Functional application examples.
+The `nrm-release` branch utilises basic controllers such as friction and compensation control. The [`nrm-affc`](https://github.com/NRM-group/CANOpenRobotController/tree/nrm-affc) branch replaces these controllers with an adaptive feed-forward controller which improves overall performance. Please see [`nrm-affc`](https://github.com/NRM-group/CANOpenRobotController/tree/nrm-affc) for more advanced use cases.
 
-### Project Overview
+## Install
 
-The code is structured into 3 levels:
+Clone the repositories in the ROS workspace.
 
-1. **The CANopen Communications Level:** Provides the CAN-level communications, providing the mechanisms for the sending and receiving of PDO and SDO messages
-2. **The Robot Level:** Defines the components of the Robot to be controlled, including the joints, associated drives, and input devices
-3. **The Application Layer:** Defines the high level logic for the device, based on the implementation of a State Machine.
+```sh
+cd ~/ros2_ws/src/
+git clone --recurse-submodules -b nrm-release https://github.com/NRM-group/CANOpenRobotController
+git clone --recurse-submodules https://github.com/NRM-group/Ai-ExoMotus
+```
 
-Whilst the code can be modified at any level, this structure is designed to provide a degree of modularity. The CANopen Communications level should not need to be changed. The Robot level should only change with respect if the robot to be controlled changes. This is loosely enforced by the source code folder structure - the files which should not need modification are placed in the `src/core` folder, and the remainder are placed in the `src/apps` and `src/hardware` folders. Note that in addition to the CANopen Communication code, the `src/core` folder also includes base classes which are derived from in the `src/apps` and `src/hardware` folders. 
+Build the workspace and install.
 
-## Getting started with CORC
-See the detailed document [here](doc/1.GettingStarted/GettingStarted.md) 
+NOTE: Edit `CMakeLists.txt` under `CANOpenRobotController` for specific configurations, or leave as default.
 
-## Next Steps
-### Building a custom application with a custom state machine
-See [this detailed explanation](doc/3.Software/CustomApplication.md) for instructions to customise an application or derive your own.
+```sh
+cd ~/ros2_ws
+colcon build
+source install/setup.bash
+```
 
-### Logging system (spdlog)
-CORC relies on [spdlog](https://github.com/gabime/spdlog) for both general logging (terminal and in file) and for data logging.
-See [here](doc/3.Software/Logging.md) for more info on using the logging system.
+## Usage
 
-### ROS Support
-See [here](doc/1.GettingStarted/Simulation.md) for instructions on how to build and run a CORC app with ROS support.
+Run the CAN initialiser script if starting since boot-up or the cable was disconnected.
 
-### Network communication
-See [here](doc/3.Software/NetworkCommunication.md) for instructions on using libFLNL for communication.
+```sh
+ros2 run corc initCAN0.sh
+```
 
-### CAN-USB adapters
-See [this page](doc/2.Hardware/USBCANadapters.md) for notes on tested USB-CAN adapters.
+Launch the CORC app. You may observe available arguements with the following command.
 
-### Generating the code documentation
-To generate the Doxygen documentation of the code you can simply run `doxygen Doxyfile` in the root folder. This will generate an HTML documentation in the `doc/html` folder.
+```sh
+ros2 launch corc exo.launch.py -s
+```
 
-## Developer Information
+As of current, the only argument available is the `dry_run` argument. Set this to 1 to run CORC without needing connection with LabVIEW. This is 0 by default.
 
-- Detailed documentation: https://exoembedded.readthedocs.io/en/latest/
-- Source code documentation: https://capstonealex.github.io/exo/index.html
-- Project Repository: https://github.com/capstonealex/exo
-- CANopen Socket: https://github.com/CANopenNode/CANopenSocket
+```sh
+ros2 launch corc exo.launch.py dry_run:=1 # or dry_run:=0 (default)
+```
 
+If running CORC without LabVIEW, the following can be run in a separate terminal to provide a GUI for control using Qt.
 
-## Contributors
-The following individuals have made contributions to CORC:
+NOTE: New terminals must source the install setup script.
 
-- William Campbell
-- Vincent Crocher
-- Emek Barış Küçüktabak 
-- Justin Fong
-- Yue Wen
-- Tim Haswell
-- Xinliang Guo
-
-Please contact fong.j[at]unimelb.edu.au with questions or suggestions for continuing development, or if you wish to be more involved in the planning/organisation of CORC.
-
-## License
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 .
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
-
+```sh
+source ~/ros2_ws/install/setup.bash
+ros2 launch exo_launch dev.launch.py
+```
