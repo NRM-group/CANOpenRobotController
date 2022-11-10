@@ -1,6 +1,8 @@
 #include "ExoState.hpp"
 #define LOG(x)      spdlog::info("[RunState]: {}", x)
 
+typedef ctrl::AdaptiveController<double, X2_NUM_JOINTS, 50> AFFC;
+
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Run State"), _Robot(robot), _Node(node),
@@ -121,19 +123,19 @@ void RunState::during()
         _TorqueOutput += _CtrlPD.output();
     }
     if (_Node->get_dev_toggle().mass) {
-        _CtrlAffc->loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, ctrl::MASS_COMP);
+        _CtrlAffc->loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, AFFC::Compensation::MASS_COMP);
         _TorqueOutput += _CtrlAffc->output();
     }
     if (_Node->get_dev_toggle().coriolis) {
-        _CtrlAffc->loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, ctrl::CORIOLIS_COMP);
+        _CtrlAffc->loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, AFFC::Compensation::CORIOLIS_COMP);
         _TorqueOutput += _CtrlAffc->output();
     }
     if (_Node->get_dev_toggle().friction) {
-        _CtrlAffc->loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, ctrl::FRICTION_COMP);
+        _CtrlAffc->loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, AFFC::Compensation::FRICTION_COMP);
         _TorqueOutput += _CtrlAffc->output();
     }
     if (_Node->get_dev_toggle().gravity) {
-        _CtrlAffc->loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, ctrl::GRAVITY_COMP);
+        _CtrlAffc->loop(_DesiredPosition, _ActualPosition, _DesiredVelocity, _DesiredAccel, AFFC::Compensation::GRAVITY_COMP);
         _TorqueOutput += _CtrlAffc->output();
     }
     if (_Node->get_dev_toggle().torque) {
