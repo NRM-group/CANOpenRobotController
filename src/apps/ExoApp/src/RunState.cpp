@@ -113,13 +113,13 @@ void RunState::during()
     _ActualPosition << _CtrlPositionFilter.output();
 
     // update current dynamics from ref trajectory
-    _DesiredPosition << _LookupTable.getJointPositions();
+    _DesiredPosition << _LookupTable.getPosition();
     _DesiredVelocity << _LookupTable.getVelocity();
     _DesiredAccel << _LookupTable.getAccelaration();
 
     // sum toggled controllers
     if (_Node->get_dev_toggle().pd && _Node->get_user_command().toggle_walk) {
-        _CtrlPD.loop(_LookupTable.getJointPositions(), _Robot->getPosition());
+        _CtrlPD.loop(_LookupTable.getPosition(), _Robot->getPosition());
         _TorqueOutput += _CtrlPD.output();
     }
     if (_Node->get_dev_toggle().mass) {
@@ -159,8 +159,8 @@ void RunState::during()
     _Robot->setTorque(_TorqueOutput);
     _Node->publish_joint_reference(
         std::vector<double>(
-            _LookupTable.getJointPositions().data(),
-            _LookupTable.getJointPositions().data() + _LookupTable.getJointPositions().size()
+            _LookupTable.getPosition().data(),
+            _LookupTable.getPosition().data() + _LookupTable.getPosition().size()
         )
     );
     _Node->publish_joint_state();
