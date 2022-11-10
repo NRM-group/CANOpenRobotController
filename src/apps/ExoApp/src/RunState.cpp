@@ -51,7 +51,7 @@ void RunState::entry()
     _Node->ros_parameter("affc.right_unknown", right_unknown);
     _Node->ros_parameter("affc.criterions", criterions);
 
-    _CtrlAffc = new ctrl::AdaptiveController<double, X2_NUM_JOINTS, 50>(lengths, learning_rate, p_gains, d_gains);
+    _CtrlAffc = new AFFC(lengths, learning_rate, p_gains, d_gains);
 
     _CtrlAffc->set_criterions(deg2rad(criterions[0]), deg2rad(criterions[1]));
     _CtrlAffc->set_inital_guess(left_unknown, right_unknown);
