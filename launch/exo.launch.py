@@ -25,9 +25,9 @@ def generate_launch_description():
 	# Package share path
 	corc_path = get_package_share_directory("corc")
 
-	# Package share files
-	exo_file = os.path.join(corc_path, "config", "exo_default.yaml")
-	gait_file = os.path.join(corc_path, "gaits", "walking.csv")
+	# Package share paths
+	exo_path = os.path.join(corc_path, "config", "exo_default.yaml")
+	gait_path = os.path.join(corc_path, "gaits", "walking.csv")
 
 	# Nodes
 	exo_node = Node(
@@ -39,10 +39,10 @@ def generate_launch_description():
         parameters=[
 			{
 				"dry_run"   : LaunchConfiguration("dry_run"),
-				"exo_file"	: exo_file,
-				"gait_file" : gait_file
+				"exo_path"	: exo_path,
+				"gait_path" : gait_path
 			},
-			exo_file
+			exo_path
 		]
 	)
 	exo_splitter_node = Node(
@@ -57,7 +57,9 @@ def generate_launch_description():
 	bag_path = f"{os.path.expanduser('~')}/nrm-logs/{datetime.now().strftime('%H%M_%d-%m-%Y')}"
 
 	if os.path.exists(bag_path):
-		os.remove(bag_path)
+		os.remove(os.path.join(bag_path, "metadata.yaml"))
+		os.remove(os.path.join(bag_path, f"{datetime.now().strftime('%H%M_%d-%m-%Y')}_0.db3"))
+		os.removedirs(bag_path)
 
 	ros2bag = ExecuteProcess(
 		cmd=["ros2", "bag", "record", "-a", "-o", bag_path],
