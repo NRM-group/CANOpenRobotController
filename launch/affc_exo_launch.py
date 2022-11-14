@@ -9,7 +9,6 @@ from launch.actions import GroupAction
 from launch.substitutions import LaunchConfiguration
 from launch.substitutions import TextSubstitution
 from launch_ros.actions import Node
-from launch_ros.actions import PushRosNamespace
 
 def generate_launch_description():
 
