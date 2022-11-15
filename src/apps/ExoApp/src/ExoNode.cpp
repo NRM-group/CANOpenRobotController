@@ -159,6 +159,11 @@ void ExoNode::get_gait_file(std::string &path)
     get_parameter<std::string>("gait_file", path);
 }
 
+void ExoNode::get_affc_file(std::string &path)
+{
+    get_parameter<std::string>("affc_file", path);
+}
+
 void ExoNode::set_save_error(bool val)
 {
     _SaveError = val;

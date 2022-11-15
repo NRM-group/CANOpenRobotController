@@ -60,6 +60,7 @@ public: // ROS method visibility modifiers
     void ros_parameter(const std::string &name, std::vector<double> &val);
     void get_exo_file(std::string &path);
     void get_gait_file(std::string &path);
+    void get_affc_file(std::string &path);
     void set_save_error(bool val);
     void set_is_saved(bool val);
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_interface();
