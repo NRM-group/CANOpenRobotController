@@ -7,6 +7,7 @@ OffState::OffState(const std::shared_ptr<X2Robot> robot,
     : State("Off State"), _Robot(robot), _Node(node),
     _Counter{}
 {
+    ;
 }
 
 void OffState::entry()
@@ -17,14 +18,7 @@ void OffState::entry()
 
 void OffState::during()
 {
-    if (_Counter++ % 1000 == 0) {
-        if (!_Node->ok()) {
-            spdlog::warn("[OffState]: Node status {}", _Node->get_heart_beat().status);
-        }
-        else { // TODO:
-            spdlog::info("You found the Easter egg :)");
-        }
-    }
+    ;
 }
 
 void OffState::exit()

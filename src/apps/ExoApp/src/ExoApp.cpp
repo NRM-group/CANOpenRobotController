@@ -2,73 +2,24 @@
 #define LOG(x)  spdlog::info("[ExoApp]: {}", x)
 #define APP(x)  static_cast<ExoApp &>(x)
 
-/************************
- * STATE MACHINE EVENTS *
- ************************/
-bool off_to_run(StateMachine &sm)
-{
-    return APP(sm).get_robot()->getButtonValue(ButtonColor::GREEN);
-}
-
-bool off_to_set(StateMachine &sm)
-{
-    return APP(sm).get_robot()->getButtonValue(ButtonColor::YELLOW);
-}
-
-bool run_to_off(StateMachine &sm)
-{
-    return APP(sm).get_robot()->getButtonValue(ButtonColor::RED) ||
-           !APP(sm).get_robot()->safetyCheck() ||
-           !APP(sm).get_node()->ok();
-}
-
-bool run_to_set(StateMachine &sm)
-{
-    return APP(sm).get_node()->overwrite_save();
-}
-
-bool set_to_off(StateMachine &sm)
-{
-    return APP(sm).get_robot()->getButtonValue(ButtonColor::RED) ||
-           APP(sm).get_node()->save_error() ||
-           !APP(sm).get_node()->ok();
-}
-
-bool set_to_run(StateMachine &sm)
-{
-    return APP(sm).get_node()->is_saved();
-}
-
 /*****************************
  * STATE MACHINE TRANSITIONS *
  *****************************/
 ExoApp::ExoApp(int argc, char **argv) : StateMachine()
 {
-    LOG("Spawning X2  Robot...(1/5)");
+    LOG("Spawning X2  Robot...(1/3)");
     setRobot(std::make_shared<X2Robot>("exo"));
 
-    LOG("Spawning Exo Node ...(2/5)");
+    LOG("Spawning Exo Node ...(2/3)");
     rclcpp::InitOptions ros_init = rclcpp::InitOptions();
     ros_init.shutdown_on_sigint = false;
     rclcpp::init(argc, argv, ros_init);
     _Node = std::make_shared<ExoNode>(get_robot());
 
-    LOG("Spawning Off State...(3/5)");
-    addState("OffState", std::make_unique<OffState>(get_robot(), _Node));
-
-    LOG("Spawning Run State...(4/5)");
+    LOG("Spawning Run State...(3/3)");
     addState("RunState", std::make_unique<RunState>(get_robot(), _Node));
 
-    LOG("Spawning Set State...(5/5)");
-    addState("SetState", std::make_unique<SetState>(get_robot(), _Node));
-
-    addTransition("OffState", off_to_run, "RunState");
-    addTransition("OffState", off_to_set, "SetState");
-    addTransition("RunState", run_to_off, "OffState");
-    addTransition("RunState", run_to_set, "SetState");
-    addTransition("SetState", set_to_off, "OffState");
-    addTransition("SetState", set_to_run, "RunState");
-    setInitState("SetState");
+    setInitState("RunState");
 
     LOG("Ready");
 }
@@ -94,7 +45,6 @@ void ExoApp::hwStateUpdate()
     );
 #endif
     get_robot()->updateRobot();
-    get_node()->publish_heart_beat();
     rclcpp::spin_some(get_node()->get_interface());
 }
 

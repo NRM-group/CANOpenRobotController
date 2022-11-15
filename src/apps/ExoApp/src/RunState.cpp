@@ -21,11 +21,9 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
     _Node->ros_declare(
         {
             "l", "m", "s",
-            "affc.left_unknown",
             "affc.learning_rate",
             "affc.kp",
             "affc.kd",
-            "affc.right_unknown",
             "affc.criterions"
         }
     );
@@ -39,7 +37,6 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
 void RunState::entry()
 {
     std::vector<double> learning_rate, p_gains, d_gains;
-    std::vector<double> left_unknown, right_unknown;
     std::vector<double> criterions, lengths;
 
     // AFFC control parameters
@@ -47,14 +44,14 @@ void RunState::entry()
     _Node->ros_parameter("affc.learning_rate", learning_rate);
     _Node->ros_parameter("affc.kp", p_gains);
     _Node->ros_parameter("affc.kd", d_gains);
-    _Node->ros_parameter("affc.left_unknown", left_unknown);
-    _Node->ros_parameter("affc.right_unknown", right_unknown);
     _Node->ros_parameter("affc.criterions", criterions);
+
+    std::transform(learning_rate.begin(), learning_rate.end(), learning_rate.begin(),
+               std::bind(std::multiplies<double>(), std::placeholders::_1, 1e-5));
 
     _CtrlAffc = new AFFC(lengths, learning_rate, p_gains, d_gains);
 
     _CtrlAffc->set_criterions(deg2rad(criterions[0]), deg2rad(criterions[1]));
-    _CtrlAffc->set_inital_guess(left_unknown, right_unknown);
 
     // butterworth 2nd order fc = 30Hz, fs = 333.333Hz
     _CtrlPositionFilter.set_coeff_a({1.0, -1.2247, 0.4504});
@@ -89,19 +86,43 @@ void RunState::during()
 
     // check if the AFFC algorithm is finished
     if (_CtrlAffc->is_finished(AFFC::Leg::LEFT_LEG) && _CtrlAffc->is_finished(AFFC::Leg::RIGHT_LEG)) {
+
+        LOG("Overwriting AFFC learned parameters...");
+        std::string filepath;
+        _Node->get_affc_file(filepath);
+        YAML::Node config = YAML::LoadFile(filepath);
+        auto param = config["exo"]["ros__parameters"];
+
         Eigen::Matrix<double, 18, 1> learned_parameters;
 
+        // Left leg
         learned_parameters = _CtrlAffc->get_learned_params(AFFC::Leg::LEFT_LEG);
         print_array(
-            std::vector<double>(learned_parameters.data(), learned_parameters.data() + learned_parameters.size())
+            std::vector<double>(
+                learned_parameters.data(), 
+                learned_parameters.data() + learned_parameters.size()
+            )
+        );
+        param["affc"]["left_unknown"].as<std::vector<double>>() = std::vector<double>(
+            learned_parameters.data(), 
+            learned_parameters.data() + learned_parameters.size()
         );
 
+        // Right leg
         learned_parameters = _CtrlAffc->get_learned_params(AFFC::Leg::RIGHT_LEG);
         print_array(
-            std::vector<double>(learned_parameters.data(), learned_parameters.data() + learned_parameters.size())
+            std::vector<double>(
+                learned_parameters.data(), 
+                learned_parameters.data() + learned_parameters.size()
+            )
+        );
+        param["affc"]["right_unknown"].as<std::vector<double>>() = std::vector<double>(
+            learned_parameters.data(), 
+            learned_parameters.data() + learned_parameters.size()
         );
 
-        spdlog::info("AFFC is finished for both legs.");
+        std::ofstream os(filepath);
+        os << config;
         return;
     }
 
@@ -142,12 +163,77 @@ void RunState::during()
     _Robot->setTorque(_TorqueOutput);
     _Node->publish_joint_reference(
         std::vector<double>(
-            _GaitTrajectory.getPosition(time).data(),
-            _GaitTrajectory.getPosition(time).data() + _GaitTrajectory.getPosition(time).size()
+            _DesiredPosition.data(),
+            _DesiredPosition.data() + _DesiredPosition.size()
+        )
+    );
+    _Node->publish_joint_vel_reference(
+        std::vector<double>(
+            _DesiredVelocity.data(),
+            _DesiredVelocity.data() + _DesiredVelocity.size()
+        )
+    );
+    _Node->publish_joint_accel_reference(
+        std::vector<double>(
+            _DesiredAccel.data(),
+            _DesiredAccel.data() + _DesiredAccel.size()
         )
     );
     _Node->publish_joint_state();
-    _Node->publish_strain_gauge();
+
+    // AFFC debug publishers
+    auto left_known_matrix = _CtrlAffc->_update_known_matrix(_DesiredPosition, _DesiredVelocity, _DesiredAccel, AFFC::Leg::LEFT_LEG);
+    auto right_known_matrix = _CtrlAffc->_update_known_matrix(_DesiredPosition, _DesiredVelocity, _DesiredAccel, AFFC::Leg::RIGHT_LEG);
+    auto left_unknown_parameters = _CtrlAffc->peek_current_learned_params(AFFC::Leg::LEFT_LEG);
+    auto right_unknown_parameters = _CtrlAffc->peek_current_learned_params(AFFC::Leg::RIGHT_LEG);
+    auto tracking_error = _CtrlAffc->peek_tracking_error();
+    auto sgd_error = _CtrlAffc->peek_grad_descent_error();
+    _Node->publish_affc_torque(
+        std::vector<double>(
+            _TorqueOutput.data(),
+            _TorqueOutput.data() + _TorqueOutput.size()
+        )
+    );
+    _Node->publish_affc_known_parameters(
+        std::vector<double>(
+            left_known_matrix(0, Eigen::placeholders::all).data(),
+            left_known_matrix(0, Eigen::placeholders::all).data() + left_known_matrix(0, Eigen::placeholders::all).size()
+        ),
+        std::vector<double>(
+            right_known_matrix(0, Eigen::placeholders::all).data(),
+            right_known_matrix(0, Eigen::placeholders::all).data() + right_known_matrix(0, Eigen::placeholders::all).size()
+        ),
+        std::vector<double>(
+            left_known_matrix(1, Eigen::placeholders::all).data(),
+            left_known_matrix(1, Eigen::placeholders::all).data() + left_known_matrix(1, Eigen::placeholders::all).size()
+        ),
+        std::vector<double>(
+            right_known_matrix(1, Eigen::placeholders::all).data(),
+            right_known_matrix(1, Eigen::placeholders::all).data() + right_known_matrix(1, Eigen::placeholders::all).size()
+        )
+    );
+    _Node->publish_affc_unknown_parameters(
+        std::vector<double>(
+            left_unknown_parameters.data(),
+            left_unknown_parameters.data() + left_unknown_parameters.size()
+        ),
+        std::vector<double>(
+            right_unknown_parameters.data(),
+            right_unknown_parameters.data() + right_unknown_parameters.size()
+        )
+    );
+    _Node->publish_affc_tracking_error(
+        std::vector<double>(
+            tracking_error.data(),
+            tracking_error.data() + tracking_error.size()
+        )
+    );
+    _Node->publish_affc_sgd_error(
+        std::vector<double>(
+            sgd_error.data(),
+            sgd_error.data() + sgd_error.size()
+        )
+    );
 }
 
 void RunState::exit()

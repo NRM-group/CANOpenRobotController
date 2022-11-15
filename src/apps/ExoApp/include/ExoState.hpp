@@ -15,20 +15,9 @@
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
-/* Exo interfaces */
-#include "exo_msgs/msg/dev_toggle.hpp"
-#include "exo_msgs/msg/endpoint.hpp"
-#include "exo_msgs/msg/external_parameter.hpp"
-#include "exo_msgs/msg/friction_parameter.hpp"
-#include "exo_msgs/msg/gait_parameter.hpp"
-#include "exo_msgs/msg/patient_parameter.hpp"
-#include "exo_msgs/msg/pd_parameter.hpp"
-#include "exo_msgs/msg/sit_to_stand_parameter.hpp"
-#include "exo_msgs/msg/user_command.hpp"
 /* ROS interface namespaces */
 using namespace std_msgs::msg;
 using namespace sensor_msgs::msg;
-using namespace exo_msgs::msg;
 
 /*************
  * OFF STATE *
