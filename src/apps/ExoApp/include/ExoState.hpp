@@ -62,7 +62,7 @@ private:
 
 private:
     void update_controllers();
-    ctrl::AdaptiveController<double, X2_NUM_JOINTS, 50>* _CtrlAffc;
+    ctrl::AdaptiveController<double, X2_NUM_JOINTS, 25>* _CtrlAffc;
     ctrl::Butterworth<double, X2_NUM_JOINTS, 2> _CtrlPositionFilter;
 
 private:

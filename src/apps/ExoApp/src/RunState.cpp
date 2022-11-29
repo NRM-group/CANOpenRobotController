@@ -1,13 +1,13 @@
 #include "ExoState.hpp"
 #define LOG(x)      spdlog::info("[RunState]: {}", x)
 
-typedef ctrl::AdaptiveController<double, X2_NUM_JOINTS, 50> AFFC;
+typedef ctrl::AdaptiveController<double, X2_NUM_JOINTS, 25> AFFC;
 
 template <typename T>
 void print_array(const std::vector<T> &a, std::ostream &output = std::cout)
 {
     std::size_t N = a.size();
-    for (std::size_t i = 0; i < N - 1; i++)
+    for (std::size_t i = 0; i < N; i++)
     {
         output << a[i] << ",";
     }
@@ -46,8 +46,9 @@ void RunState::entry()
     _Node->ros_parameter("affc.kd", d_gains);
     _Node->ros_parameter("affc.criterions", criterions);
 
+    // TODO: Allow each leg to have different learning rates
     std::transform(learning_rate.begin(), learning_rate.end(), learning_rate.begin(),
-               std::bind(std::multiplies<double>(), std::placeholders::_1, 1e-5));
+               std::bind(std::multiplies<double>(), std::placeholders::_1, 5e-3));
 
     _CtrlAffc = new AFFC(lengths, learning_rate, p_gains, d_gains);
 
@@ -90,40 +91,43 @@ void RunState::during()
         LOG("Overwriting AFFC learned parameters...");
         std::string filepath;
         _Node->get_affc_file(filepath);
-        YAML::Node config = YAML::LoadFile(filepath);
-        auto param = config["exo"]["ros__parameters"];
+        std::ofstream os(filepath);
+        YAML::Emitter config(os);
+        config.SetDoublePrecision(6);
 
         Eigen::Matrix<double, 18, 1> learned_parameters;
 
+        config << YAML::BeginMap;
+        config << YAML::Key << "exo";
+
+        config << YAML::BeginMap;
+        config << YAML::Key << "ros__parameters";
+
+        config << YAML::BeginMap;
+        config << YAML::Key << "affc";
+
+        config << YAML::BeginMap;
+
         // Left leg
-        learned_parameters = _CtrlAffc->get_learned_params(AFFC::Leg::LEFT_LEG);
-        print_array(
-            std::vector<double>(
-                learned_parameters.data(), 
-                learned_parameters.data() + learned_parameters.size()
-            )
-        );
-        param["affc"]["left_unknown"].as<std::vector<double>>() = std::vector<double>(
+        learned_parameters = _CtrlAffc->peek_current_learned_params(AFFC::Leg::LEFT_LEG);
+        config << YAML::Key << "left_unknown" << YAML::Flow << std::vector<double>(
             learned_parameters.data(), 
             learned_parameters.data() + learned_parameters.size()
         );
 
         // Right leg
-        learned_parameters = _CtrlAffc->get_learned_params(AFFC::Leg::RIGHT_LEG);
-        print_array(
-            std::vector<double>(
-                learned_parameters.data(), 
-                learned_parameters.data() + learned_parameters.size()
-            )
-        );
-        param["affc"]["right_unknown"].as<std::vector<double>>() = std::vector<double>(
+        learned_parameters = _CtrlAffc->peek_current_learned_params(AFFC::Leg::RIGHT_LEG);
+        config << YAML::Key << "right_unkown" << YAML::Flow << std::vector<double>(
             learned_parameters.data(), 
             learned_parameters.data() + learned_parameters.size()
         );
 
-        std::ofstream os(filepath);
-        os << config;
-        return;
+        config << YAML::EndMap;
+        config << YAML::EndMap;
+        config << YAML::EndMap;
+        config << YAML::EndMap;
+
+        std::raise(SIGINT);
     }
 
     // iterate AFFC tune algorithm once
