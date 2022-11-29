@@ -16,6 +16,7 @@ SetState::SetState(const std::shared_ptr<X2Robot> robot,
 
 void SetState::entry()
 {
+    LOG(">>> Entered >>>");
     // TODO:
     // _Robot->homing();
 
@@ -30,96 +31,128 @@ void SetState::entry()
     std::copy(buffer.begin(), buffer.end(), coeff.begin());
     _Robot->getStrainGaugeFilter().set_coeff_b(coeff);
 
-    _Robot->initPositionControl();
-    LOG(">>> Entered >>>");
+    _Robot->initTorqueControl();
 }
 
 void SetState::during()
 {
     LOG("Calibrating strain gauge offset...");
-    _Robot->setPosition(Eigen::Vector4d::Zero());
+    _Robot->setTorque(Eigen::Vector4d::Zero());
+    usleep(1e6);
     _Robot->calibrateForceSensors();
 
-    if (_Node->get_dev_toggle().save_default) {
+    if (_Node->start_overwrite()) {
 
         LOG("Overwriting default parameters...");
-        using vec = std::vector<double>;
+
         std::string filepath;
         _Node->get_exo_file(filepath);
-        YAML::Node config = YAML::LoadFile(filepath);
-        auto param = config["exo"]["ros__parameters"];
 
-        // length
-        param["l"].as<vec>() = {
+        YAML::Node param = YAML::LoadFile(filepath)["exo"]["ros__parameters"];
+
+        std::ofstream os(filepath);
+        YAML::Emitter config(os);
+        config.SetDoublePrecision(6);
+
+        config << YAML::BeginMap;
+        config << YAML::Key << "exo";
+
+        config << YAML::BeginMap;
+        config << YAML::Key << "ros__parameters";
+
+        config << YAML::BeginMap;
+
+        // Masses
+        config << YAML::Key << "m" << YAML::Flow << std::vector<double>
+        {
             _Node->get_patient_parameter().left_thigh_length,
             _Node->get_patient_parameter().left_shank_length,
             _Node->get_patient_parameter().right_thigh_length,
-            _Node->get_patient_parameter().right_thigh_length
+            _Node->get_patient_parameter().right_shank_length,
+            0.0,
+            10.3
         };
 
-        // external
-        param["external"].as<vec>() = {
-            _Node->get_external_parameter().torque[1],
-            _Node->get_external_parameter().torque[2],
-            _Node->get_external_parameter().torque[3],
-            _Node->get_external_parameter().torque[4],
-        };
+        // Lengths
+        config << YAML::Key << "l" << YAML::Flow << param["l"].as<std::vector<double>>();
 
-        // friction
-        param["friction"]["static"].as<vec>() = {
-            _Node->get_friction_parameter().static_coefficient[1],
-            _Node->get_friction_parameter().static_coefficient[2],
-            _Node->get_friction_parameter().static_coefficient[3],
-            _Node->get_friction_parameter().static_coefficient[4]
-        };
-        param["friction"]["viscous"].as<vec>() = {
-            _Node->get_friction_parameter().viscous_coefficient[1],
-            _Node->get_friction_parameter().viscous_coefficient[2],
-            _Node->get_friction_parameter().viscous_coefficient[3],
-            _Node->get_friction_parameter().viscous_coefficient[4]
-        };
+        // Centre of mass
+        config << YAML::Key << "s" << YAML::Flow << param["s"].as<std::vector<double>>();
+
+        // External
+        config << YAML::Key << "external" << YAML::Flow << std::vector<double>(
+            _Node->get_external_parameter().torque.begin() + 1,
+            _Node->get_external_parameter().torque.end()
+        );
+
+        // Friction
+        config << YAML::Key << "friction";
+        config << YAML::BeginMap;
+        config << YAML::Key << "static" << YAML::Flow << std::vector<double>(
+            _Node->get_friction_parameter().static_coefficient.begin() + 1,
+            _Node->get_friction_parameter().static_coefficient.end()
+        );
+        config << YAML::Key << "viscous" << YAML::Flow << std::vector<double>(
+            _Node->get_friction_parameter().viscous_coefficient.begin() + 1,
+            _Node->get_friction_parameter().viscous_coefficient.end()
+        );
+        config << YAML::Key << "neg" << YAML::Flow << param["friction"]["neg"].as<std::vector<double>>();
+        config << YAML::Key << "pos" << YAML::Flow << param["friction"]["pos"].as<std::vector<double>>();
+        config << YAML::EndMap;
 
         // PD
-        param["left_kp"].as<vec>() = {
-            _Node->get_pd_parameter().left_kp[1],
-            _Node->get_pd_parameter().left_kp[2],
-            _Node->get_pd_parameter().left_kp[3],
-            _Node->get_pd_parameter().left_kp[4]
-        };
-        param["right_kp"].as<vec>() = {
-            _Node->get_pd_parameter().right_kp[1],
-            _Node->get_pd_parameter().right_kp[2],
-            _Node->get_pd_parameter().right_kp[3],
-            _Node->get_pd_parameter().right_kp[4]
-        };
-        param["left_kd"].as<vec>() = {
-            _Node->get_pd_parameter().left_kd[1],
-            _Node->get_pd_parameter().left_kd[2],
-            _Node->get_pd_parameter().left_kd[3],
-            _Node->get_pd_parameter().left_kd[4]
-        };
-        param["right_kd"].as<vec>() = {
-            _Node->get_pd_parameter().right_kd[1],
-            _Node->get_pd_parameter().right_kd[2],
-            _Node->get_pd_parameter().right_kd[3],
-            _Node->get_pd_parameter().right_kd[4]
-        };
-        param["alpha_min"].as<vec>() = {
-            _Node->get_pd_parameter().alpha_min[1],
-            _Node->get_pd_parameter().alpha_min[2],
-            _Node->get_pd_parameter().alpha_min[3],
-            _Node->get_pd_parameter().alpha_min[4]
-        };
-        param["alpha_max"].as<vec>() = {
-            _Node->get_pd_parameter().alpha_max[1],
-            _Node->get_pd_parameter().alpha_max[2],
-            _Node->get_pd_parameter().alpha_max[3],
-            _Node->get_pd_parameter().alpha_max[4]
-        };
+        config << YAML::Key << "pd";
+        config << YAML::BeginMap;
+        config << YAML::Key << "left_kp" << YAML::Flow << std::vector<double>(
+            _Node->get_pd_parameter().left_kp.begin() + 1,
+            _Node->get_pd_parameter().left_kp.end()
+        );
+        config << YAML::Key << "right_kp" << YAML::Flow << std::vector<double>(
+            _Node->get_pd_parameter().left_kp.begin() + 1,
+            _Node->get_pd_parameter().left_kp.end()
+        );
+        config << YAML::Key << "left_kd" << YAML::Flow << std::vector<double>(
+            _Node->get_pd_parameter().left_kp.begin() + 1,
+            _Node->get_pd_parameter().left_kp.end()
+        );
+        config << YAML::Key << "right_kd" << YAML::Flow << std::vector<double>(
+            _Node->get_pd_parameter().left_kp.begin() + 1,
+            _Node->get_pd_parameter().left_kp.end()
+        );
+        config << YAML::Key << "alpha_min" << YAML::Flow << std::vector<double>(
+            _Node->get_pd_parameter().alpha_min.begin() + 1,
+            _Node->get_pd_parameter().alpha_min.end()
+        );
+        config << YAML::Key << "alpha_max" << YAML::Flow << std::vector<double>(
+            _Node->get_pd_parameter().alpha_max.begin() + 1,
+            _Node->get_pd_parameter().alpha_max.end()
+        );
+        config << YAML::EndMap;
 
-        std::ofstream os(filepath), backupos(filepath + ".bak");
-        os << config;
-        backupos << config;
+        // Torque
+        // TODO: Implement
+        config << YAML::Key << "torque" << YAML::Flow << param["torque"].as<std::vector<double>>();
+
+        // Strain gauge
+        config << YAML::Key << "strain_gauge";
+        config << YAML::BeginMap;
+        config << YAML::Key << "coeff_a" << YAML::Flow << param["strain_gauge"]["coeff_a"].as<std::vector<double>>();
+        config << YAML::Key << "coeff_b" << YAML::Flow << param["strain_gauge"]["coeff_b"].as<std::vector<double>>();
+        config << YAML::EndMap;
+
+        // Limits
+        config << YAML::Key << "max_torque" << YAML::Value << param["max_torque"].as<double>();
+        config << YAML::Key << "max_velocity" << YAML::Value << param["max_velocity"].as<double>();
+        config << YAML::Key << "position_limits";
+        config << YAML::BeginMap;
+        config << YAML::Key << "max_hip" << YAML::Value << param["position_limits"]["max_hip"].as<double>();
+        config << YAML::Key << "min_hip" << YAML::Value << param["position_limits"]["min_hip"].as<double>();
+        config << YAML::Key << "max_knee" << YAML::Value << param["position_limits"]["max_knee"].as<double>();
+        config << YAML::Key << "min_knee" << YAML::Value << param["position_limits"]["min_knee"].as<double>();
+        config << YAML::EndMap;
+
+        config << YAML::EndMap;
+        config << YAML::EndMap;
     }
 
     _Node->set_is_saved(true);

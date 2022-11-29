@@ -54,11 +54,20 @@ def generate_launch_description():
 	ld.add_action(exo_splitter_node)
 
 	# Bag
-	bag_path = f"{os.path.expanduser('~')}/nrm-logs/{datetime.now().strftime('%H%M_%d-%m-%Y')}"
+	bag_name = datetime.now().strftime("%H%M_%d-%m-%Y")
+	bag_path = f"{os.path.expanduser('~')}/nrm-logs/{bag_name}"
 
 	if os.path.exists(bag_path):
-		os.remove(os.path.join(bag_path, "metadata.yaml"))
-		os.remove(os.path.join(bag_path, f"{datetime.now().strftime('%H%M_%d-%m-%Y')}_0.db3"))
+
+		bag_file = os.path.join(bag_path, bag_name)
+		meta_file = os.path.join(bag_path, "metadata.yaml")
+
+		if os.path.exists(bag_file):
+			os.remove(bag_file)
+
+		if os.path.exists(meta_file):
+			os.remove(meta_file)
+
 		os.removedirs(bag_path)
 
 	ros2bag = ExecuteProcess(

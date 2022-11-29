@@ -11,8 +11,8 @@ OffState::OffState(const std::shared_ptr<X2Robot> robot,
 
 void OffState::entry()
 {
-    _Robot->disable();
     LOG(">>> Entered >>>");
+    _Robot->disable();
 }
 
 void OffState::during()
@@ -21,8 +21,8 @@ void OffState::during()
         if (!_Node->ok()) {
             spdlog::warn("[OffState]: Node status {}", _Node->get_heart_beat().status);
         }
-        else { // TODO:
-            spdlog::info("You found the Easter egg :)");
+        else {
+            spdlog::info("[OffState]: Robot idling in disabled state");
         }
     }
 }

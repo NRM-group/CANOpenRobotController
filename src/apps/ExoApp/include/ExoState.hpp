@@ -1,6 +1,12 @@
 #ifndef __EXO_STATE_HPP__
 #define __EXO_STATE_HPP__
 
+/******** RATE LIMITS ********/
+#define POSITION_RATE   333 // = 1 rad/s
+#define MIN_ROM_RATE    333 // = 1 rad/s
+#define MAX_ROM_RATE    333 // = 1 rad/s
+/*****************************/
+
 /* STL */
 #include <string>
 #include <iostream>
@@ -66,6 +72,12 @@ private:
     const std::shared_ptr<X2Robot> _Robot;
     const std::shared_ptr<ExoNode> _Node;
     Eigen::Vector4d _TorqueOutput;
+    static void rate_limit(const Eigen::Vector4d &target, Eigen::Vector4d &current, double rate);
+
+private:
+    Eigen::Vector4d _Position;
+    Eigen::Vector4d _MinROM;
+    Eigen::Vector4d _MaxROM;
 
 private:
     void update_controllers();

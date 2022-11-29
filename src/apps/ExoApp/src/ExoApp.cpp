@@ -7,7 +7,8 @@
  ************************/
 bool off_to_run(StateMachine &sm)
 {
-    return APP(sm).get_robot()->getButtonValue(ButtonColor::GREEN);
+    return APP(sm).get_robot()->getButtonValue(ButtonColor::GREEN) ||
+           APP(sm).get_node()->ok();
 }
 
 bool off_to_set(StateMachine &sm)
@@ -24,7 +25,8 @@ bool run_to_off(StateMachine &sm)
 
 bool run_to_set(StateMachine &sm)
 {
-    return APP(sm).get_node()->overwrite_save();
+    return APP(sm).get_robot()->getButtonValue(ButtonColor::YELLOW) ||
+           APP(sm).get_node()->overwrite_save();
 }
 
 bool set_to_off(StateMachine &sm)

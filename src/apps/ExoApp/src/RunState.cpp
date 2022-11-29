@@ -5,7 +5,8 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Run State"), _Robot(robot), _Node(node),
     _CtrlExternal{}, _CtrlFriction{}, _CtrlGravity{},
-    _CtrlPD{}, _CtrlTorque{}, _LookupTable{}
+    _Position{}, _MinROM{}, _MaxROM{},
+    _CtrlPD{}, _CtrlTorque{}, _LookupTable{100}
 {
     _Node->ros_declare(
         {
@@ -28,6 +29,7 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
 
 void RunState::entry()
 {
+    LOG(">>> Entered >>>");
     std::vector<double> buffer, buffer2, buffer3, buffer4;
 
     // External control parameters
@@ -78,7 +80,7 @@ void RunState::entry()
 
     // Initialise torque control
     _Robot->initTorqueControl();
-    LOG(">>> Entered >>>");
+    _Node->set_is_saved(false);
 }
 
 void RunState::during()
@@ -101,7 +103,8 @@ void RunState::during()
         _TorqueOutput += _CtrlGravity.output();
     }
     if (_Node->get_dev_toggle().pd && _Node->get_user_command().toggle_walk) {
-        _CtrlPD.loop(_LookupTable.getJointPositions(), _Robot->getPosition());
+        rate_limit(_LookupTable.getPosition(), _Position, POSITION_RATE);
+        _CtrlPD.loop(_Position, _Robot->getPosition());
         _TorqueOutput += _CtrlPD.output();
     }
     if (_Node->get_dev_toggle().torque) {
@@ -122,8 +125,8 @@ void RunState::during()
     _Robot->setTorque(_TorqueOutput);
     _Node->publish_joint_reference(
         std::vector<double>(
-            _LookupTable.getJointPositions().data(),
-            _LookupTable.getJointPositions().data() + _LookupTable.getJointPositions().size()
+            _LookupTable.getPosition().data(),
+            _LookupTable.getPosition().data() + _LookupTable.getPosition().size()
         )
     );
     _Node->publish_joint_state();
@@ -133,6 +136,23 @@ void RunState::during()
 void RunState::exit()
 {
     LOG("<<< Exited <<<");
+}
+
+void RunState::rate_limit(const Eigen::Vector4d &target, Eigen::Vector4d &current, double rate)
+{
+    for (std::size_t i = 0; i < X2_NUM_JOINTS; i++) {
+
+        if (std::abs(target[i] - current[i]) > rate) {
+            if (target[i] > current[i]) {
+                current[i] += rate;
+            } else {
+                current[i] -= rate;
+            }
+        }
+        else {
+            current[i] = target[i];
+        }
+    }
 }
 
 void RunState::update_controllers()
@@ -182,12 +202,14 @@ void RunState::update_lookup_table()
     _Node->get_user_command().toggle_walk ? _LookupTable.start() : _LookupTable.stop();
 
     // Set min and max range of motion
-    std::array<double, X2_NUM_JOINTS> rom_min, rom_max;
+    Eigen::Vector4d rom_min, rom_max;
     for (std::size_t i = 0; i < X2_NUM_JOINTS; i++) {
         rom_min[i] = deg2rad(_Node->get_gait_parameter().rom_min[i+1]);
         rom_max[i] = deg2rad(_Node->get_gait_parameter().rom_max[i+1]);
     }
-    _LookupTable.setROM(rom_min, rom_max);
+    rate_limit(rom_min, _MinROM, MIN_ROM_RATE);
+    rate_limit(rom_max, _MaxROM, MAX_ROM_RATE);
+    _LookupTable.setROM(_MinROM, _MaxROM);
 
     // Set period of gait trajectory
     _LookupTable.setPeriod(_Node->get_gait_parameter().step_period);

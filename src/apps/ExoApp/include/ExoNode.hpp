@@ -43,7 +43,7 @@ public:
     using FloatArray = Float64MultiArray;
     enum HeartBeatStatus
     {
-        DEAD, OK, ERROR, TMP
+        OK, DEAD, ESTOP, RESTART, INTERNAL
     };
 
 public: // Constructor
@@ -62,6 +62,7 @@ public: // ROS method visibility modifiers
     void get_gait_file(std::string &path);
     void set_save_error(bool val);
     void set_is_saved(bool val);
+    bool start_overwrite();
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_interface();
 
 public: // ROS publish methods

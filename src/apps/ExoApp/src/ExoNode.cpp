@@ -6,10 +6,11 @@
  ***************/
 ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     : Node(robot->getRobotName()), _Robot(robot),
-    _DevToggle(), _ExternalParameter(), _FrictionParameter(),
+    _SaveError(), _IsSaved(), _DevToggle(),
+    _ExternalParameter(), _FrictionParameter(),
     _GaitParameter(), _HeartBeat(), _PatientParameter(),
     _PDParameter(), _SitToStandParameter(), _TorqueLimit(),
-    _TorqueParameter(), _UserCommand(), _SaveError(), _IsSaved()
+    _TorqueParameter(), _UserCommand()
 {
     _PubHeartBeat = create_publisher<HeartBeat>("corc_heartbeat", 4);
     _PubJointState = create_publisher<JointState>("joint_states", 4);
@@ -62,8 +63,8 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     );
 
     declare_parameter<int>("dry_run", 0);
-    declare_parameter<std::string>("exo_file", "");
-    declare_parameter<std::string>("gait_file", "");
+    declare_parameter<std::string>("exo_path", "");
+    declare_parameter<std::string>("gait_path", "");
 
     declare_parameter<double>("max_torque", 0.0);
     declare_parameter<double>("max_velocity", 0.0);
@@ -151,12 +152,12 @@ void ExoNode::ros_parameter(const std::string &name, std::vector<double> &val)
 
 void ExoNode::get_exo_file(std::string &path)
 {
-    get_parameter<std::string>("exo_file", path);
+    get_parameter<std::string>("exo_path", path);
 }
 
 void ExoNode::get_gait_file(std::string &path)
 {
-    get_parameter<std::string>("gait_file", path);
+    get_parameter<std::string>("gait_path", path);
 }
 
 void ExoNode::set_save_error(bool val)
@@ -167,6 +168,13 @@ void ExoNode::set_save_error(bool val)
 void ExoNode::set_is_saved(bool val)
 {
     _IsSaved = val;
+}
+
+bool ExoNode::start_overwrite()
+{
+    bool save = _DevToggle.save_default;
+    _DevToggle.save_default = false;
+    return save;
 }
 
 rclcpp::node_interfaces::NodeBaseInterface::SharedPtr ExoNode::get_interface()
@@ -190,15 +198,20 @@ void ExoNode::publish_heart_beat()
         time_since_midnight - sec_since_midnight
     ).count();
 
-    // TODO:
-    msg.status = 1;
+    msg.status = HeartBeatStatus::OK;
+
+    if (_Robot->getButtonValue(ButtonColor::RED)) {
+        msg.status = HeartBeatStatus::ESTOP;
+    }
+
+    // FIXME: HOW TO DETECT CAN BUS DISCONNECT?
+    // TODO: Add internal conflict detection?
 
     _PubHeartBeat->publish(msg);
 }
 
 void ExoNode::publish_joint_reference(const std::vector<double> &val)
 {
-    // TODO: May need to be offset + 1
     FloatArray msg{};
 
     msg.data = std::move(val);
@@ -210,8 +223,8 @@ void ExoNode::publish_joint_state()
 {
     JointState msg{};
 
-    const std::array<std::string, X2_NUM_JOINTS> name {
-        "left_hip", "left_knee", "right_hip", "right_knee"
+    const std::array<std::string, X2_NUM_JOINTS + 1> name {
+        "left_hip_joint", "left_knee_joint", "right_hip_joint", "right_knee_joint", "world_to_backpack"
     };
 
     msg.header.stamp = now();
@@ -228,6 +241,8 @@ void ExoNode::publish_joint_state()
         _Robot->getTorque().data(),
         _Robot->getTorque().data() + _Robot->getTorque().size()
     );
+
+    msg.position.push_back(_Robot->getBackPackAngleOnMedianPlane());
 
     _PubJointState->publish(msg);
 }

@@ -5,7 +5,7 @@ exo:
     # Mass: upper thigh, lower thigh, upper shank, lower shank, foot, backpak
     m: [0.7, 2.14, 0.64, 0.47, 0.0, 10.3] # kg
     # Length: left thigh, left shank, right thigh, right shank
-    l: [0.39, 0.4, 0.39, 0.4] # kg
+    l: [0.39, 0.4, 0.39, 0.4] # m
     # Centre of mass: hip->upper thigh, knee->lower thigh, knee->upper shank, ankle->lower shank, ankle->foot
     s: [0.0811, 0.05564, 0.09080, 0.0562, 0.08834] # m
 

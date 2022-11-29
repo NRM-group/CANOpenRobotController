@@ -19,12 +19,14 @@ git clone --recurse-submodules -b nrm-release https://github.com/NRM-group/CANOp
 git clone --recurse-submodules https://github.com/NRM-group/Ai-ExoMotus
 ```
 
-Build the workspace and install.
+Build the custom `exo_msgs` first, source it, then build the entire workspace and install.
 
 NOTE: Edit `CMakeLists.txt` under `CANOpenRobotController` for specific configurations, or leave as default.
 
 ```sh
 cd ~/ros2_ws
+colcon build --packages-select exo_msgs
+source install/setup.bash
 colcon build
 source install/setup.bash
 ```
