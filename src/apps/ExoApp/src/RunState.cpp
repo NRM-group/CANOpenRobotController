@@ -1,7 +1,7 @@
 #include "ExoState.hpp"
 #define LOG(x)      spdlog::info("[RunState]: {}", x)
 
-typedef ctrl::AdaptiveController<double, X2_NUM_JOINTS, 50> AFFC;
+typedef ctrl::AdaptiveController<double, X2_NUM_JOINTS, 25> AFFC;
 
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
@@ -45,6 +45,14 @@ void RunState::entry()
     std::vector<double> left_unknown, right_unknown;
     std::vector<double> criterions, lengths;
 
+    // External control parameters
+    _Node->ros_parameter("external", buffer);
+    _CtrlExternal.set_external_torque(buffer);
+
+    // Torque control parameters
+    _Node->ros_parameter("torque", buffer);
+    _CtrlTorque.set_gain(buffer);
+
     // Strain gauge filter parameters
     std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1> coeff;
     _Node->ros_parameter("strain_gauge.coeff_a", buffer);
@@ -53,10 +61,6 @@ void RunState::entry()
     _Node->ros_parameter("strain_gauge.coeff_b", buffer);
     std::copy(buffer.begin(), buffer.end(), coeff.begin());
     _Robot->getStrainGaugeFilter().set_coeff_b(coeff);
-
-    // External control parameters
-    _Node->ros_parameter("external", buffer);
-    _CtrlExternal.set_external_torque(buffer);
 
     // PD control parameters
     _Node->ros_parameter("pd.left_kp", buffer);
@@ -67,10 +71,6 @@ void RunState::entry()
     _Node->ros_parameter("pd.alpha_min", buffer);
     _Node->ros_parameter("pd.alpha_max", buffer2);
     _CtrlPD.set_alphas(buffer, buffer2);
-
-    // Torque control parameters
-    _Node->ros_parameter("torque", buffer);
-    _CtrlTorque.set_gain(buffer);
 
     // AFFC control parameters
     _Node->ros_parameter("l", lengths);
@@ -84,7 +84,7 @@ void RunState::entry()
     _CtrlAffc = new AFFC(lengths, learning_rate, p_gains, d_gains);
 
     _CtrlAffc->set_criterions(deg2rad(criterions[0]), deg2rad(criterions[1]));
-    _CtrlAffc->set_inital_guess(left_unknown, right_unknown);
+    _CtrlAffc->set_initial_guess(left_unknown, right_unknown);
 
     // butterworth 2nd order fc = 30Hz, fs = 333.333Hz
     _CtrlPositionFilter.set_coeff_a({1.0, -1.2247, 0.4504});
@@ -119,7 +119,7 @@ void RunState::during()
 
     // sum toggled controllers
     if (_Node->get_dev_toggle().pd && _Node->get_user_command().toggle_walk) {
-        _CtrlPD.loop(_LookupTable.getPosition(), _Robot->getPosition());
+        _CtrlPD.loop(_DesiredPosition, _Robot->getPosition());
         _TorqueOutput += _CtrlPD.output();
     }
     if (_Node->get_dev_toggle().mass) {
@@ -161,6 +161,12 @@ void RunState::during()
         std::vector<double>(
             _LookupTable.getPosition().data(),
             _LookupTable.getPosition().data() + _LookupTable.getPosition().size()
+        )
+    );
+    _Node->publish_affc_torque(
+        std::vector<double>(
+            _TorqueOutput.data(),
+            _TorqueOutput.data() + _TorqueOutput.size()
         )
     );
     _Node->publish_joint_state();

@@ -68,6 +68,7 @@ public: // ROS method visibility modifiers
 public: // ROS publish methods
     void publish_heart_beat();
     void publish_joint_reference(const std::vector<double> &val);
+    void publish_affc_torque(const std::vector<double> &val);
     void publish_joint_state();
     void publish_strain_gauge();
 
@@ -121,6 +122,7 @@ private: // ROS publishers
     rclcpp::Publisher<JointState>::SharedPtr _PubJointState;
     rclcpp::Publisher<FloatArray>::SharedPtr _PubJointReference;
     rclcpp::Publisher<FloatArray>::SharedPtr _PubStrainGauge;
+    rclcpp::Publisher<FloatArray>::SharedPtr _PubAffcTorque;
 
 private: // ROS subscriptions
     rclcpp::Subscription<DevToggle>::SharedPtr _SubDevToggle;

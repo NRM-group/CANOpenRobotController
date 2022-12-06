@@ -6,11 +6,21 @@ from ament_index_python import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch.substitutions import TextSubstitution
 from launch_ros.actions import Node
 
 def generate_launch_description():
 	# Launch description
 	ld = LaunchDescription()
+
+	# Launch arguments
+	dry_run_arg = DeclareLaunchArgument(
+		"dry_run", default_value=TextSubstitution(text="0"),
+		description="Set to '1' to run CORC without LabVIEW heartbeat"
+	)
+	ld.add_action(dry_run_arg)
 
 	# Package share path
 	corc_path = get_package_share_directory("corc")
@@ -29,6 +39,7 @@ def generate_launch_description():
 		output="screen",
         parameters=[
 			{
+				"dry_run"	: LaunchConfiguration("dry_run"),
 				"exo_file"	: exo_file,
 				"gait_file" : gait_file,
 				"affc_file"	: affc_file

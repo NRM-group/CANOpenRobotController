@@ -15,6 +15,7 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     _PubJointState = create_publisher<JointState>("joint_states", 4);
     _PubJointReference = create_publisher<FloatArray>("joint_references", 4);
     _PubStrainGauge = create_publisher<FloatArray>("strain_gauges", 4);
+    _PubAffcTorque = create_publisher<FloatArray>("affc_torque", 4);
 
     _SubDevToggle = create_subscription<DevToggle>(
         "dev_toggles", 4,
@@ -209,6 +210,15 @@ void ExoNode::publish_joint_reference(const std::vector<double> &val)
     msg.data = std::move(val);
 
     _PubJointReference->publish(msg);
+}
+
+void ExoNode::publish_affc_torque(const std::vector<double> &val)
+{
+    FloatArray msg{};
+
+    msg.data = std::move(val);
+
+    _PubAffcTorque->publish(msg);
 }
 
 void ExoNode::publish_joint_state()
