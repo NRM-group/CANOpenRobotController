@@ -10,6 +10,7 @@ OffState::OffState(const std::shared_ptr<X2Robot> robot,
     ;
 }
 
+// TODO: Add homing procedure so the exo always starts at the same initial position
 void OffState::entry()
 {
     _Robot->disable();

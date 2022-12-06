@@ -117,7 +117,7 @@ void RunState::during()
 
         // Right leg
         learned_parameters = _CtrlAffc->peek_current_learned_params(AFFC::Leg::RIGHT_LEG);
-        config << YAML::Key << "right_unkown" << YAML::Flow << std::vector<double>(
+        config << YAML::Key << "right_unknown" << YAML::Flow << std::vector<double>(
             learned_parameters.data(), 
             learned_parameters.data() + learned_parameters.size()
         );
