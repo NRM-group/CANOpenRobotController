@@ -42,7 +42,7 @@ X2FollowerState::X2FollowerState(StateMachine* m, X2Robot* exo, const float upda
     // controllers.insert(std::pair<cntrl, FrictionController<double, X2_NUM_JOINTS>*>(Fric, FricCntrl));
     // // Gravity to be implmented     
     controllers = {PDCntrl, ExtCntrl, FricCntrl};
-    posReader = LookupTable<double, X2_NUM_JOINTS>(1,0.1);
+    posReader.setPeriod(5);
     clock_gettime(CLOCK_MONOTONIC, &prevTime);
     currTrajProgress = 0;
     gaitIndex = 0;
@@ -65,8 +65,7 @@ void X2FollowerState::during(void) {
     if (safetyFlag) {
         return;
     }
-    if (mode == IDLE) {
-        //IMPORTANT: CHANGE THIS BACK TO ZERO TORQUE WHEN SIMULATION WORKING
+    if (mode == GAIT) {
         if (robot_->getControlMode() != CM_POSITION_CONTROL) {
             robot_->initPositionControl();
             spdlog::info("Initalised POSITION Control Mode");
@@ -76,7 +75,7 @@ void X2FollowerState::during(void) {
         // std::cout << desiredJointPositions_ << std::endl;
         robot_->setPosition(desiredJointPositions_);
 
-    } else if (mode == GAIT){
+    } else if (mode == IDLE){
         // switch motor control mode to torque control
         if (robot_->getControlMode() != CM_TORQUE_CONTROL) {
             robot_->initTorqueControl();

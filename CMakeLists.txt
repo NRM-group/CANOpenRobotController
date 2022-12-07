@@ -99,11 +99,8 @@ include_directories(${INCLUDE_DIRS})
 ament_target_dependencies(${APP_NAME} rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs control_msgs rclcpp_action)
 ament_export_dependencies(rclcpp std_msgs std_srvs sensor_msgs geometry_msgs exo_msgs control_msgs rclcpp_action)
 
-add_executable(x2_ik lib/trajectorylib/src/main.cpp)
-target_include_directories(x2_ik PUBLIC lib/trajectorylib/src)
-ament_target_dependencies(x2_ik rclcpp sensor_msgs exo_msgs)
 
-install(TARGETS ${APP_NAME} x2_ik DESTINATION lib/${PROJECT_NAME})
+install(TARGETS ${APP_NAME} DESTINATION lib/${PROJECT_NAME})
 install(PROGRAMS script/initCAN0.sh DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY lib/trajectorylib/gaits DESTINATION share/${PROJECT_NAME})

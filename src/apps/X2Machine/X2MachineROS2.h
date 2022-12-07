@@ -11,10 +11,11 @@
 #include "exo_msgs/msg/enable.hpp"
 #include "exo_msgs/msg/corc.hpp"
 #include "exo_msgs/msg/output.hpp"
+#include "exo_msgs/msg/endpoint.hpp"
 
 
 
-#include "x2_ik_ros.hpp"
+// #include "x2_ik_ros.hpp"
 #include "X2Robot.h"
 #include "states/X2FollowerState.h"
 

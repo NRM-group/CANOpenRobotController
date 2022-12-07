@@ -37,7 +37,6 @@ X2MachineROS2::~X2MachineROS2() {
 }
 
 void X2MachineROS2::initalise() {
-    rclcpp::spin(std::make_shared<X2IKROS>());
     spdlog::info("X2 ROS state machine initalised");
 }
 
@@ -47,6 +46,7 @@ void X2MachineROS2::update() {
     publishJointStates();
 #endif
     publishControllerOutputs();
+    publishJointReferencePositions();
 }
 
 void X2MachineROS2::publishControllerOutputs(void){ 
@@ -61,7 +61,7 @@ void X2MachineROS2::publishJointStates(void) {
     Eigen::VectorXd jointPositions = robot_->getPosition();
     Eigen::VectorXd jointVelocities = robot_->getVelocity();
     Eigen::VectorXd jointTorques = robot_->getTorque();
-    Eigen::VectorXd ankleEndpoints = kinHandler.fow_kin(robot_->getPosition());
+    // Eigen::VectorXd ankleEndpoints = kinHandler.fow_kin(robot_->getPosition());
     jointStateMsg_.header.stamp = node_->now();
     jointStateMsg_.name[0] = "left_hip_joint";
     jointStateMsg_.name[1] = "left_knee_joint";
@@ -75,12 +75,12 @@ void X2MachineROS2::publishJointStates(void) {
         jointStateMsg_.effort[id] = jointTorques[id];
 
     }
-    ankleEndpoitsMsg_.left_x = ankleEndpoints(0);
-    ankleEndpoitsMsg_.left_y = ankleEndpoints(1);
-    ankleEndpoitsMsg_.right_x = ankleEndpoints(2);
-    ankleEndpoitsMsg_.right_y = ankleEndpoints(3);
+    // ankleEndpoitsMsg_.left_x = ankleEndpoints(0);
+    // ankleEndpoitsMsg_.left_y = ankleEndpoints(1);
+    // ankleEndpoitsMsg_.right_x = ankleEndpoints(2);
+    // ankleEndpoitsMsg_.right_y = ankleEndpoints(3);
     
-    ankleEndpointPublisher_->publish(ankleEndpoitsMsg_);
+    // ankleEndpointPublisher_->publish(ankleEndpoitsMsg_);
     jointStateMsg_.position[4] = robot_->getBackPackAngleOnMedianPlane() - M_PI_2;
     jointStatePublisher_->publish(jointStateMsg_);
 }
@@ -165,5 +165,5 @@ void X2MachineROS2::enablerCallback(const exo_msgs::msg::Enable::SharedPtr enabl
 void X2MachineROS2::corcParamCallback(const exo_msgs::msg::Corc::SharedPtr corcParams) {
     x2FollowerState_->rateLimit = corcParams->reference_limit;
     x2FollowerState_->maxTorqueLimit = corcParams->maximum_torque;
-    x2FollowerState_->posReader.updateTrajectoryTime(corcParams->trajectory_period);
+    x2FollowerState_->posReader.setPeriod(corcParams->trajectory_period);
 }

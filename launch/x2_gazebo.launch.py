@@ -64,7 +64,7 @@ def generate_launch_description():
     node_robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        output='screen',
+        # output='screen',
         parameters=[params],
     )
     rviz_node = Node(
@@ -92,14 +92,19 @@ def generate_launch_description():
 
     load_joint_state_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'start',
-             'joint_state_broadcaster'],
-        output='screen'
+             'joint_state_broadcaster']
+        # output='screen'
     )
 
     load_joint_trajectory_controller = ExecuteProcess(
         cmd=['ros2', 'control', 'load_controller', '--set-state', 'start',
-             'joint_trajectory_controller'],
-        output='screen'
+             'joint_trajectory_controller']
+        # output='screen'
+    )
+    load_joint_effort_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'start',
+             'effort_controllers'],
+        output = 'screen'
     )
 
     return LaunchDescription([
@@ -115,6 +120,12 @@ def generate_launch_description():
                 on_exit=[load_joint_trajectory_controller],
             )
         ),
+        # RegisterEventHandler(
+        #     event_handler = OnProcessExit(
+        #         target_action=load_joint_state_controller,
+        #         on_exit=[load_joint_effort_controller]
+        #     )
+        # ),
         gazebo,
         node_robot_state_publisher,
         spawn_entity,

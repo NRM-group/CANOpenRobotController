@@ -8,7 +8,6 @@ controller_manager:
     effort_controllers:
       type: effort_controllers/JointGroupEffortController
     
-
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
@@ -34,7 +33,6 @@ effort_controllers:
       - right_hip_joint
       - left_knee_joint
       - right_knee_joint
-      - world_to_backpack
     command_interfaces:
       - effort
     state_interfaces:

@@ -60,8 +60,8 @@ public:
     std::array<ctrl::BaseController<double, X2_NUM_JOINTS>*, 3> controllers;
 
     bool checkSafety(void);
-    
-    LookupTable<double, X2_NUM_JOINTS> posReader;
+
+    LookupTable<double, X2_NUM_JOINTS> posReader;   
 
 private:
     const int freq_;

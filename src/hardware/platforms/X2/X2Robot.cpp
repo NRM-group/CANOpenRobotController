@@ -143,7 +143,8 @@ void X2Robot::initialiseROS(std::shared_ptr<rclcpp::Node> &node) {
     bool response =
     action_client->wait_for_action_server(std::chrono::seconds(10));
     if (!response) {
-        throw std::runtime_error("could not get action server");
+        throw std::runtime_error("could not get action server"); //Comment this out if using any other controllers
+        std::cerr<<"Could not get action server" << std::endl;
     }
 
     jointStateSubscriber_ = node->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1, std::bind(&X2Robot::jointStateCallback, this, _1));
@@ -303,7 +304,6 @@ setMovementReturnCode_t X2Robot::setPosition(Eigen::VectorXd positions) {
 
     control_msgs::action::FollowJointTrajectory_Goal goal_msg;
     goal_msg.goal_time_tolerance = rclcpp::Duration::from_seconds(1.0);
-    std::cout << joint_names[0] << std::endl;
     goal_msg.trajectory.joint_names = joint_names;
     goal_msg.trajectory.points = trajectory;
     auto goal_handle_future = action_client->async_send_goal(goal_msg);
@@ -313,7 +313,6 @@ setMovementReturnCode_t X2Robot::setPosition(Eigen::VectorXd positions) {
 
     // auto result_future = action_client->async_get_result(goal_handle);
     
-    spdlog::info("End");
 
     simJointPositions_ = positions;
 #endif
