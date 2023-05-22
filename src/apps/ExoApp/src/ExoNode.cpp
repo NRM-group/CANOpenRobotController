@@ -1,5 +1,8 @@
 #include "ExoNode.hpp"
+#include "ExoState.hpp"
+//#include "pd.hpp"
 #define LOG(x)  spdlog::info("[ExoNode]: {}", x)
+
 
 /***************
  * CONSTRUCTOR *
@@ -11,12 +14,31 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     _GaitParameter(), _HeartBeat(), _PatientParameter(),
     _PDParameter(), _SitToStandParameter(), _TorqueLimit(),
     _TorqueParameter(), _UserCommand()
-{
+{   
     _PubHeartBeat = create_publisher<HeartBeat>("corc_heartbeat", 4);
     _PubJointState = create_publisher<JointState>("joint_states", 4);
     _PubJointReference = create_publisher<FloatArray>("joint_references", 4);
     _PubStrainGauge = create_publisher<FloatArray>("strain_gauges", 4);
+    //*****Code by Alex Anchivilca for Thesis
+    _PubErrorLH = create_publisher<Float>("errorLH",2); 
+    _PubErrorLK = create_publisher<Float>("errorLK",2); 
+    _PubErrorRH = create_publisher<Float>("errorRH",2); 
+    _PubErrorRK = create_publisher<Float>("errorRK",2); 
 
+
+    _PubDerErrorLH = create_publisher<Float>("der_errorLH",2); 
+    _PubDerErrorLK = create_publisher<Float>("der_errorLK",2); 
+    _PubDerErrorRH = create_publisher<Float>("der_errorRH",2); 
+    _PubDerErrorRK = create_publisher<Float>("der_errorRK",2); 
+
+    _PubGaitIndex = create_publisher<Float>("gait_index",2);
+    _PubLH_Ref = create_publisher<Float>("lh_ref",2);
+    _PubLK_Ref = create_publisher<Float>("lk_ref",2);
+    _PubRH_Ref = create_publisher<Float>("rh_ref",2);
+    _PubRK_Ref = create_publisher<Float>("rk_ref",2);
+    
+
+    //********
     _SubDevToggle = create_subscription<DevToggle>(
         "dev_toggles", 4,
         std::bind(&ExoNode::dev_toggle_callback, this, _1)
@@ -106,6 +128,9 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     date->tm_min = 0;
     date->tm_sec = 0;
     _Midnight = std::chrono::system_clock::from_time_t(std::mktime(date));
+
+    _HeartBeat.status = 1;
+    _GaitParameter.step_period = 10;
 }
 
 /***************************
@@ -170,13 +195,6 @@ void ExoNode::set_is_saved(bool val)
     _IsSaved = val;
 }
 
-bool ExoNode::start_overwrite()
-{
-    bool save = _DevToggle.save_default;
-    _DevToggle.save_default = false;
-    return save;
-}
-
 rclcpp::node_interfaces::NodeBaseInterface::SharedPtr ExoNode::get_interface()
 {
     return get_node_base_interface();
@@ -210,14 +228,99 @@ void ExoNode::publish_heart_beat()
     _PubHeartBeat->publish(msg);
 }
 
+
+
+
+
 void ExoNode::publish_joint_reference(const std::vector<double> &val)
 {
     FloatArray msg{};
+    //***Code by Alex Anchivilca for thesis
+    Float lhData{};
+    Float lkData{};
+    Float rhData{};
+    Float rkData{};
+
 
     msg.data = std::move(val);
-
+    lhData.data = val[0];
+    lkData.data = val[1];
+    rhData.data = val[2];
+    rkData.data = val[3];    
     _PubJointReference->publish(msg);
+    _PubLH_Ref->publish(lhData);
+    _PubLK_Ref->publish(lkData);
+    _PubRH_Ref->publish(rhData);
+    _PubRK_Ref->publish(rkData);
+    //********
 }
+//***** Code by Alex Anchivica for thesis
+void ExoNode::publish_gait_index(double gaitIndex)
+{
+    Float msg{};
+    
+    msg.data = gaitIndex;
+    
+    _PubGaitIndex->publish(msg);
+}
+
+void ExoNode::publish_error_LH(double error_LH)
+{   Float msg{};
+    
+    msg.data = error_LH;
+    _PubErrorLH->publish(msg);
+}
+
+void ExoNode::publish_error_LK(double error_LK)
+{   Float msg{};
+    
+    msg.data = error_LK;
+    _PubErrorLK->publish(msg);
+}
+void ExoNode::publish_error_RH(double error_RH)
+{   Float msg{};
+    
+    msg.data = error_RH;
+    _PubErrorRH->publish(msg);
+}
+
+void ExoNode::publish_error_RK(double error_RK)
+{   Float msg{};
+    
+    msg.data = error_RK;
+    _PubErrorRK->publish(msg);
+}
+
+void ExoNode::publish_Der_Error_LH(double Der_error_LH)
+{   Float msg{};
+    
+    msg.data = Der_error_LH;
+    _PubDerErrorLH->publish(msg);
+}
+
+void ExoNode::publish_Der_Error_LK(double Der_error_LK)
+{   Float msg{};
+    
+    msg.data = Der_error_LK;
+    _PubDerErrorLK->publish(msg);
+}
+void ExoNode::publish_Der_Error_RH(double Der_error_RH)
+{   Float msg{};
+    
+    msg.data = Der_error_RH;
+    _PubDerErrorRH->publish(msg);
+}
+
+void ExoNode::publish_Der_Error_RK(double Der_error_RK)
+{   Float msg{};
+    
+    msg.data = Der_error_RK;
+    _PubDerErrorRK->publish(msg);
+}
+
+
+//********
+
 
 void ExoNode::publish_joint_state()
 {
@@ -262,57 +365,57 @@ void ExoNode::publish_strain_gauge()
 /***********
  * Getters *
  ***********/
-const DevToggle & ExoNode::get_dev_toggle() const
+DevToggle & ExoNode::get_dev_toggle()
 {
     return _DevToggle;
 }
 
-const ExternalParameter & ExoNode::get_external_parameter() const
+ExternalParameter & ExoNode::get_external_parameter()
 {
     return _ExternalParameter;
 }
 
-const FrictionParameter & ExoNode::get_friction_parameter() const
+FrictionParameter & ExoNode::get_friction_parameter()
 {
     return _FrictionParameter;
 }
 
-const GaitParameter & ExoNode::get_gait_parameter() const
+GaitParameter & ExoNode::get_gait_parameter()
 {
     return _GaitParameter;
 }
 
-const HeartBeat & ExoNode::get_heart_beat() const
+HeartBeat & ExoNode::get_heart_beat()
 {
     return _HeartBeat;
 }
 
-const PatientParameter & ExoNode::get_patient_parameter() const
+PatientParameter & ExoNode::get_patient_parameter()
 {
     return _PatientParameter;
 }
 
-const PDParameter & ExoNode::get_pd_parameter() const
+PDParameter & ExoNode::get_pd_parameter()
 {
     return _PDParameter;
 }
 
-const SitToStandParameter & ExoNode::get_sit_to_stand_parameter() const
+SitToStandParameter & ExoNode::get_sit_to_stand_parameter()
 {
     return _SitToStandParameter;
 }
 
-const double ExoNode::get_torque_limit() const
+double ExoNode::get_torque_limit()
 {
     return _TorqueLimit;
 }
 
-const TorqueParameter & ExoNode::get_torque_parameter() const
+TorqueParameter & ExoNode::get_torque_parameter()
 {
     return _TorqueParameter;
 }
 
-const UserCommand & ExoNode::get_user_command() const
+UserCommand & ExoNode::get_user_command()
 {
     return _UserCommand;
 }

@@ -711,12 +711,12 @@ bool X2Robot::safetyCheck(bool duringHoming) {
 
     for (int jointId = 0; jointId<X2_NUM_JOINTS; jointId++){
         if(abs(getVelocity()[jointId]) >= x2Parameters.maxVelocity){
-            spdlog::critical("Maximim velocity limit is achieved for joint {}", jointId);
+            spdlog::critical("Maximim velocity limit ({}) is achieved for joint {}", getVelocity()[jointId], jointId);
             return false;
         }
         if(duringHoming) continue; // do not check torque limit during homing
         if(abs(getTorque()[jointId]) >= x2Parameters.maxTorque){
-            spdlog::critical("Maximim torque limit is achieved for joint {}", jointId);
+            spdlog::critical("Maximim torque limit ({}) is achieved for joint {}", getTorque()[jointId], jointId);
             return false;
         }
     }

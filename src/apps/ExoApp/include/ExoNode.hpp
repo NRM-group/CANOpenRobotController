@@ -62,27 +62,36 @@ public: // ROS method visibility modifiers
     void get_gait_file(std::string &path);
     void set_save_error(bool val);
     void set_is_saved(bool val);
-    bool start_overwrite();
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_interface();
 
 public: // ROS publish methods
     void publish_heart_beat();
-    void publish_joint_reference(const std::vector<double> &val);
+    void publish_joint_reference(const std::vector<double> &val);   
     void publish_joint_state();
     void publish_strain_gauge();
+    void publish_gait_index(double gaitIndex); 
+    void publish_error_LH(double error_LH);
+    void publish_error_LK(double error_LK);
+    void publish_error_RH(double error_RH);
+    void publish_error_RK(double error_RK);
+    void publish_Der_Error_LH(double Der_error_LH);
+    void publish_Der_Error_LK(double Der_error_LK);
+    void publish_Der_Error_RH(double Der_error_RH);
+    void publish_Der_Error_RK(double Der_error_RK);
+    
 
 public: // Get ROS-LabVIEW message copies
-    const DevToggle & get_dev_toggle() const;
-    const ExternalParameter & get_external_parameter() const;
-    const FrictionParameter & get_friction_parameter() const;
-    const GaitParameter & get_gait_parameter() const;
-    const HeartBeat & get_heart_beat() const;
-    const PatientParameter & get_patient_parameter() const;
-    const PDParameter & get_pd_parameter() const;
-    const SitToStandParameter & get_sit_to_stand_parameter() const;
-    const double get_torque_limit() const;
-    const TorqueParameter & get_torque_parameter() const;
-    const UserCommand & get_user_command() const;
+    DevToggle & get_dev_toggle();
+    ExternalParameter & get_external_parameter();
+    FrictionParameter & get_friction_parameter();
+    GaitParameter & get_gait_parameter();
+    HeartBeat & get_heart_beat();
+    PatientParameter & get_patient_parameter();
+    PDParameter & get_pd_parameter();
+    SitToStandParameter & get_sit_to_stand_parameter();
+    double get_torque_limit();
+    TorqueParameter & get_torque_parameter();
+    UserCommand & get_user_command();
 
 private: // ROS subscription callbacks
     void dev_toggle_callback(const DevToggle::SharedPtr msg);
@@ -121,6 +130,27 @@ private: // ROS publishers
     rclcpp::Publisher<JointState>::SharedPtr _PubJointState;
     rclcpp::Publisher<FloatArray>::SharedPtr _PubJointReference;
     rclcpp::Publisher<FloatArray>::SharedPtr _PubStrainGauge;
+    //*****Code by Alex Anchivilca for thesis
+    rclcpp::Publisher<Float>::SharedPtr _PubErrorLH;
+    rclcpp::Publisher<Float>::SharedPtr _PubErrorLK;
+    rclcpp::Publisher<Float>::SharedPtr _PubErrorRH;
+    rclcpp::Publisher<Float>::SharedPtr _PubErrorRK;
+
+
+    rclcpp::Publisher<Float>::SharedPtr _PubDerErrorLH;
+    rclcpp::Publisher<Float>::SharedPtr _PubDerErrorLK;
+    rclcpp::Publisher<Float>::SharedPtr _PubDerErrorRH;
+    rclcpp::Publisher<Float>::SharedPtr _PubDerErrorRK;
+
+    rclcpp::Publisher<Float>::SharedPtr _PubGaitIndex;
+    rclcpp::Publisher<Float>::SharedPtr _PubLH_Ref;
+    rclcpp::Publisher<Float>::SharedPtr _PubLK_Ref;
+    rclcpp::Publisher<Float>::SharedPtr _PubRH_Ref;
+    rclcpp::Publisher<Float>::SharedPtr _PubRK_Ref;
+
+
+
+
 
 private: // ROS subscriptions
     rclcpp::Subscription<DevToggle>::SharedPtr _SubDevToggle;
@@ -136,4 +166,4 @@ private: // ROS subscriptions
     rclcpp::Subscription<UserCommand>::SharedPtr _SubUserCommand;
 };
 
-#endif//__EXO_NODE_HPP__
+#endif//__EXO_NODE_HPP_

@@ -1,11 +1,13 @@
 #ifndef __EXO_STATE_HPP__
 #define __EXO_STATE_HPP__
 
-/******** RATE LIMITS ********/
-#define POSITION_RATE   333 // = 1 rad/s
-#define MIN_ROM_RATE    333 // = 1 rad/s
-#define MAX_ROM_RATE    333 // = 1 rad/s
-/*****************************/
+/**************** RATE LIMITS ****************/
+#define INITIAL_GAIT_RATE   0.2   // rad/s
+#define INITIAL_STAND_RATE  0.08  // rad/s default: 0.15
+#define POSITION_RATE       0.004 // rad/s * T
+#define MIN_ROM_RATE        0.003 // rad/s * T
+#define MAX_ROM_RATE        0.003 // rad/s * T
+/*(*******************************************/
 
 /* STL */
 #include <string>
@@ -17,6 +19,7 @@
 #include "controller.hpp"
 #include "LookupTable.hpp"
 #include "yaml-cpp/yaml.h"
+//#include "pd.hpp"
 /* Standard interfaces */
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
@@ -75,6 +78,7 @@ private:
     static void rate_limit(const Eigen::Vector4d &target, Eigen::Vector4d &current, double rate);
 
 private:
+    bool _DuringGait;
     Eigen::Vector4d _Position;
     Eigen::Vector4d _MinROM;
     Eigen::Vector4d _MaxROM;

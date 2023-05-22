@@ -1,4 +1,4 @@
-import os
+import os, shutil
 
 from datetime import datetime
 
@@ -54,22 +54,8 @@ def generate_launch_description():
 	ld.add_action(exo_splitter_node)
 
 	# Bag
-	bag_name = datetime.now().strftime("%H%M_%d-%m-%Y")
-	bag_path = f"{os.path.expanduser('~')}/nrm-logs/{bag_name}"
-
-	if os.path.exists(bag_path):
-
-		bag_file = os.path.join(bag_path, bag_name)
-		meta_file = os.path.join(bag_path, "metadata.yaml")
-
-		if os.path.exists(bag_file):
-			os.remove(bag_file)
-
-		if os.path.exists(meta_file):
-			os.remove(meta_file)
-
-		os.removedirs(bag_path)
-
+	bag_path = f"{os.path.expanduser('~')}/nrm-logs"
+	shutil.rmtree(bag_path)
 	ros2bag = ExecuteProcess(
 		cmd=["ros2", "bag", "record", "-a", "-o", bag_path],
 		output="screen"

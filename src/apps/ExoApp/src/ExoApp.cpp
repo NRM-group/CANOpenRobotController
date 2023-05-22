@@ -7,8 +7,7 @@
  ************************/
 bool off_to_run(StateMachine &sm)
 {
-    return APP(sm).get_robot()->getButtonValue(ButtonColor::GREEN) ||
-           APP(sm).get_node()->ok();
+    return APP(sm).get_robot()->getButtonValue(ButtonColor::GREEN);
 }
 
 bool off_to_set(StateMachine &sm)
@@ -93,6 +92,12 @@ void ExoApp::hwStateUpdate()
         get_robot()->getPosition()[1],
         get_robot()->getPosition()[2],
         get_robot()->getPosition()[3]
+    );
+    spdlog::info("torques: [{:.4}, {:.4}, {:.4}, {:.4}]",
+        get_robot()->getTorque()[0],
+        get_robot()->getTorque()[1],
+        get_robot()->getTorque()[2],
+        get_robot()->getTorque()[3]
     );
 #endif
     get_robot()->updateRobot();

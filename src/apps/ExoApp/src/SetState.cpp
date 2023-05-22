@@ -17,8 +17,6 @@ SetState::SetState(const std::shared_ptr<X2Robot> robot,
 void SetState::entry()
 {
     LOG(">>> Entered >>>");
-    // TODO:
-    // _Robot->homing();
 
     std::vector<double> buffer;
     std::array<double, STRAIN_GAUGE_FILTER_ORDER + 1> coeff;
@@ -39,11 +37,12 @@ void SetState::during()
     LOG("Calibrating strain gauge offset...");
     _Robot->setTorque(Eigen::Vector4d::Zero());
     usleep(1e6);
-    _Robot->calibrateForceSensors();
+    // _Robot->calibrateForceSensors();
 
-    if (_Node->start_overwrite()) {
+    if (_Node->get_dev_toggle().save_default) {
 
         LOG("Overwriting default parameters...");
+        _Node->get_dev_toggle().save_default = false;
 
         std::string filepath;
         _Node->get_exo_file(filepath);

@@ -19,7 +19,7 @@ void OffState::during()
 {
     if (_Counter++ % 1000 == 0) {
         if (!_Node->ok()) {
-            spdlog::warn("[OffState]: Node status {}", _Node->get_heart_beat().status);
+            spdlog::info("[OffState]: Node status {}", _Node->get_heart_beat().status);
         }
         else {
             spdlog::info("[OffState]: Robot idling in disabled state");

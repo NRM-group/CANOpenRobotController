@@ -1,11 +1,12 @@
 #include "ExoState.hpp"
+//#include "pd.hpp"
 #define LOG(x)      spdlog::info("[RunState]: {}", x)
 
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
     : State("Run State"), _Robot(robot), _Node(node),
+    _DuringGait{false}, _Position{}, _MinROM{}, _MaxROM{},
     _CtrlExternal{}, _CtrlFriction{}, _CtrlGravity{},
-    _Position{}, _MinROM{}, _MaxROM{},
     _CtrlPD{}, _CtrlTorque{}, _LookupTable{100}
 {
     _Node->ros_declare(
@@ -76,7 +77,10 @@ void RunState::entry()
     std::string csv_file;
     _Node->get_gait_file(csv_file);
     _LookupTable.readCSV(csv_file);
-    _LookupTable.startTrajectory(_Robot->getPosition(), 1.0);
+    _LookupTable.resetTrajectory();
+    _LookupTable.startTrajectory(_Position, INITIAL_GAIT_RATE);
+
+    
 
     // Initialise torque control
     _Robot->initTorqueControl();
@@ -93,23 +97,63 @@ void RunState::during()
     // Sum toggled controllers
     if (_Node->get_dev_toggle().external) {
         _TorqueOutput += _CtrlExternal.output();
+#ifdef DEBUG
+        spdlog::info("external: [{:.4}, {:.4}, {:.4}, {:.4}]",
+            _CtrlExternal.output()[0],
+            _CtrlExternal.output()[1],
+            _CtrlExternal.output()[2],
+            _CtrlExternal.output()[3]
+        );
+#endif
     }
     if (_Node->get_dev_toggle().friction) {
         _CtrlFriction.loop(_Robot->getVelocity());
         _TorqueOutput += _CtrlFriction.output();
+#ifdef DEBUG
+        spdlog::info("Friction: [{:.4}, {:.4}, {:.4}, {:.4}]",
+            _CtrlFriction.output()[0],
+            _CtrlFriction.output()[1],
+            _CtrlFriction.output()[2],
+            _CtrlFriction.output()[3]
+        );
+#endif
     }
     if (_Node->get_dev_toggle().gravity) {
         _CtrlGravity.loop(_Robot->getPosition());
         _TorqueOutput += _CtrlGravity.output();
+#ifdef DEBUG
+        spdlog::info("Gravity: [{:.4}, {:.4}, {:.4}, {:.4}]",
+            _CtrlGravity.output()[0],
+            _CtrlGravity.output()[1],
+            _CtrlGravity.output()[2],
+            _CtrlGravity.output()[3]
+        );
+#endif
     }
-    if (_Node->get_dev_toggle().pd && _Node->get_user_command().toggle_walk) {
+    if (_Node->get_dev_toggle().pd && (_Node->get_user_command().toggle_sit | _Node->get_user_command().toggle_walk)) {
         rate_limit(_LookupTable.getPosition(), _Position, POSITION_RATE);
         _CtrlPD.loop(_Position, _Robot->getPosition());
         _TorqueOutput += _CtrlPD.output();
+#ifdef DEBUG
+        spdlog::info("PD: [{:.4}, {:.4}, {:.4}, {:.4}]",
+            _CtrlPD.output()[0],
+            _CtrlPD.output()[1],
+            _CtrlPD.output()[2],
+            _CtrlPD.output()[3]
+        );
+#endif
     }
     if (_Node->get_dev_toggle().torque) {
         _CtrlTorque.loop(_Robot->getStrainGauges());
         _TorqueOutput += _CtrlTorque.output();
+#ifdef DEBUG
+        spdlog::info("Torque: [{:.4}, {:.4}, {:.4}, {:.4}]",
+            _CtrlTorque.output()[0],
+            _CtrlTorque.output()[1],
+            _CtrlTorque.output()[2],
+            _CtrlTorque.output()[3]
+        );
+#endif
     }
 
     // Limit torque output
@@ -123,14 +167,34 @@ void RunState::during()
     }
 
     _Robot->setTorque(_TorqueOutput);
-    _Node->publish_joint_reference(
-        std::vector<double>(
-            _LookupTable.getPosition().data(),
-            _LookupTable.getPosition().data() + _LookupTable.getPosition().size()
-        )
-    );
+    _Node->publish_joint_reference(std::vector<double>(_Position.data(), _Position.data() + _Position.size()));
     _Node->publish_joint_state();
     _Node->publish_strain_gauge();
+
+    double gaitIndex = _LookupTable.getGaitIndex();
+    double error_LH = _CtrlPD.getError_LH();
+    double error_LK = _CtrlPD.getError_LK();
+    double error_RH = _CtrlPD.getError_RH();
+    double error_RK = _CtrlPD.getError_RK();
+
+    double Der_error_LH = _CtrlPD.getDerError_LH();
+    double Der_error_LK = _CtrlPD.getDerError_LK();
+    double Der_error_RH = _CtrlPD.getDerError_RH();
+    double Der_error_RK = _CtrlPD.getDerError_RK();
+
+
+    _Node->publish_gait_index(gaitIndex);
+    _Node->publish_error_LH(error_LH);
+    _Node->publish_error_LK(error_LK);
+    _Node->publish_error_RH(error_RH);
+    _Node->publish_error_RK(error_RK);
+    _Node->publish_Der_Error_LH(Der_error_LH);
+    _Node->publish_Der_Error_LK(Der_error_LK);
+    _Node->publish_Der_Error_RH(Der_error_RH);
+    _Node->publish_Der_Error_RK(Der_error_RK);
+
+
+
 }
 
 void RunState::exit()
@@ -148,8 +212,7 @@ void RunState::rate_limit(const Eigen::Vector4d &target, Eigen::Vector4d &curren
             } else {
                 current[i] -= rate;
             }
-        }
-        else {
+        } else {
             current[i] = target[i];
         }
     }
@@ -158,48 +221,57 @@ void RunState::rate_limit(const Eigen::Vector4d &target, Eigen::Vector4d &curren
 void RunState::update_controllers()
 {
     _CtrlExternal.set_external_torque(
-        Eigen::Vector4d(
-            _Node->get_external_parameter().torque.cbegin() + 1
-        )
+        Eigen::Vector4d(_Node->get_external_parameter().torque.cbegin() + 1)
     );
 
     _CtrlFriction.set_static(
-        Eigen::Vector4d(
-            _Node->get_friction_parameter().static_coefficient.cbegin() + 1
-        )
+        Eigen::Vector4d(_Node->get_friction_parameter().static_coefficient.cbegin() + 1)
     );
     _CtrlFriction.set_viscous(
-        Eigen::Vector4d(
-            _Node->get_friction_parameter().viscous_coefficient.cbegin() + 1
-        )
+        Eigen::Vector4d(_Node->get_friction_parameter().viscous_coefficient.cbegin() + 1)
     );
 
     _CtrlPD.set_alphas(
-        Eigen::Vector4d(
-            _Node->get_pd_parameter().alpha_min.cbegin() + 1
-        ),
-        Eigen::Vector4d(
-            _Node->get_pd_parameter().alpha_max.cbegin() + 1
-        )
+        Eigen::Vector4d(_Node->get_pd_parameter().alpha_min.cbegin() + 1),
+        Eigen::Vector4d(_Node->get_pd_parameter().alpha_max.cbegin() + 1)
     );
     Eigen::Matrix4d kp{}, kd{};
-    kp.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kp.cbegin() + 1);
-    kp.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kp.cbegin() + 1);
-    kd.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kd.cbegin() + 1);
-    kd.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kd.cbegin() + 1);
+    kp.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kp.cbegin() + 1) * 
+        _Node->get_gait_parameter().left_loa * 0.01;
+    kp.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kp.cbegin() + 1) *
+        _Node->get_gait_parameter().right_loa * 0.01;
+    kd.topLeftCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().left_kd.cbegin() + 1) *
+        _Node->get_gait_parameter().left_loa * 0.01;
+    kd.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kd.cbegin() + 1) *
+        _Node->get_gait_parameter().right_loa * 0.01;
     _CtrlPD.set_gains(kp, kd);
 
-    _CtrlTorque.set_gain(
-        Eigen::Vector4d(
-            _Node->get_torque_parameter().gain.cbegin() + 1
-        )
-    );
+    _CtrlTorque.set_gain(Eigen::Vector4d(_Node->get_torque_parameter().gain.cbegin() + 1));
 }
 
 void RunState::update_lookup_table()
 {
     // Toggle start and stop trajectory
-    _Node->get_user_command().toggle_walk ? _LookupTable.start() : _LookupTable.stop();
+    if (_DuringGait) {
+        if (!_Node->get_user_command().toggle_sit && !_Node->get_user_command().toggle_walk) {
+            _LookupTable.stop();
+            _DuringGait = false;
+        }
+    } else {
+        if (_Node->get_user_command().toggle_sit) {
+            _Position = _Robot->getPosition();
+            _LookupTable.setTrajectory(_Position, { 0, 0, 0, 0 }, INITIAL_STAND_RATE);
+            _LookupTable.start();
+            _DuringGait = true;
+        } else
+        if (_Node->get_user_command().toggle_walk) {
+            _Position = _Robot->getPosition();
+            _LookupTable.resetTrajectory();
+            _LookupTable.startTrajectory(_Position, INITIAL_GAIT_RATE);
+            _LookupTable.start();
+            _DuringGait = true;
+        }
+    }
 
     // Set min and max range of motion
     Eigen::Vector4d rom_min, rom_max;

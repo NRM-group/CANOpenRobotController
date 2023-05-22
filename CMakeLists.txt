@@ -3,7 +3,7 @@ project(corc)
 
 
 # DEBUG MODE
-#add_definitions(-DDEBUG)
+# add_definitions(-DDEBUG)
 
 
 # STATE MACHINE (APP)
