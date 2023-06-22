@@ -37,7 +37,8 @@ void SetState::during()
     LOG("Calibrating strain gauge offset...");
     _Robot->setTorque(Eigen::Vector4d::Zero());
     usleep(1e6);
-    // _Robot->calibrateForceSensors();
+    _Robot->calibrateForceSensors();
+    _Robot
 
     if (_Node->get_dev_toggle().save_default) {
 
