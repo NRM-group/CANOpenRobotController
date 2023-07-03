@@ -97,6 +97,7 @@ void RunState::during()
     _TorqueOutput = Eigen::Vector4d::Zero();
 
     // Sum toggled controllers
+    // External
     if (_Node->get_dev_toggle().external)
     {
         _TorqueOutput += _CtrlExternal.output();
@@ -108,6 +109,7 @@ void RunState::during()
                      _CtrlExternal.output()[3]);
 #endif
     }
+    // Friction
     if (_Node->get_dev_toggle().friction)
     {
         _CtrlFriction.loop(_Robot->getVelocity());
@@ -120,6 +122,7 @@ void RunState::during()
                      _CtrlFriction.output()[3]);
 #endif
     }
+    // Gravity
     if (_Node->get_dev_toggle().gravity)
     {
         _CtrlGravity.loop(_Robot->getPosition());
@@ -132,6 +135,7 @@ void RunState::during()
                      _CtrlGravity.output()[3]);
 #endif
     }
+    // PD
     if (_Node->get_dev_toggle().pd && (_Node->get_user_command().toggle_sit | _Node->get_user_command().toggle_walk))
     {
         rate_limit(_LookupTable.getPosition(), _Position, POSITION_RATE);
@@ -145,6 +149,7 @@ void RunState::during()
                      _CtrlPD.output()[3]);
 #endif
     }
+    // Torque (transparent)
     if (_Node->get_dev_toggle().torque)
     {
         _CtrlTorque.loop(_Robot->getStrainGauges());
@@ -171,31 +176,34 @@ void RunState::during()
         }
     }
 
-    _Robot->setTorque(_TorqueOutput);
-    _Node->publish_joint_reference(std::vector<double>(_Position.data(), _Position.data() + _Position.size()));
-    _Node->publish_joint_state();
-    _Node->publish_strain_gauge();
-
+    /*
     double gaitIndex = _LookupTable.getGaitIndex();
     double error_LH = _CtrlPD.getError_LH();
     double error_LK = _CtrlPD.getError_LK();
     double error_RH = _CtrlPD.getError_RH();
     double error_RK = _CtrlPD.getError_RK();
-
     double Der_error_LH = _CtrlPD.getDerError_LH();
     double Der_error_LK = _CtrlPD.getDerError_LK();
     double Der_error_RH = _CtrlPD.getDerError_RH();
     double Der_error_RK = _CtrlPD.getDerError_RK();
+    */
+    
+    // Set the robot output torques to the desired torue
+    _Robot->setTorque(_TorqueOutput);
 
-    _Node->publish_gait_index(gaitIndex);
-    _Node->publish_error_LH(error_LH);
-    _Node->publish_error_LK(error_LK);
-    _Node->publish_error_RH(error_RH);
-    _Node->publish_error_RK(error_RK);
-    _Node->publish_Der_Error_LH(Der_error_LH);
-    _Node->publish_Der_Error_LK(Der_error_LK);
-    _Node->publish_Der_Error_RH(Der_error_RH);
-    _Node->publish_Der_Error_RK(Der_error_RK);
+    // Publish values to 
+    _Node->publish_joint_reference(std::vector<double>(_Position.data(), _Position.data() + _Position.size()));
+    _Node->publish_joint_state();
+    _Node->publish_strain_gauge();
+    _Node->publish_gait_index(_LookupTable.getGaitIndex());
+    _Node->publish_error_LH(_CtrlPD.getError_LH());
+    _Node->publish_error_LK(_CtrlPD.getError_LK());
+    _Node->publish_error_RH(_CtrlPD.getError_RH());
+    _Node->publish_error_RK(_CtrlPD.getError_RK());
+    _Node->publish_Der_Error_LH(_CtrlPD.getDerError_LH());
+    _Node->publish_Der_Error_LK(_CtrlPD.getDerError_LK());
+    _Node->publish_Der_Error_RH(_CtrlPD.getDerError_RH());
+    _Node->publish_Der_Error_RK(_CtrlPD.getDerError_RK());
 }
 
 void RunState::exit()

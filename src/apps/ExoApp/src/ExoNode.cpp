@@ -19,12 +19,13 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     _PubJointState = create_publisher<JointState>("joint_states", 4);
     _PubJointReference = create_publisher<FloatArray>("joint_references", 4);
     _PubStrainGauge = create_publisher<FloatArray>("strain_gauges", 4);
+
+    // FIXME: Too big
     //*****Code by Alex Anchivilca for Thesis
     _PubErrorLH = create_publisher<Float>("errorLH",2); 
     _PubErrorLK = create_publisher<Float>("errorLK",2); 
     _PubErrorRH = create_publisher<Float>("errorRH",2); 
     _PubErrorRK = create_publisher<Float>("errorRK",2); 
-
 
     _PubDerErrorLH = create_publisher<Float>("der_errorLH",2); 
     _PubDerErrorLK = create_publisher<Float>("der_errorLK",2); 
@@ -36,9 +37,9 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     _PubLK_Ref = create_publisher<Float>("lk_ref",2);
     _PubRH_Ref = create_publisher<Float>("rh_ref",2);
     _PubRK_Ref = create_publisher<Float>("rk_ref",2);
-    
-
     //********
+
+    
     _SubDevToggle = create_subscription<DevToggle>(
         "dev_toggles", 4,
         std::bind(&ExoNode::dev_toggle_callback, this, _1)
@@ -228,11 +229,8 @@ void ExoNode::publish_heart_beat()
     _PubHeartBeat->publish(msg);
 }
 
-
-
-
-
-void ExoNode::publish_joint_reference(const std::vector<double> &val)
+void ExoNode::
+publish_joint_reference(const std::vector<double> &val)
 {
     FloatArray msg{};
     //***Code by Alex Anchivilca for thesis
@@ -254,6 +252,7 @@ void ExoNode::publish_joint_reference(const std::vector<double> &val)
     _PubRK_Ref->publish(rkData);
     //********
 }
+
 //***** Code by Alex Anchivica for thesis
 void ExoNode::publish_gait_index(double gaitIndex)
 {
