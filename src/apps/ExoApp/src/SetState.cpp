@@ -38,7 +38,6 @@ void SetState::during()
     _Robot->setTorque(Eigen::Vector4d::Zero());
     usleep(1e6);
     _Robot->calibrateForceSensors();
-    _Robot
 
     if (_Node->get_dev_toggle().save_default) {
 
