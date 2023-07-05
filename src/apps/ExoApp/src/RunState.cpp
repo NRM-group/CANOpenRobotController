@@ -61,7 +61,7 @@ void RunState::entry()
     }
     catch (const char *msg)
     {
-        /*LOG(msg);*/
+        LOG(msg);
     }
 
     // Gravity control parameters
@@ -260,7 +260,7 @@ void RunState::update_controllers()
     try{
         _CtrlTorque.set_gain(Eigen::Vector4d(_Node->get_torque_parameter().gain.cbegin() + 1));
     } catch (const char* msg) {
-        /*LOG(msg);*/
+        LOG(msg);
     }
 }
 
