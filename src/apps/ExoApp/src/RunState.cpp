@@ -175,35 +175,17 @@ void RunState::during()
             _TorqueOutput[i] = -_Node->get_torque_limit();
         }
     }
-
-    /*
-    double gaitIndex = _LookupTable.getGaitIndex();
-    double error_LH = _CtrlPD.getError_LH();
-    double error_LK = _CtrlPD.getError_LK();
-    double error_RH = _CtrlPD.getError_RH();
-    double error_RK = _CtrlPD.getError_RK();
-    double Der_error_LH = _CtrlPD.getDerError_LH();
-    double Der_error_LK = _CtrlPD.getDerError_LK();
-    double Der_error_RH = _CtrlPD.getDerError_RH();
-    double Der_error_RK = _CtrlPD.getDerError_RK();
-    */
     
-    // Set the robot output torques to the desired torue
+    // Set the robot output torques to the desired torque
     _Robot->setTorque(_TorqueOutput);
 
-    // Publish values to 
+    // Publish values
     _Node->publish_joint_reference(std::vector<double>(_Position.data(), _Position.data() + _Position.size()));
     _Node->publish_joint_state();
     _Node->publish_strain_gauge();
     _Node->publish_gait_index(_LookupTable.getGaitIndex());
-    _Node->publish_error_LH(_CtrlPD.getError_LH());
-    _Node->publish_error_LK(_CtrlPD.getError_LK());
-    _Node->publish_error_RH(_CtrlPD.getError_RH());
-    _Node->publish_error_RK(_CtrlPD.getError_RK());
-    _Node->publish_Der_Error_LH(_CtrlPD.getDerError_LH());
-    _Node->publish_Der_Error_LK(_CtrlPD.getDerError_LK());
-    _Node->publish_Der_Error_RH(_CtrlPD.getDerError_RH());
-    _Node->publish_Der_Error_RK(_CtrlPD.getDerError_RK());
+    _Node->publish_error(_CtrlPD.get_err_prev());
+    _Node->publish_der_error(_CtrlPD.get_der_prev());
 }
 
 void RunState::exit()
@@ -236,14 +218,15 @@ void RunState::rate_limit(const Eigen::Vector4d &target, Eigen::Vector4d &curren
 
 void RunState::update_controllers()
 {
+    // External
     _CtrlExternal.set_external_torque(
         Eigen::Vector4d(_Node->get_external_parameter().torque.cbegin() + 1));
-
+    // Friction
     _CtrlFriction.set_static(
         Eigen::Vector4d(_Node->get_friction_parameter().static_coefficient.cbegin() + 1));
     _CtrlFriction.set_viscous(
         Eigen::Vector4d(_Node->get_friction_parameter().viscous_coefficient.cbegin() + 1));
-
+    // PD
     _CtrlPD.set_alphas(
         Eigen::Vector4d(_Node->get_pd_parameter().alpha_min.cbegin() + 1),
         Eigen::Vector4d(_Node->get_pd_parameter().alpha_max.cbegin() + 1));
@@ -257,6 +240,7 @@ void RunState::update_controllers()
     kd.bottomRightCorner(2, 2) = Eigen::Matrix2d(_Node->get_pd_parameter().right_kd.cbegin() + 1) *
                                  _Node->get_gait_parameter().right_loa * 0.01;
     _CtrlPD.set_gains(kp, kd);
+    // Torque
     try{
         _CtrlTorque.set_gain(Eigen::Vector4d(_Node->get_torque_parameter().gain.cbegin() + 1));
     } catch (const char* msg) {

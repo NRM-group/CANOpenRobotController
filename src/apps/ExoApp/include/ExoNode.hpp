@@ -36,6 +36,9 @@ using namespace exo_msgs::msg;
 /* ROS callback */
 using std::placeholders::_1;
 
+/**
+ * @brief ExoNode is a ROS node used to publish (StateMachine/Exo-msgs) and subcribe to (LabView-msgs) topics for the ROS computer.
+ */
 class ExoNode : rclcpp::Node
 {
 public:
@@ -67,18 +70,11 @@ public: // ROS method visibility modifiers
 public: // ROS publish methods
     void publish_heart_beat();
     void publish_joint_reference(const std::vector<double> &val);   
-    void publish_joint_state();
+    void publish_joint_state(); 
     void publish_strain_gauge();
-    void publish_gait_index(double gaitIndex); 
-    void publish_error_LH(double error_LH);
-    void publish_error_LK(double error_LK);
-    void publish_error_RH(double error_RH);
-    void publish_error_RK(double error_RK);
-    void publish_Der_Error_LH(double Der_error_LH);
-    void publish_Der_Error_LK(double Der_error_LK);
-    void publish_Der_Error_RH(double Der_error_RH);
-    void publish_Der_Error_RK(double Der_error_RK);
-    
+    void publish_gait_index(double gaitIndex);
+    void publish_error(const Eigen::Matrix<double, 4, 1> &error);
+    void publish_der_error(const Eigen::Matrix<double, 4, 1> &derError);
 
 public: // Get ROS-LabVIEW message copies
     DevToggle & get_dev_toggle();
@@ -130,27 +126,19 @@ private: // ROS publishers
     rclcpp::Publisher<JointState>::SharedPtr _PubJointState;
     rclcpp::Publisher<FloatArray>::SharedPtr _PubJointReference;
     rclcpp::Publisher<FloatArray>::SharedPtr _PubStrainGauge;
-    //*****Code by Alex Anchivilca for thesis
     rclcpp::Publisher<Float>::SharedPtr _PubErrorLH;
     rclcpp::Publisher<Float>::SharedPtr _PubErrorLK;
     rclcpp::Publisher<Float>::SharedPtr _PubErrorRH;
     rclcpp::Publisher<Float>::SharedPtr _PubErrorRK;
-
-
     rclcpp::Publisher<Float>::SharedPtr _PubDerErrorLH;
     rclcpp::Publisher<Float>::SharedPtr _PubDerErrorLK;
     rclcpp::Publisher<Float>::SharedPtr _PubDerErrorRH;
     rclcpp::Publisher<Float>::SharedPtr _PubDerErrorRK;
-
     rclcpp::Publisher<Float>::SharedPtr _PubGaitIndex;
     rclcpp::Publisher<Float>::SharedPtr _PubLH_Ref;
     rclcpp::Publisher<Float>::SharedPtr _PubLK_Ref;
     rclcpp::Publisher<Float>::SharedPtr _PubRH_Ref;
     rclcpp::Publisher<Float>::SharedPtr _PubRK_Ref;
-
-
-
-
 
 private: // ROS subscriptions
     rclcpp::Subscription<DevToggle>::SharedPtr _SubDevToggle;

@@ -20,7 +20,6 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     _PubJointReference = create_publisher<FloatArray>("joint_references", 4);
     _PubStrainGauge = create_publisher<FloatArray>("strain_gauges", 4);
 
-    // FIXME: Too big
     //*****Code by Alex Anchivilca for Thesis
     _PubErrorLH = create_publisher<Float>("errorLH",2); 
     _PubErrorLK = create_publisher<Float>("errorLK",2); 
@@ -38,7 +37,6 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     _PubRH_Ref = create_publisher<Float>("rh_ref",2);
     _PubRK_Ref = create_publisher<Float>("rk_ref",2);
     //********
-
     
     _SubDevToggle = create_subscription<DevToggle>(
         "dev_toggles", 4,
@@ -229,16 +227,13 @@ void ExoNode::publish_heart_beat()
     _PubHeartBeat->publish(msg);
 }
 
-void ExoNode::
-publish_joint_reference(const std::vector<double> &val)
+void ExoNode::publish_joint_reference(const std::vector<double> &val)
 {
     FloatArray msg{};
-    //***Code by Alex Anchivilca for thesis
     Float lhData{};
     Float lkData{};
     Float rhData{};
     Float rkData{};
-
 
     msg.data = std::move(val);
     lhData.data = val[0];
@@ -250,76 +245,46 @@ publish_joint_reference(const std::vector<double> &val)
     _PubLK_Ref->publish(lkData);
     _PubRH_Ref->publish(rhData);
     _PubRK_Ref->publish(rkData);
-    //********
 }
 
-//***** Code by Alex Anchivica for thesis
 void ExoNode::publish_gait_index(double gaitIndex)
 {
     Float msg{};
-    
     msg.data = gaitIndex;
-    
     _PubGaitIndex->publish(msg);
 }
 
-void ExoNode::publish_error_LH(double error_LH)
-{   Float msg{};
-    
-    msg.data = error_LH;
-    _PubErrorLH->publish(msg);
+void ExoNode::publish_error(const Eigen::Matrix<double, 4, 1> &error) 
+{
+    Float lhErrorMsg{};
+    Float lkErrorMsg{};
+    Float rhErrorMsg{};
+    Float rkErrorMsg{};
+    lhErrorMsg.data = error[0];
+    lkErrorMsg.data = error[1];
+    rhErrorMsg.data = error[2];
+    rkErrorMsg.data = error[3];    
+    _PubErrorLH->publish(lhErrorMsg);
+    _PubErrorLK->publish(lkErrorMsg);
+    _PubErrorRH->publish(rhErrorMsg);
+    _PubErrorRK->publish(rkErrorMsg);
 }
 
-void ExoNode::publish_error_LK(double error_LK)
-{   Float msg{};
-    
-    msg.data = error_LK;
-    _PubErrorLK->publish(msg);
+void ExoNode::publish_der_error(const Eigen::Matrix<double, 4, 1> &derError) 
+{
+    Float lhDerErrorMsg{};
+    Float lkDerErrorMsg{};
+    Float rhDerErrorMsg{};
+    Float rkDerErrorMsg{};
+    lhDerErrorMsg.data = derError[0];
+    lkDerErrorMsg.data = derError[1];
+    rhDerErrorMsg.data = derError[2];
+    rkDerErrorMsg.data = derError[3];
+    _PubDerErrorLH->publish(lhDerErrorMsg);
+    _PubDerErrorLK->publish(lkDerErrorMsg);
+    _PubDerErrorRH->publish(rhDerErrorMsg);
+    _PubDerErrorRK->publish(rkDerErrorMsg);
 }
-void ExoNode::publish_error_RH(double error_RH)
-{   Float msg{};
-    
-    msg.data = error_RH;
-    _PubErrorRH->publish(msg);
-}
-
-void ExoNode::publish_error_RK(double error_RK)
-{   Float msg{};
-    
-    msg.data = error_RK;
-    _PubErrorRK->publish(msg);
-}
-
-void ExoNode::publish_Der_Error_LH(double Der_error_LH)
-{   Float msg{};
-    
-    msg.data = Der_error_LH;
-    _PubDerErrorLH->publish(msg);
-}
-
-void ExoNode::publish_Der_Error_LK(double Der_error_LK)
-{   Float msg{};
-    
-    msg.data = Der_error_LK;
-    _PubDerErrorLK->publish(msg);
-}
-void ExoNode::publish_Der_Error_RH(double Der_error_RH)
-{   Float msg{};
-    
-    msg.data = Der_error_RH;
-    _PubDerErrorRH->publish(msg);
-}
-
-void ExoNode::publish_Der_Error_RK(double Der_error_RK)
-{   Float msg{};
-    
-    msg.data = Der_error_RK;
-    _PubDerErrorRK->publish(msg);
-}
-
-
-//********
-
 
 void ExoNode::publish_joint_state()
 {

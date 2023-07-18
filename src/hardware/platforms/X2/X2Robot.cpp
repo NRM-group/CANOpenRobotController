@@ -641,8 +641,16 @@ bool X2Robot::initialiseNetwork() {
 bool X2Robot::initialiseInputs() {
 
     // FIXME: Temporary solution to strain gauge scale factors
+    //constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
+    //    0.019193478, -0.016627119, 0.015766071, 0.01308
+    //};
+    // scaling to mass
+    // constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
+    //     0.010713, -0.0216, 0.015766071, 0.01308
+    // };
+    // Scaling to N
     constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
-        -0.019193478, -0.016627119, 0.015766071, 0.01308
+        0.010713*9.81, -0.0216*9.81, 0.015766071*9.81, 0.01308*9.81
     };
 
     for (int id = 0; id < X2_NUM_FORCE_SENSORS; id++) {
