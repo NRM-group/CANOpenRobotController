@@ -90,6 +90,7 @@ private:
     ctrl::GravityController<double, X2_NUM_JOINTS> _CtrlGravity;
     ctrl::PDController<double, X2_NUM_JOINTS> _CtrlPD;
     ctrl::TorqueController<double, X2_NUM_JOINTS> _CtrlTorque;
+    ctrl::TransparentWalkController<double, X2_NUM_JOINTS> _CtrlTransparentWalk;
 
 private:
     void update_lookup_table();

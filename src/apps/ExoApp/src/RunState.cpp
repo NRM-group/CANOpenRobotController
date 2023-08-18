@@ -7,7 +7,7 @@ RunState::RunState(const std::shared_ptr<X2Robot> robot,
     : State("Run State"), _Robot(robot), _Node(node),
       _DuringGait{false}, _Position{}, _MinROM{}, _MaxROM{},
       _CtrlExternal{}, _CtrlFriction{}, _CtrlGravity{},
-      _CtrlPD{}, _CtrlTorque{}, _LookupTable{100}
+      _CtrlPD{}, _CtrlTorque{}, _CtrlTransparentWalk{}, _LookupTable{100}
 {
     _Node->ros_declare(
         {"friction.static",
@@ -150,7 +150,7 @@ void RunState::during()
 #endif
     }
     // Torque (transparent)
-    if (_Node->get_dev_toggle().torque)
+    if (_Node->get_dev_toggle().torque && !_Node->get_user_command().toggle_walk)
     {
         _CtrlTorque.loop(_Robot->getStrainGauges());
         _TorqueOutput += _CtrlTorque.output();
@@ -160,6 +160,19 @@ void RunState::during()
                      _CtrlTorque.output()[1],
                      _CtrlTorque.output()[2],
                      _CtrlTorque.output()[3]);
+#endif
+    }
+    // Transparent Walk (transparent)
+    if (_Node->get_dev_toggle().torque && _Node->get_user_command().toggle_walk)
+    {
+        _CtrlTransparentWalk.loop(_Robot->getStrainGauges());
+        _TorqueOutput += _CtrlTransparentWalk.output();
+#ifdef DEBUG
+        spdlog::info("Transparent Walk: [{:.4}, {:.4}, {:.4}, {:.4}]",
+                     _CtrlTransparentWalk.output()[0],
+                     _CtrlTransparentWalk.output()[1],
+                     _CtrlTransparentWalk.output()[2],
+                     _CtrlTransparentWalk.output()[3]);
 #endif
     }
 
@@ -246,6 +259,16 @@ void RunState::update_controllers()
     } catch (const char* msg) {
         LOG(msg);
     }
+    // Transparent Walk
+    try{
+        _CtrlTransparentWalk.set_gain(Eigen::Vector4d(_Node->get_torque_parameter().gain.cbegin() + 1));
+        // _CtrlTransparentWalk.set_interaction_torque_mask(60.0);
+        _CtrlTransparentWalk.set_interaction_torque_mask(_LookupTable.getGaitIndex());
+        // _CtrlTransparentWalk.set_direction(_LookupTable.getVelocity(_LookupTable.getGaitIndex()));
+        _CtrlTransparentWalk.set_direction(_LookupTable.getGaitIndex());
+    } catch (const char* msg) {
+        LOG(msg);
+    }
 }
 
 void RunState::update_lookup_table()
@@ -272,7 +295,8 @@ void RunState::update_lookup_table()
         {
             _Position = _Robot->getPosition();
             _LookupTable.resetTrajectory();
-            _LookupTable.startTrajectory(_Position, INITIAL_GAIT_RATE);
+            _LookupTable.startTrajectory(_Position, INITIAL_GAIT_RATE, 45.0); // Start Right leg forward
+            //_LookupTable.startTrajectory(_Position, INITIAL_GAIT_RATE);
             _LookupTable.start();
             _DuringGait = true;
         }
