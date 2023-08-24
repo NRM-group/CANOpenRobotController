@@ -650,7 +650,7 @@ bool X2Robot::initialiseInputs() {
     // };
     // Scaling to N
     constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
-        0.010713*9.81, -0.0216*9.81, 0.015766071*9.81, 0.01308*9.81
+        0.010713*9.81, 0.0216*9.81, 0.015766071*9.81, 0.01308*9.81
     };
 
     for (int id = 0; id < X2_NUM_FORCE_SENSORS; id++) {
