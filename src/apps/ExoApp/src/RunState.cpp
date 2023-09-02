@@ -162,19 +162,19 @@ void RunState::during()
                      _CtrlTorque.output()[3]);
 #endif
     }
-    // Transparent Walk (transparent)
-    if (_Node->get_dev_toggle().torque && _Node->get_user_command().toggle_walk)
-    {
-        _CtrlTransparentWalk.loop(_Robot->getStrainGauges());
-        _TorqueOutput += _CtrlTransparentWalk.output();
-#ifdef DEBUG
-        spdlog::info("Transparent Walk: [{:.4}, {:.4}, {:.4}, {:.4}]",
-                     _CtrlTransparentWalk.output()[0],
-                     _CtrlTransparentWalk.output()[1],
-                     _CtrlTransparentWalk.output()[2],
-                     _CtrlTransparentWalk.output()[3]);
-#endif
-    }
+//     // Transparent Walk (transparent)
+//     else if (_Node->get_dev_toggle().torque && _Node->get_user_command().toggle_walk)
+//     {
+//         _CtrlTransparentWalk.loop(_Robot->getStrainGauges());
+//         _TorqueOutput += _CtrlTransparentWalk.output();
+// #ifdef DEBUG
+//         spdlog::info("Transparent Walk: [{:.4}, {:.4}, {:.4}, {:.4}]",
+//                      _CtrlTransparentWalk.output()[0],
+//                      _CtrlTransparentWalk.output()[1],
+//                      _CtrlTransparentWalk.output()[2],
+//                      _CtrlTransparentWalk.output()[3]);
+// #endif
+//     }
 
     // Limit torque output
     for (std::size_t i = 0; i < X2_NUM_JOINTS; i++)
@@ -265,7 +265,7 @@ void RunState::update_controllers()
         // _CtrlTransparentWalk.set_interaction_torque_mask(60.0);
         _CtrlTransparentWalk.set_interaction_torque_mask(_LookupTable.getGaitIndex());
         // _CtrlTransparentWalk.set_direction(_LookupTable.getVelocity(_LookupTable.getGaitIndex()));
-        _CtrlTransparentWalk.set_direction(_LookupTable.getGaitIndex());
+        _CtrlTransparentWalk.set_direction_mask(_LookupTable.getGaitIndex());
     } catch (const char* msg) {
         LOG(msg);
     }
