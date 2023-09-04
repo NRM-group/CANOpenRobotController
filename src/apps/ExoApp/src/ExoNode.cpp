@@ -19,6 +19,7 @@ ExoNode::ExoNode(std::shared_ptr<X2Robot> robot)
     _PubJointState = create_publisher<JointState>("joint_states", 4);
     _PubJointReference = create_publisher<FloatArray>("joint_references", 4);
     _PubStrainGauge = create_publisher<FloatArray>("strain_gauges", 4);
+    _PubAffcTorque = create_publisher<FloatArray>("affc_torque", 4);
 
     //*****Code by Alex Anchivilca for Thesis
     _PubErrorLH = create_publisher<Float>("errorLH",2); 
@@ -184,6 +185,11 @@ void ExoNode::get_gait_file(std::string &path)
     get_parameter<std::string>("gait_path", path);
 }
 
+void ExoNode::get_affc_file(std::string &path)
+{
+    get_parameter<std::string>("affc_path", path);
+}
+
 void ExoNode::set_save_error(bool val)
 {
     _SaveError = val;
@@ -252,6 +258,15 @@ void ExoNode::publish_gait_index(double gaitIndex)
     Float msg{};
     msg.data = gaitIndex;
     _PubGaitIndex->publish(msg);
+}
+
+void ExoNode::publish_affc_torque(const std::vector<double> &val)
+{
+    FloatArray msg{};
+
+    msg.data = std::move(val);
+
+    _PubAffcTorque->publish(msg);
 }
 
 void ExoNode::publish_error(const Eigen::Matrix<double, 4, 1> &error) 

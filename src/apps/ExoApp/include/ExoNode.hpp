@@ -63,13 +63,15 @@ public: // ROS method visibility modifiers
     void ros_parameter(const std::string &name, std::vector<double> &val);
     void get_exo_file(std::string &path);
     void get_gait_file(std::string &path);
+    void get_affc_file(std::string &path);
     void set_save_error(bool val);
     void set_is_saved(bool val);
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_interface();
 
 public: // ROS publish methods
     void publish_heart_beat();
-    void publish_joint_reference(const std::vector<double> &val);   
+    void publish_joint_reference(const std::vector<double> &val);
+    void publish_affc_torque(const std::vector<double> &val);   
     void publish_joint_state(); 
     void publish_strain_gauge();
     void publish_gait_index(double gaitIndex);
@@ -126,6 +128,7 @@ private: // ROS publishers
     rclcpp::Publisher<JointState>::SharedPtr _PubJointState;
     rclcpp::Publisher<FloatArray>::SharedPtr _PubJointReference;
     rclcpp::Publisher<FloatArray>::SharedPtr _PubStrainGauge;
+    rclcpp::Publisher<FloatArray>::SharedPtr _PubAffcTorque;
     rclcpp::Publisher<Float>::SharedPtr _PubErrorLH;
     rclcpp::Publisher<Float>::SharedPtr _PubErrorLK;
     rclcpp::Publisher<Float>::SharedPtr _PubErrorRH;

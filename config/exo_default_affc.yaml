@@ -1,0 +1,63 @@
+exo:
+  ros__parameters:
+    # PHYSICAL PARAMETERS
+    # -------------------
+    # Mass: upper thigh, lower thigh, upper shank, lower shank, foot, backpak
+    m: [0.7, 2.14, 0.64, 0.47, 0.0, 10.3] # kg
+    # Length: left thigh, left shank, right thigh, right shank
+    l: [0.39, 0.4, 0.39, 0.4] # kg
+    # Centre of mass: hip->upper thigh, knee->lower thigh, knee->upper shank, ankle->lower shank, ankle->foot
+    s: [0.0811, 0.05564, 0.09080, 0.0562, 0.08834] # m
+
+    # CONTROLLER PARAMETERS
+    # ---------------------
+    # External torque
+    external: [0.0, 0.0, 0.0, 0.0]
+    # Friction compensation
+    friction:
+      # Static coefficients
+      static: [1.0, 1.0, 1.0, 1.0] # Nm
+      # Viscous coefficients
+      viscous: [1.0, 1.0, 1.0, 1.0] # Nms/rad
+      # Deadband cutoff velocity
+      neg: [-0.1, -0.1, -0.1, -0.1] # rad/s
+      pos: [0.1, 0.1, 0.1, 0.1] # rad/s
+    # PD
+    pd:
+      left_kp: [450.0, 0.0, 0.0, 450.0] # Nm/rad
+      right_kp: [450.0, 0.0, 0.0, 450.0] # Nm/rad
+      left_kd: [40.0, 0.0, 0.0, 40.0] # Nms/rad
+      right_kd: [40.0, 0.0, 0.0, 40.0] # Nms/rad
+      alpha_min: [2.0, 1.9, 2.0, 1.9] # -
+      alpha_max: [2.2, 2.0, 2.2, 2.0] # -
+    # Interaction torque
+    torque: [0.0, 0.0, 0.0, 0.0] # -
+    
+    # FILTER PARAMETERS
+    # -----------------
+    strain_gauge:
+      # butterworth filter (length must be filter order + 1 from X2Robot.h)
+      coeff_a: [1.0, -1.7337, 0.7652] # -
+      coeff_b: [0.0079, 0.0158, 0.0079] # -
+
+    # SAFETY LIMITS
+    # -------------
+    max_torque: 80.0 # Nm
+    max_velocity: 4.5 # rad/s
+    position_limits: # deg
+      max_hip: 120.0
+      min_hip: -40.0
+      max_knee: 0.0
+      min_knee: -120.0
+
+    # AFFC PARAMETERS
+    # ---------------
+    affc:
+      # learning rate 1e-3
+      learning_rate: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      # kp gains [left kp gains, right kp gains]
+      kp: [40.5, 0.0, 0.0, 40.5, 40.5, 0.0, 0.0, 40.5] 
+      # kd gains [left kd gains, right kd gains]
+      kd: [12.73, 0.0, 0.0, 12.73, 12.73, 0.0, 0.0, 12.73]
+      # affc c1 and c2 criterions for tuning in deg
+      criterions: [0.1, 2.0]

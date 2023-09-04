@@ -9,6 +9,7 @@ OffState::OffState(const std::shared_ptr<X2Robot> robot,
 {
 }
 
+// TODO: Add homing procedure to always start the exo in same initial position
 void OffState::entry()
 {
     LOG(">>> Entered >>>");

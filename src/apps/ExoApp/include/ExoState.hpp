@@ -75,6 +75,10 @@ private:
     const std::shared_ptr<X2Robot> _Robot;
     const std::shared_ptr<ExoNode> _Node;
     Eigen::Vector4d _TorqueOutput;
+    Eigen::Vector4d _ActualPosition;
+    Eigen::Vector4d _DesiredPosition;
+    Eigen::Vector4d _DesiredVelocity;
+    Eigen::Vector4d _DesiredAccel;
     static void rate_limit(const Eigen::Vector4d &target, Eigen::Vector4d &current, double rate);
 
 private:
@@ -85,12 +89,14 @@ private:
 
 private:
     void update_controllers();
+    ctrl::AdaptiveController<double, X2_NUM_JOINTS, 25>* _CtrlAffc;
     ctrl::ExternalController<double, X2_NUM_JOINTS> _CtrlExternal;
     ctrl::FrictionController<double, X2_NUM_JOINTS> _CtrlFriction;
     ctrl::GravityController<double, X2_NUM_JOINTS> _CtrlGravity;
     ctrl::PDController<double, X2_NUM_JOINTS> _CtrlPD;
     ctrl::TorqueController<double, X2_NUM_JOINTS> _CtrlTorque;
     ctrl::TransparentWalkController<double, X2_NUM_JOINTS> _CtrlTransparentWalk;
+    ctrl::Butterworth<double, X2_NUM_JOINTS, 2> _CtrlPositionFilter;
 
 private:
     void update_lookup_table();
