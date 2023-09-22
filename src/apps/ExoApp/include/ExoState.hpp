@@ -75,6 +75,8 @@ private:
     const std::shared_ptr<X2Robot> _Robot;
     const std::shared_ptr<ExoNode> _Node;
     Eigen::Vector4d _TorqueOutput;
+    Eigen::Vector4d _LastTorqueOutput;
+    Eigen::Vector4d _GravityComp;
     Eigen::Vector4d _ActualPosition;
     Eigen::Vector4d _DesiredPosition;
     Eigen::Vector4d _DesiredVelocity;

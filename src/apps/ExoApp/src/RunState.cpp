@@ -2,7 +2,6 @@
 // #include "pd.hpp"
 #define LOG(x) spdlog::info("[RunState]: {}", x)
 
-typedef ctrl::AdaptiveController<double, X2_NUM_JOINTS, 25> AFFC;
 
 RunState::RunState(const std::shared_ptr<X2Robot> robot,
                    const std::shared_ptr<ExoNode> node)
@@ -89,6 +88,9 @@ void RunState::entry()
     // Initialise torque control
     _Robot->initTorqueControl();
     _Node->set_is_saved(false);
+
+    // Initialise torque feedback to zero
+    _LastTorqueOutput = Eigen::Vector4d::Zero();
 }
 
 void RunState::during()
@@ -97,6 +99,7 @@ void RunState::during()
     update_lookup_table();
 
     _TorqueOutput = Eigen::Vector4d::Zero();
+    _GravityComp = Eigen::Vector4d::Zero();
 
     // Sum toggled controllers
     // External
@@ -128,7 +131,8 @@ void RunState::during()
     if (_Node->get_dev_toggle().gravity)
     {
         _CtrlGravity.loop(_Robot->getPosition());
-        _TorqueOutput += _CtrlGravity.output();
+        _GravityComp = _CtrlGravity.output();
+        _TorqueOutput += _GravityComp;
 #ifdef DEBUG
         spdlog::info("Gravity: [{:.4}, {:.4}, {:.4}, {:.4}]",
                      _CtrlGravity.output()[0],
@@ -152,7 +156,7 @@ void RunState::during()
 #endif
     }
     // Torque (transparent)
-    if (_Node->get_dev_toggle().torque && !_Node->get_user_command().toggle_walk)
+    if (_Node->get_dev_toggle().torque && !_Node->get_user_command().toggle_walk && false)
     {
         _CtrlTorque.loop(_Robot->getStrainGauges());
         _TorqueOutput += _CtrlTorque.output();
@@ -165,9 +169,9 @@ void RunState::during()
 #endif
     }
     // Transparent Walk (transparent)
-    if (_Node->get_dev_toggle().torque && _Node->get_user_command().toggle_walk)
+    if (_Node->get_dev_toggle().torque) //&& _Node->get_user_command().toggle_walk)
     {
-        _CtrlTransparentWalk.loop(_Robot->getStrainGauges());
+        _CtrlTransparentWalk.loop(_Robot->getStrainGauges(), _LastTorqueOutput, _GravityComp);
         _TorqueOutput += _CtrlTransparentWalk.output();
 #ifdef DEBUG
         spdlog::info("Transparent Walk: [{:.4}, {:.4}, {:.4}, {:.4}]",
@@ -193,6 +197,9 @@ void RunState::during()
     
     // Set the robot output torques to the desired torque
     _Robot->setTorque(_TorqueOutput);
+
+    // Update torque feedback
+    _LastTorqueOutput = _TorqueOutput;
 
     // Publish values
     _Node->publish_joint_reference(std::vector<double>(_Position.data(), _Position.data() + _Position.size()));
@@ -266,9 +273,9 @@ void RunState::update_controllers()
     try{
         _CtrlTransparentWalk.set_gain(Eigen::Vector4d(_Node->get_torque_parameter().gain.cbegin() + 1));
         // _CtrlTransparentWalk.set_interaction_torque_mask(60.0);
-        _CtrlTransparentWalk.set_interaction_torque_mask(_LookupTable.getGaitIndex());
+        // _CtrlTransparentWalk.set_interaction_torque_mask(_LookupTable.getGaitIndex());
         // _CtrlTransparentWalk.set_direction(_LookupTable.getVelocity(_LookupTable.getGaitIndex()));
-        _CtrlTransparentWalk.set_direction_mask(_LookupTable.getGaitIndex());
+        // _CtrlTransparentWalk.set_direction_mask(_LookupTable.getGaitIndex());
     } catch (const char* msg) {
         LOG(msg);
     }
