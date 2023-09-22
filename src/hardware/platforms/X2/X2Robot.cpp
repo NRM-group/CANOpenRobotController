@@ -648,6 +648,9 @@ bool X2Robot::initialiseInputs() {
     // constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
     //     0.010713, -0.0216, 0.015766071, 0.01308
     // };
+    // constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
+    //     0.010713*9.81, -0.0216*9.81, 0.015766071*9.81, 0.01308*9.81
+    // };
 
     // Calibration Scale
     // constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
@@ -655,8 +658,9 @@ bool X2Robot::initialiseInputs() {
     // };
     // Scaling to N
     constexpr std::array<double, X2_NUM_FORCE_SENSORS> scale {
-        0.010713*9.81, -0.0216*9.81, 0.015766071*9.81, 0.01308*9.81
+        0.0215*9.81, -0.0216*9.81, 0.0292*9.81, 0.0151*9.81
     };
+    
 
     for (int id = 0; id < X2_NUM_FORCE_SENSORS; id++) {
         forceSensors.push_back(new FourierForceSensor(id + 17, scale[id]));
