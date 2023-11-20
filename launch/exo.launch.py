@@ -54,8 +54,10 @@ def generate_launch_description():
 	ld.add_action(exo_splitter_node)
 
 	# Bag
-	bag_path = f"{os.path.expanduser('~')}/nrm-logs"
-	shutil.rmtree(bag_path)
+	bag_path = f"{os.path.expanduser('~')}/nrm-logs/{datetime.now().strftime('%H%M_%d-%m-%Y')}"
+	if os.path.exists(bag_path):
+		shutil.rmtree(bag_path)
+		
 	ros2bag = ExecuteProcess(
 		cmd=["ros2", "bag", "record", "-a", "-o", bag_path],
 		output="screen"
